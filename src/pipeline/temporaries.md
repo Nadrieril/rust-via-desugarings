@@ -64,5 +64,3 @@ let x = &(0, (1, 2)).1.1;
 let tmp = (0, (1, 2));
 let x = &tmp.1.1; // we can't assign `tmp.1` to a temporary in general
 ```
-
-[^1]: This is called "value-to-place coercion" and I explain it in [this blog post](https://nadrieril.github.io/blog/2025/12/06/on-places-and-their-magic.html).

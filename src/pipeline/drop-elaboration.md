@@ -1,14 +1,14 @@
 # Drop Elaboration
 
-Our last desugaring step is to make drops explicit. Drops happen at the end of a scope, and when
-a place is written to.
+Values are dropped when locals go out of scope, and when a place is written to ([corresponding
+Reference section](https://doc.rust-lang.org/reference/destructors.html)).
 
 To desugar drops, I introduce the following macro[^1] :
 ```rust
 macro_rules! drop_in_place {
     ($place:expr) => {{
         unsafe {
-            std::ptr::drop_in_place(&raw mut $place);
+            std::ptr::drop_in_place((&raw const $place).cast_mut());
             std::mem::forget($place);
         }
     }};
@@ -55,4 +55,4 @@ if need_drop_b {
 drop_in_place!(x.a);
 ```
 
-[^1]: Actually `&raw mut` requires a local to be declared `let mut`, so we should do `(&raw const $place).cast_mut()`. I'm hiding that for simplicity.
+[^1]: The `cast_mut` dance is there because `&raw mut local` requires the local to be declared `let mut`.

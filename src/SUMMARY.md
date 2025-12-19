@@ -4,19 +4,19 @@
 - [Desugaring Steps](pipeline/overview.md)
   - [Name Resolution & Macro Expansion](pipeline/name-resolution-macro-expansion.md)
   - [Loop Desugaring](pipeline/loop-desugaring.md)
-  <!-- `?` desugaring -->
-  <!-- - [Autoderef and deref coercion?], needed for computing the type of places -->
-  <!-- Coercions: coercion sites, reborrow, unsizing, autoderef -->
+  - [Try Desugaring](pipeline/try-desugaring.md)
+  - [Autoderef](pipeline/autoderef.md)
+  - [Coercions](pipeline/coercions.md)
   - [Method Resolution & Operator Overload](pipeline/method-resolution.md)
   - [Temporaries and Intermediate Subexpressions](pipeline/temporaries.md)
-  <!-- Desugaring patterns into matches (if let, let else, etc) -->
-  <!-- Match ergonomics -->
-  <!-- Match lowering -->
-  <!-- Closure capture desugaring with move expressions? Or capture lists  -->
-  <!-- Closure desugaring into ADTs  -->
-  <!-- Async bloc capture? -->
-  <!-- Explicit copy vs move -->
+  - [Desugaring Patterns to Matches](pipeline/everything-is-match.md)
+  - [Match Ergonomics](pipeline/match-ergonomics.md)
+  - [Match Bindings](pipeline/match-bindings.md)
+  - [Match Unnesting](pipeline/match-desugaring.md)
+  - [Closure Capture](pipeline/closure-capture.md)
+  - [Closure Desugaring](pipeline/closure-adt.md)
+  - [Explicit Copies/Moves](pipeline/copy-move.md)
   - [Drop Elaboration](pipeline/drop-elaboration.md)
   - [Borrow Checking?](pipeline/borrow-checking.md)
-  <!-- Coroutine transformation -->
+  - [Corountine Transformation](pipeline/coroutine.md)
   - [MiniRust](pipeline/minirust.md)
