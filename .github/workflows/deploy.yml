@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install mdBook
-        uses: peaceiris/actions-mdbook@v1
+        uses: peaceiris/actions-mdbook@v2
         with:
           mdbook-version: latest
 
@@ -30,9 +30,10 @@ jobs:
         run: mdbook build
 
       - name: Upload built book
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: book
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./book
 
   deploy:
     needs: build
@@ -43,4 +44,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
