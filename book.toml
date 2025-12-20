@@ -12,4 +12,4 @@ site-url = "/rust-via-desugarings/"
 
 [output.html.fold]
 enable = true
-level = 1
+level = 2
