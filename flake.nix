@@ -10,7 +10,10 @@
     in
     {
       devShells.default = pkgs.mkShell {
-        packages = [ pkgs.mdbook ];
+        packages = [
+          pkgs.mdbook
+          pkgs.mdbook-linkcheck
+        ];
       };
     });
 }
