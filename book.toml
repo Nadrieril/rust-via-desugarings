@@ -1,6 +1,6 @@
 [book]
 title = "Rust via Desugarings"
-authors = ["Rust via Desugarings"]
+description = "A book that explains the meaning of a Rust program via successive desugarings"
+authors = ["Nadrieril"]
 language = "en"
-multilingual = false
 src = "src"
