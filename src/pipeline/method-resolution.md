@@ -14,7 +14,7 @@ function call expression:
 let opt = Some(42);
 let x: &i32 = opt.as_ref().clone().unwrap();
 // desugars to:
-let x: &i32 = Option::unwrap(<Option<&i32> as Clone>::clone(Option::as_ref(&opt)));
+let x: &i32 = Option::unwrap(<Option<&i32> as Clone>::clone(&Option::as_ref(&opt)));
 ```
 
 The `<Type as Trait>::method(self, args..)` syntax is called UFCS (Uniform Function Call Syntax) and

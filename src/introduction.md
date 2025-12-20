@@ -14,5 +14,5 @@ not explain how typechecking works or anything about traits. In fact it actually
 typechecking for a lot of these desugarings.
 
 While I do my best to be precise and correct, this is just a fun project I'm doing with my current
-knowledge of Rust. This book will contain mistakes, confusions and omissions; please [open an issue]
-if you notice any!
+knowledge of Rust. This book will contain mistakes, confusions and omissions; please [open an
+issue](https://github.com/Nadrieril/rust-via-desugarings/issues) if you notice any!
