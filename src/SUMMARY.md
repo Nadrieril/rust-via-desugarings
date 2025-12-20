@@ -14,6 +14,7 @@
   - [Pattern Desugarings](pipeline/patterns.md)
     - [Desugaring Patterns to Matches](pipeline/everything-is-match.md)
     - [Match Ergonomics](pipeline/match-ergonomics.md)
+    - [Or-patterns](pipeline/or-patterns.md)
     - [Match Bindings](pipeline/match-bindings.md)
     - [Match Unnesting](pipeline/match-desugaring.md)
   - [Closure Desugarings](pipeline/closures.md)
