@@ -28,7 +28,7 @@ if let Some(x) = Option::as_ref(&*opt.read().unwrap()) {
     if let Some(x) = Option::as_ref(&*guard) {
         ...
     } else {
-        drop(tmp); // The temporary is dropped here
+        drop(guard); // The temporary is dropped here
         ...
     }
 }
