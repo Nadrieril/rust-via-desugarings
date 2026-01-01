@@ -26,6 +26,13 @@ jobs:
         with:
           mdbook-version: latest
 
+      - name: Install mdbook-backlinks
+        uses: taiki-e/cache-cargo-install-action@v3
+        with:
+          tool: mdbook-backlinks
+          git: https://github.com/Nadrieril/mdbook-backlinks
+          rev: main
+
       - name: Build book
         run: mdbook build
 

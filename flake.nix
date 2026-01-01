@@ -1,19 +1,24 @@
 {
   description = "Rust via Desugarings mdBook";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-  inputs.flake-utils.url = "github:numtide/flake-utils";
+  inputs = {
+    nixpkgs.url = "nixpkgs/nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+    mdbook-backlinks.url = "github:nadrieril/mdbook-backlinks";
+  };
 
-  outputs = { self, nixpkgs, flake-utils }: flake-utils.lib.eachDefaultSystem (system:
-    let
-      pkgs = import nixpkgs { inherit system; };
-    in
-    {
-      devShells.default = pkgs.mkShell {
-        packages = [
-          pkgs.mdbook
-          pkgs.mdbook-linkcheck
-        ];
-      };
-    });
+  outputs = inputs:
+    inputs.flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = import inputs.nixpkgs { inherit system; };
+      in
+      {
+        devShells.default = pkgs.mkShell {
+          packages = [
+            pkgs.mdbook
+            pkgs.mdbook-linkcheck
+            inputs.mdbook-backlinks.packages.${system}.default
+          ];
+        };
+      });
 }
