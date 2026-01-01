@@ -1,4 +1,4 @@
-# Corountine Transformation
+# Coroutine Transformation
 
 `async` blocks are similar to closures: they get desugared to a new ADT that implements an
 appropriate trait; this transformation is quite a bit more complex than for closure though.
