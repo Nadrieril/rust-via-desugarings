@@ -19,3 +19,4 @@ optional = true
 warning-policy = "error"
 
 [preprocessor.backlinks]
+optional = true
