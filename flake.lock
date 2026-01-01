@@ -59,11 +59,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1767292010,
-        "narHash": "sha256-unFlOg6TkXlByap+wDtYggbnae9j7jjs/FB5OAliEx4=",
+        "lastModified": 1767300107,
+        "narHash": "sha256-0/e830bzX5IIKoMipZIais7ZmPZNSpQudYVBZZAl30E=",
         "owner": "nadrieril",
         "repo": "mdbook-backlinks",
-        "rev": "cb48249047bac606c1dcb8b49e7d32e7aba1fafa",
+        "rev": "2fb722cd5df25a0d7d5d250910dd0bbc428e61e5",
         "type": "github"
       },
       "original": {
