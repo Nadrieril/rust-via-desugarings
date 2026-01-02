@@ -70,8 +70,13 @@ drop_in_place!(*a);
 This is not allowed in today's Rust, but would be with the [Moving Out Of
 `&mut`](../features/moving-out-of-mut.md) feature.
 
-After this step, all assignments of `!Copy` types are to statically uninitialized places (hence
-won't cause implicit drops), and all drops are explicit.
+Note that in this step we also `drop_in_place!` bindings of `Copy` types, to make sure that the end
+of their scope is made explicit. If we didn't we might accidentally consider a reference to
+a binding to be valid for longer than it was in the original program.
+
+After this step, all assignments are to statically uninitialized places (hence won't cause implicit
+drops), and all drops are explicit. Moreover, at the end of each scope, the bindings declared in
+that scope have been moved out of.
 
 ---
 

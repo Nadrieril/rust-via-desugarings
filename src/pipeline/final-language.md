@@ -1,51 +1,91 @@
 # The Final Language
 
-We have now fully desugared our Rust program. The resulting program uses a very limited set of basic
-operations, as follows:
+We have now fully desugared our Rust program. The resulting program uses a very limited subset of
+Rust, described here.
 
-- All locals are individually pre-declared as `let x;`/`let mut x;` at the start of their scope;
-- The only compound expressions are place expressions, made of locals `x`, builtin deref `*x`, field
-  access `x.field` and builtin indexing `x[i]`;
-- The only control-flow constructs are blocks, `if` and `loop`, along with `break` (valid for
-  loops and blocks), `continue` (valid for loops only) and `return`;
-- Statements are limited to the following:
-    - `$place = $expr`;
-    - `$place = call($expr, $expr..)`;
-    - `let _ = $place` (needs to be kept for accurate borrow-checking);
-    - control-flow constructs: `if`/`loop`/`return`/`break`/`continue`;
-    - `drop!($place)`;
-    - `inline_asm!(..)`;
+An "constant value" `$const` is:
+- A named constant `CONSTANT`;
+- A constant literal `true`, `42u32`, `3.14f64`, `"str literal"`, etc.
 
-TODO: how about `conditional_drop!($place)` before drop elab?
-TODO: need storagelive/storagedead if we're getting rid of scopes
-TODO: desugar async to general coroutines, at least
+A "place expression" `$place` is:
+- A local variable `x`;
+- A named static or thread local `STATIC`;
+- A dereference `*$place`;
+- A field access `$place.$field_name`;
+- An enum field access `$place.$variant_name.$field_name`;
+- A discriminant access `$place.enum#discriminant` (see [Enum Discriminant
+  Access](../features/enum-discriminant.md));
+- Indexing into a slice of array `$place[$operand]`.
+
+An "operand" `$operand` is:
+- A place access `copy!($place)` or `move!($place)` (see [Explicit Copy/Move](../features/explicit-copy-move.md));
+- A constant `$const`.
+
+An "rvalue" `$rvalue` is:
+- An operand `$operand`;
+- A borrow `&$place`/`&mut $place`/`&raw const $place`/etc;
+- A case `$operand as $ty`;
+- A built-in operation `$op + $op`, `$op >= $op`, `!$op`, etc;
+- A repeat expression `[$op; $const]`.
+
+A "statement" `$statement` is:
+- A variable declaration `let x: $ty;`/`let mut x: $ty;`.
+- Assignment `$place = $rvalue`;
+- Function call `$place = call($operand, $operand..)`;
+- Place mention `let _ = $place;` (needs to be kept for accurate borrow-checking);
+- If expression `if $operand { $block } else { $block }`;
+- Loop expression `'a: loop { $block }`;
+- Named block `'a: { $block };`;
+- Jumps `break 'a`/`continue 'a`/`return` (without a value);
+- `inline_asm!(..)`.
+
+A "block" `$block` is a list of `;`-terminated statements.
+It is always of type `()` (see [Explicit Return Place](../features/return-place.md)).
+
+A fully desugared program is a block.
 
 ## Difference with MIR
 
-- Control-flow;
-- Explicit unwinding cleanup blocks;
-- `StorageLive`/`StorageDead`;
-- Bounds checks;
+This target language is intentionally very close to
+[MIR](https://rustc-dev-guide.rust-lang.org/mir/index.html)[^2]. The main differences are:
+- Our language has structured control-flow whereas MIR has a graph of blocks with `goto`s;
+- MIR explicitly tracks what cleanups happen on unwinding;
+- MIR has `StorageLive`/`StorageDead` statements to track allocation/deallocation of locals; we
+  instead have `let x;` to allocate and `move!(x)` that marks where the local is deinitialized. This
+  is not exactly equivalent;
+- Bounds checks?;
 
-Biggest missing piece: unwind blocks & drops on unwind
+The biggest missing piece is without a doubt the info about drops on unwind.
+As discussed in [Drop Elaboration](drop-elaboration.md), this defeats part of the point of doing
+drop elaboration early, since it will have to be done again to know what drops happen on unwind.
+We might need to come up with a language feature that can express cleanup-on-unwind.
 
-## MiniRust
+I also expect there to be a lot more hidden subtleties I haven't accounted for, e.g. around constant
+evaluation or opaque types.
 
-Missing:
-- Corountine transform
-- Bunch of intrinsics that look like function calls today, e.g. `ptr::read`.
+## Difference with MiniRust
 
-This is the level at which we can start to talk about precise semantics. The state-of-the art for
-this, that exists today, is [MiniRust](https://github.com/minirust/minirust). MiniRust is a tiny
-language that resembles MIR, with a formal and executable semantics.
+MiniRust is intentionally quite close to MIR[^3]. Beyond the differences with MIR we already saw, to
+get valid MiniRust we'd also need the following:
+- Corountine transform, which transforms `async` blocks into state machines; I didn't know where to
+  fit it in the desugarings;
+- Change a bunch of intrinsic calls like `ptr::read`, `u32::add_with_overflow` to built-in
+  operations.
+- Anything else?
+
+<!-- This is the level at which we can start to talk about precise semantics. The state-of-the art for -->
+<!-- this, that exists today, is [MiniRust](https://github.com/minirust/minirust). MiniRust is a tiny -->
+<!-- language that resembles MIR, with a formal and executable semantics. -->
+
+TODO
 
 ---
 
 ## Discussion
 
-- edition hygiene
 - missing info for borrowck
 - slice patterns
+- monomorphization
 
 TODO
 
@@ -63,3 +103,7 @@ Thanks for reading, please open issues if you find mistakes or missing details, 
 you found this useful!
 
 [^1]: I'm @Nadrieril on the [rust-lang Zulip](https://rust-lang.zulipchat.com), that's the easiest way to reach me.
+[^2]: MIR is actually a bunch of languages in a trenchcoat. The MIR I'm talking about here is a MIR
+post-drop elaboration but pre-coroutine transform.
+[^3]: In this case, a different MIR than I was talking about. MiniRust is closer to [runtime
+MIR](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.MirPhase.html#variant.Runtime).

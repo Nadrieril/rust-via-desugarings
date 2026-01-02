@@ -18,6 +18,7 @@
       <!-- TODO: make copies explicit, any other place-to-val is a move -->
       <!-- TODO: explicit binding scopes: forward-declare all bindings? storage_dead them? -->
     - [TODO: Temporaries and Intermediate Subexpressions](pipeline/temporaries.md)
+      <!-- TODO: how about `conditional_drop!($place)` before drop elab? -->
       <!-- TODO: block unnesting, e.g. `if { ...; cond } {}` -->
   - [Pattern Desugarings](pipeline/patterns.md)
     - [TODO: Desugaring Patterns to Matches](pipeline/everything-is-match.md)
@@ -34,6 +35,7 @@
     - [Explicit Copies/Moves](pipeline/copy-move.md)
     - [Drop Elaboration](pipeline/drop-elaboration.md)
       <!-- TODO: wait shit, need unwind blocks for that -->
+      <!-- TODO: replace aggregates with phased init -->
     - [Borrow Checking?](pipeline/borrow-checking.md)
       <!-- [Coroutine Transformation](pipeline/coroutine.md) -->
   - [TODO: The Final Language](pipeline/final-language.md)
