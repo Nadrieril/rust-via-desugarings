@@ -62,4 +62,17 @@ match opt {
 
 After this step, all patterns are free of bindings.
 
+---
+
+## Discussion
+
+The special handling of bindings in guards was a major source of headaches in structuring this book.
+I wonder if there's a way to make them less annoying, for example with [`let
+place`](https://nadrieril.github.io/blog/2025/12/09/postfix-macros-and-let-place.html).
+
+<!-- Note that this desugaring is slightly different than what rustc does today: in the `ref` and `ref -->
+<!-- mut` binding cases, rustc keeps the same initial binding between the guard and the match arm. -->
+<!-- This can be observed by comparing addresses. -->
+<!-- I believe that behavior is a valid refinement of the specification I propose, --> 
+
 [^1]: This is in fact exactly what rustc does internally. I wish there was a cleaner way to do this.

@@ -7,8 +7,8 @@ To desugar drops, I introduce the following macro[^1] :
 macro_rules! drop_in_place {
     ($place:expr) => {{
         unsafe {
-            std::ptr::drop_in_place((&raw const $place).cast_mut());
-            std::mem::forget(move!($place));
+            core::ptr::drop_in_place((&raw const $place).cast_mut());
+            core::mem::forget(move!($place));
         }
     }};
 }

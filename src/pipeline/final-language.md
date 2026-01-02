@@ -6,7 +6,7 @@ Rust, described here.
 An "constant value" `$const` is:
 - A constant literal `true`, `42u32`, `3.14f64`, `"str literal"`, etc;
 - A named constant `CONSTANT`;
-- A [function item](https://doc.rust-lang.org/reference/types/function-item.html#function-item-types).
+- A [function item](https://doc.rust-lang.org/reference/types/function-item.html#function-item-types) ZST.
 
 A "place expression" `$place` is:
 - A local variable `x`;
@@ -24,15 +24,15 @@ An "operand" `$operand` is:
 
 An "rvalue" `$rvalue` is:
 - An operand `$operand`;
-- A borrow `&$place`/`&mut $place`/`&raw const $place`/etc;
-- A case `$operand as $ty`;
+- A borrow `&$place`/`&mut $place`/`&raw const $place`/`&raw mut $place`;
+- A cast `$operand as $ty`;
 - A built-in operation `$op + $op`, `$op >= $op`, `!$op`, etc;
 - A repeat expression `[$op; $const]`.
 
 A "statement" `$statement` is:
 - A variable declaration `let x: $ty;`/`let mut x: $ty;`.
 - Assignment `$place = $rvalue`;
-- Place mention `let _ = $place;` (needs to be kept for accurate borrow-checking);
+  <!-- - Place mention `let _ = $place;` (needs to be kept for accurate borrow-checking); -->
 - Function call `$place = $operand($operand..)`;
 - If expression `if $operand { $block } else { $block }`;
 - Loop expression `'a: loop { $block }`;
@@ -91,6 +91,17 @@ TODO
 - monomorphization
 
 TODO
+
+Things to add/try before publishing:
+- try let place for match guards
+- can we desugar bindings & patterns simultaneously then? with `if let && let` instead of
+  `matches!`.
+- can we base all the pattern desugarings on `if let` then? the or-pat + guard still needs special
+  handling. `if let $p = $e` => `if let place p = $e && let $p' = p && let bindings = binding_modes`, then compile??
+- but need temporaries handling before we transform `match`es into `if let`s, and need `let && let`
+  desugaring before we can desugar temporaries? maybe? really gotta figure out temporaries
+- `on_unwind function_call(..) { $cleanup_blocks; }`
+- try accurate borrowck
 
 ## Conclusion
 

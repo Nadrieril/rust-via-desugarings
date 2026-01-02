@@ -4,7 +4,7 @@ Here is a birds-eye view of the transformations we'll be doing:
 
 - Resolve names and expand macros so we talk about the final, macro-free program;
 - Lower surface control-flow sugar (`for`, `while`, `?`, `if let`/`let else`, etc.) into a handful
-  of constructs (`loop`, `match`, `break`/`continue`/`return`);
+  of constructs (`loop`, `if`, `break`/`continue`/`return`);
 - Make implicit conversions explicit: autoderef/autoref, coercions, method resolution, operator
   overloading, match ergonomics;
 - Materialize temporaries so every intermediate value gets a name and a lifetime.

@@ -10,7 +10,7 @@ When a crate in edition `N` calls a macro from a crate in edition `M`, each toke
 edition it comes from. So the following code may or may not panic depending on the edition of the
 crate that defines the `if_let` macro.
 ```rust
-use std::cell::Cell;
+use core::cell::Cell;
 
 // Possibly defined in another crate.
 macro_rules! if_let {

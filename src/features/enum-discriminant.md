@@ -1,6 +1,6 @@
 # Enum Discriminant Access
 
-To read the discriminant of an enum value today, one must use `std::mem::discriminant(&place)`. This
+To read the discriminant of an enum value today, one must use `core::mem::discriminant(&place)`. This
 unfortunately requires a `&`-borrow, which may introduce UB in unsafe contexts.
 Moreover there's no stable way to get a discriminant value without having an enum value with that
 discriminant around.

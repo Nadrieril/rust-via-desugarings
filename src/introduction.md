@@ -24,13 +24,14 @@ I have three goals in writing this, in order of importance:
    code or an error message. I care more to show where and what kind of transformations happen
    rather than exactly how they happen.
 
-2. Specificatory: I want this book to be sufficiently complete (if not precise) to be the basis of
-   a specification for Rust. There should be no unknown unknowns when reading this, and when details
-   are skimmed over there should ideally be a link to a source of truth about what really happens.
+2. Specificatory: I want this book to be sufficiently complete (if not precise) that we could
+   imagine building a specification for Rust on top of it. There should be no unknown unknowns when
+   reading this, and when details are skimmed over there should be a link to a source of truth about
+   what really happens.
 
 3. Implementablory: I want this to be close enough to the reality of the compiler that we could make
-   rustc output the outcome of some of these desugaring steps. As we've learned many times, the best
-   teaching tool is one you can interact with.
+   a rustc-based tool that outputs the outcome of some of these desugaring steps. As we've learned
+   many times, the best teaching tool is one you can interact with.
 
 ## Non-Goals
 
@@ -40,9 +41,10 @@ linking crates, etc. In fact it heavily relies on types and trait data being kno
 use of.
 
 This book does not aim to really be a specification document: reaching the level of precision that
-the Rust Reference has would take an amount of work I am not prepared for. I do think this way of
-presenting things has value, and in writing this am hoping to inform how the Reference may end up
-filling its existing gaps.
+the Rust Reference has would be a whole other magnitude of a project. I see this more as
+a guide for how to read the Reference.
+I do think this way of presenting things has value though, and wonder if it would make sense for the
+Reference to be structured in that way.
 
 ## Caveats
 

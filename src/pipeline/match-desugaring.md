@@ -102,6 +102,14 @@ prevents match guards from altering discriminants that participate in the match,
 for soundness. This desugaring ignores that entirely; see also [Borrow
 Checking](borrow-checking.md).
 
+### Looping back to earlier desugarings
+
+This desugaring has the drawback that it emits code with constructs like `&&` that we should have
+already desugared, which requires looping back to earlier desugaring passes.
+On the face of it this is unfortunate, but it's secretly in preparation for the [`if let`
+guards](https://rust-lang.github.io/rfcs/2294-if-let-guard.html) feature, which I really don't see
+how to handle without a desugaring fixpoint.
+
 [^1]: At least one difference is that rustc tests or-pattern alternatives after other patterns to
 reduce duplicate work. So `matches!($x, (true|true, false))` is actually compiled to `matches!($x.1,
 false) && matches!($x.0, true|true)`. There are also details around enums with only one variant.
