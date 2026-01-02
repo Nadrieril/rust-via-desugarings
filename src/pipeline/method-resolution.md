@@ -33,8 +33,8 @@ calls:
 
 and a few others. All the non-builtin uses of these operations get desugared to the appropriate
 trait method call. "Built-in" here means the most basic version of that operation, e.g. addition on
-integers, indexing on arrays/slices, function call on function pointers. Those don't get desugared,
-the rest do.
+integers, indexing on arrays/slices, function call on function pointers etc.
+Those don't get desugared, the rest do.
 
 ```rust
 let x = 1 + 2 + &3;

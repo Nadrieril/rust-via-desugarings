@@ -4,8 +4,9 @@ We have now fully desugared our Rust program. The resulting program uses a very 
 Rust, described here.
 
 An "constant value" `$const` is:
+- A constant literal `true`, `42u32`, `3.14f64`, `"str literal"`, etc;
 - A named constant `CONSTANT`;
-- A constant literal `true`, `42u32`, `3.14f64`, `"str literal"`, etc.
+- A [function item](https://doc.rust-lang.org/reference/types/function-item.html#function-item-types).
 
 A "place expression" `$place` is:
 - A local variable `x`;
@@ -31,16 +32,16 @@ An "rvalue" `$rvalue` is:
 A "statement" `$statement` is:
 - A variable declaration `let x: $ty;`/`let mut x: $ty;`.
 - Assignment `$place = $rvalue`;
-- Function call `$place = call($operand, $operand..)`;
 - Place mention `let _ = $place;` (needs to be kept for accurate borrow-checking);
+- Function call `$place = $operand($operand..)`;
 - If expression `if $operand { $block } else { $block }`;
 - Loop expression `'a: loop { $block }`;
 - Named block `'a: { $block };`;
-- Jumps `break 'a`/`continue 'a`/`return` (without a value);
+- Jumps `break 'a`/`continue 'a`;
+- Return `return $operand`;
 - `inline_asm!(..)`.
 
-A "block" `$block` is a list of `;`-terminated statements.
-It is always of type `()` (see [Explicit Return Place](../features/return-place.md)).
+A "block" `$block` is a list of `;`-terminated statements. It is always of type `()`.
 
 A fully desugared program is a block.
 
@@ -53,6 +54,8 @@ This target language is intentionally very close to
 - MIR has `StorageLive`/`StorageDead` statements to track allocation/deallocation of locals; we
   instead have `let x;` to allocate and `move!(x)` that marks where the local is deinitialized. This
   is not exactly equivalent;
+- Instead of `return value;`, MIR has a return place that must be written to before returning.
+  That's easy to recover from what we have;
 - Bounds checks?;
 
 The biggest missing piece is without a doubt the info about drops on unwind.

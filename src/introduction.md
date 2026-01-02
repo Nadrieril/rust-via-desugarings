@@ -14,7 +14,7 @@ I'm writing this book in the context of two projects that are working towards fo
 Both of these share the limitation of working only with function bodies in a very simplified+precise
 form ([MIR](https://rustc-dev-guide.rust-lang.org/mir/index.html)). I'm writing this book as
 a complement to those two, filling the gap of how to get from real Rust code to this
-simplified+precise form[^2].
+simplified+precise form[^1].
 
 ## Goals
 
@@ -54,8 +54,7 @@ While I do my best to be precise and correct, this is just a fun project I'm doi
 knowledge of Rust. This book will contain mistakes, imprecisions and omissions; please [open an
 issue](https://github.com/Nadrieril/rust-via-desugarings/issues) or PR if you notice any!
 
-[^2]: The majority of the info in this book is present in one way or another in the [Rust
-Reference](https://doc.rust-lang.org/reference/introduction.html), but I find that information in
-the Reference is too spread out to easily figure out how a particular piece of code behaves. Hence
-this book! Also the Reference isn't executable even in theory, unlike this book.
-
+[^1]: The majority of the info in this book is present in one way or another in the [Rust
+Reference](https://doc.rust-lang.org/reference/introduction.html). The point of this book is in part
+to know where to start and which Reference sections are relevant to a given piece of Rust code. Also
+the Reference isn't executable even in theory, unlike this book.
