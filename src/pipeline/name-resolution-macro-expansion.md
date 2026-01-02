@@ -27,8 +27,8 @@ In fact the whole process is somewhat stateful: we must expand things from botto
 even the order in which we explore modules can have consequences.
 
 To represent the output of name resolution and hygiene, as part of our desugaring we expand all
-names to full paths, and for any name where there could be ambiguity we rename identifiers to make
-them unique.
+names to full paths, for any name where there could be ambiguity we rename identifiers to make them
+unique, and we insert [Explicit Hygiene Markers](../features/hygiene-markers.md) as appropriate.
 
 For example:
 ```rust
@@ -41,6 +41,7 @@ fn main() {
     let x = x + 1;
     bar(x);
 }
+
 // becomes:
 mod foo {
     fn bar() {}
@@ -67,6 +68,7 @@ fn foo() -> u32 {
         0
     }
 }
+
 // becomes:
 fn foo() -> u32 {
     let x1 = 1;
@@ -79,5 +81,9 @@ fn foo() -> u32 {
 }
 ```
 
-At the end of this step, there are no macros left, no `use` statements, every item is refered to by
+See the Reference for details on [macro
+expansion](https://doc.rust-lang.org/reference/macros-by-example.html) and [name
+resolution](https://doc.rust-lang.org/reference/names.html).
+
+At the end of this step, there are no macros left, no `use` statements, every item is referred to by
 its full path, and all variables have unique names.

@@ -2,7 +2,7 @@
 
 - [Introduction](introduction.md)
 - [Desugaring Steps](pipeline/overview.md)
-  - [TODO: Name Resolution & Macro Expansion](pipeline/name-resolution-macro-expansion.md)
+  - [Name Resolution & Macro Expansion](pipeline/name-resolution-macro-expansion.md)
   - [TODO: Control-flow Desugarings](pipeline/control-flow.md)
     - [TODO: Loop Desugaring](pipeline/loop-desugaring.md)
     - [TODO: Try Desugaring](pipeline/try-desugaring.md)
@@ -37,6 +37,7 @@
 - [Extra Language Features](language-features.md)
   - [TODO: Enum Projections](features/enum-projections.md)
   - [TODO: Enum Discriminant Access](features/enum-discriminant.md)
+  - [Explicit Hygiene Markers](features/hygiene-markers.md)
   - [TODO: Explicit Return Place](features/return-place.md)
   - [Explicit Copy/Move](features/explicit-copy-move.md)
   - [TODO: `let place`?](features/let-place.md)
