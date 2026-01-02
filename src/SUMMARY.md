@@ -38,14 +38,14 @@
       <!-- [Coroutine Transformation](pipeline/coroutine.md) -->
   - [TODO: The Final Language](pipeline/final-language.md)
 - [Extra Language Features](language-features.md)
-  - [TODO: Enum Projections](features/enum-projections.md)
-  - [TODO: Enum Discriminant Access](features/enum-discriminant.md)
+  - [Enum Projections](features/enum-projections.md)
+  - [Enum Discriminant Access](features/enum-discriminant.md)
   - [Explicit Hygiene Markers](features/hygiene-markers.md)
   - [TODO: Explicit Return Place](features/return-place.md)
   - [Explicit Copy/Move](features/explicit-copy-move.md)
     <!-- - [TODO: `let place`?](features/let-place.md) -->
-  - [TODO: Moving Out Of `&mut`](features/moving-out-of-mut.md)
+  - [Moving Out Of `&mut`](features/moving-out-of-mut.md)
   - [Move Expressions for Closure Captures](features/move-expressions.md)
     <!-- - [TODO: Non-Dropping Assignment](features/non-dropping-assignment.md) -->
-    <!-- - [TODO: Phased Initialization](features/phased-initialization.md) -->
+  - [Phased Initialization](features/phased-initialization.md)
   - [Unique-Immutable Borrow](features/uniq-borrow.md)

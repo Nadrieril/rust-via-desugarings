@@ -78,8 +78,11 @@ won't cause implicit drops), and all drops are explicit.
 ## Discussion
 
 One massive limitation of our current approach is that we're missing information about which drops
-run when unwinding. In `rustc`, drop elaboration runs on MIR, which makes the unwinding control-flow
-explicit. In particular, it can express "if the function call `foo()` panics, then we drop this or
-that place". Expressing this in surface Rust looks tricky.
+run when unwinding.
+In `rustc` drop elaboration runs on MIR, which has explicit control-flow for unwind paths.
+In particular, MIR can express "if the function call `foo()` panics, then we drop this
+or that place before continuing to unwind".
+Expressing this in surface Rust today would require a `catch_unwind` around every function call
+which is just unmanageable.
 
 [^1]: The `cast_mut` dance is there because `&raw mut local` would require the local to be declared `let mut`.
