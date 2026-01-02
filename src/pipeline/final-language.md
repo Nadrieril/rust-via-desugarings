@@ -52,8 +52,9 @@ This target language is intentionally very close to
 - Our language has structured control-flow whereas MIR has a graph of blocks with `goto`s;
 - MIR explicitly tracks what cleanups happen on unwinding;
 - MIR has `StorageLive`/`StorageDead` statements to track allocation/deallocation of locals; we
-  instead have `let x;` to allocate and `move!(x)` that marks where the local is deinitialized. This
-  is not exactly equivalent;
+  instead have `let x;` to allocate and `scope_end!(x)` (see [Explicit End Of
+  Scope](../features/scope-end.md)) that marks where the local is deinitialized. This may not be
+  exactly equivalent;
 - Instead of `return value;`, MIR has a return place that must be written to before returning.
   That's easy to recover from what we have;
 - Bounds checks?;

@@ -40,11 +40,9 @@ not explain e.g. how typechecking works, anything about traits, type layouts, co
 linking crates, etc. In fact it heavily relies on types and trait data being known-facts we can make
 use of.
 
-This book does not aim to really be a specification document: reaching the level of precision that
-the Rust Reference has would be a whole other magnitude of a project. I see this more as
-a guide for how to read the Reference.
-I do think this way of presenting things has value though, and wonder if it would make sense for the
-Reference to be structured in that way.
+This book does not aim to be an actual specification document[^2] :
+duplicating the contents of the Reference would be a waste of effort;
+I see this book more as a guide for how to read the Reference.
 
 ## Caveats
 
@@ -60,3 +58,4 @@ issue](https://github.com/Nadrieril/rust-via-desugarings/issues) or PR if you no
 Reference](https://doc.rust-lang.org/reference/introduction.html). The point of this book is in part
 to know where to start and which Reference sections are relevant to a given piece of Rust code. Also
 the Reference isn't executable even in theory, unlike this book.
+[^2]: I do wonder if it would make sense for the Reference to be structured in that way.

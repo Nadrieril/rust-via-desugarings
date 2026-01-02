@@ -6,23 +6,26 @@
   - [Control-flow Desugarings](pipeline/control-flow.md)
     - [Loop Desugaring](pipeline/loop-desugaring.md)
     - [Try Desugaring](pipeline/try-desugaring.md)
-      <!-- TODO: explicit return -->
     - [TODO: Lazy Boolean Operators and Let chains](pipeline/let-chains.md)
   - [Type-Directed Expression Transformations](pipeline/expr-transforms.md)
     - [TODO: Autoderef](pipeline/autoderef.md)
     - [Method Resolution & Operator Overload](pipeline/method-resolution.md)
     - [Coercions](pipeline/coercions.md)
     - [TODO: Match Ergonomics](pipeline/match-ergonomics.md)
-      <!-- TODO: bounds checks, overflow checks -->
       <!-- TODO: indexing -->
+    - [TODO: Overflow and Bounds Checks]()
+  - [Temporaries and Subexpressions](pipeline/temporaries.md)
+    - [Temporaries and Lifetime Extension](pipeline/value-to-place.md)
+    - [Intermediate Subexpression Elimination]()
+      <!-- TODO: remove tail expressions; explicit return -->
+      <!-- TODO: block unnesting, e.g. `if { ...; cond } {}` -->
+    - [Explicit Binding Scopes]()
       <!-- TODO: add types to bindings -->
       <!-- TODO: replace `break val` and `return val` -->
-      <!-- TODO: explicit unwind paths around calls and scope_end!(). when adding an unwind path,
-      need to add a lot of scope_end!()s -->
-    - [TODO: Temporaries and Intermediate Subexpressions](pipeline/temporaries.md)
       <!-- TODO: explicit binding scopes: forward-declare all bindings? storage_dead them? -->
       <!-- TODO: how about `scope_end!($place)` before drop elab? -->
-      <!-- TODO: block unnesting, e.g. `if { ...; cond } {}` -->
+      <!-- TODO: explicit unwind paths around calls and scope_end!(). when adding an unwind path,
+      need to add a lot of scope_end!()s -->
   - [Pattern Desugarings](pipeline/patterns.md)
     - [Desugaring Patterns to Matches](pipeline/everything-is-match.md)
     - [Or-patterns](pipeline/or-patterns.md)
@@ -45,7 +48,7 @@
   - [Explicit End Of Scope](features/scope-end.md)
   - [Explicit Hygiene Markers](features/hygiene-markers.md)
     <!-- - [TODO: `let place`?](features/let-place.md) -->
-    <!-- TODO: on_panic! ( $expr, { block } ) -->
+    <!-- TODO: on_unwind! ( $expr, { block } ) -->
   - [Move Expressions for Closure Captures](features/move-expressions.md)
   - [Moving Out Of `&mut`](features/moving-out-of-mut.md)
   - [Phased Initialization](features/phased-initialization.md)
