@@ -1,132 +1,107 @@
-# Match Unnesting
+# Match Lowering
 
-Operationally, pattern matching expressions just stand for a series of comparisons of discriminants
-or integers. So in principle we could desugar a `match` to a big series of `if`s. However that would not
-give us the same MIR as we get today: the lowering of patterns to MIR is a bit sophisticated[^1], to
-emit more performant code. I also find that more pleasing. So let's try to preserve that.
+Operationally, pattern matching expressions stand for a series of comparisons of discriminants
+or integers. In this step we do that transformation.
 
+## `match` to `if`
 
-At the end of this step the only `match`es left will be on integer, char or boolean constants. As
-a shorthand we'll allow `if b` to stand for the obvious corresponding `match` on booleans. This will
-be the only remaining branching construct.
-
-## Match guards
-
-Let's start with match guards:
+Because we've dealt with all the bindings, all remaining patterns have no bindings. Moreover the
+scrutinee of a match has been turned into a side-effect-less place expression.
+We can therefore transform:
 ```rust
-match $expr {
-    Some(_) if $guard => ..,
-    None => ..,
-    Some(_) => ..,
+match $place {
+    $pat1 if $guard1 => $arm1,
+    $pat2 if $guard2 => $arm2,
+    $pat3 => $arm3,
 }
 ```
-In that match, if `$expr` returns `false` we keep trying the arms below. I propose to add a syntax
-for that:
+into:
 ```rust
-'a: match $expr {
-    Some(_) => if $guard {
-        ..
-    } else {
-        continue 'a; // tries the arms after this one
-    },
-    None => ..,
-    Some(_) => ..,
+if matches!($place, $pat1) && $guard1 {
+    $arm1
+} else if matches!($place, $pat2) && $guard2 {
+    $arm2
+} else if matches!($place, $pat3) {
+    $arm3
+} else {
+    unsafe { unreachable_unchecked() }
 }
 ```
 
-To be precise, this `continue` statement would mean: "continue trying to match the arms below this
-one". Making this into a fully-fledged feature is out of scope of this document but would
-have to be treated specifically by match exhaustiveness
+## Unnesting patterns
 
-## Shallow patterns
+Of course this gains us nothing if `matches!` just expanded right back to a `match` expression.
+Instead, we'll compile each `matches!` expression down to built-in comparisons by recursively
+simplifying the expressions.
 
-The basic building block we'll desugar everything to is `match`ing on integers and booleans. As
-a shorthand we'll allow `if b` to stand for the obvious corresponding `match` on booleans. The
-allowed patterns in these matches are constant patterns and the catch-all `_` pattern. Everything
-else will desugar to those.
+By way of example:
+- `matches!($x, _)` => `true`;
+- `matches!($x, 42u32)` => `$x == 42u32`;
+- `matches!($x, 42u32..=73u32)` => `42u32 <= $x && $x <= 73u32`;
+- `matches!($x, &$p)` => `matches!(*$x, $p)`;
+- `matches!($x, ($p0, $p1))` => `matches!($x.0, $p0) && matches!($x.1, $p1)`;
+- `matches!($x, Struct { a: $pa, b: $pb })` => `matches!($x.a, $pa) && matches!($x.b, $pb)`;
+- `matches!($x, Enum::Variant { a: $pa, b: $pb }))` => `$x.enum#discriminant == discriminant_of!(Enum, Variant) &&
+  matches!($x.Variant.a, $pa) && matches!($x.Variant.b, $pb)`;
+- `matches!($x, [$pa, .., $pz])` => `$x.len() >= 2 && matches!($x[0], $pa) && matches!($x[x.len() - 1], $pz)`.
 
-Non-nested patterns then desugar as follows:
-- Boolean and integer literal patterns stay as-is;
-- Float literals become `if $val == $literal` comparisons;
-- Float and integer range patterns become `if $start < $val && $val < end` comparisons;
-- Enum patterns become `match`es on the enum discriminant;
-- Slice patterns become length checks.
+Note that we use [Enum Projections](../features/enum-projections.md) and [Enum Discriminant
+Access](../features/enum-discriminant.md) for enums. Note also that we don't deal with or-patterns
+because they've been dealt with already.
 
-TODO: more detail, also explain discriminants, and subplaces, and enum projections
+Note that the left-to-right order is important here; these are lazy boolean operators. In fact the
+outcome of this desugaring step must go back to [Control-flow Desugarings](control-flow.md) to fix
+that up.
 
-## Nested patterns
+At the end of this step, the only remaining branching construct is `if`.
 
-Now we're left with nested patterns. A nested pattern can be decomposed as 1. a "outer test", which
-corresponds to one of the case we just saw, and 2. its subpatterns, that each apply to a subplace.
+---
 
-For example, `Some(42)` decomposes into a test that `$scrutinee.discriminant == Some`, and a nested
-pattern match `matches!($scrutinee.Some.0, 42)`. By repeatedly applying this decomposition, in the
-end we get only shallow tests like in the previous section.
+## Discussion
 
-TODO: explain that we skip into the inside of irrefutable constructors
+### Evaluation order
 
-The way the whole desugaring works is that we take the leftmost test of the first match arm, do that
-test, and figure out what remains to be done in each branch. We make heavy use of the
-`match`-`continue` feature:
+The exact semantics of patterns are not decided yet. What's presented in this section is actually
+a proposal I'm putting forward, that happens to mostly[^1] be compatible with what's implemented in
+rustc today.
+
+This proposal has the benefit and drawback of setting in stone a particular order of evaluation.
+This is useful for unsafe code that may want to know exactly what is accessed in which order, and
+detrimental to optimizations.
+
+The `unsafe` code that motivated me to fix the order is manually-implemented tagged unions:
 ```rust
-match val {
-    (Some(_), None) => .., // branch 1
-    (_, Some(_)) => .., // branch 2
-    (None, None) => .., // branch 3
+struct MyOption<T> {
+    is_some: bool,
+    contents: MyOptionContents<T>,
+}
+union MyOptionContents<T> {
+    uninit: (),
+    init: T,
 }
 
-// desugars to:
-'a: match val.0.enum#discriminant {
-    discriminant_of!(Option, Some) => match val {
-        (_, None) => .., // branch 1
-        (_, Some(_)) => continue 'a,
-    },
-    _ => match val {
-        (_, Some(_)) => .., // branch 2
-        (None, None) => .., // branch 3
+impl<T> MyOption<T> {
+    fn as_ref(&self) -> Option<&T> {
+        unsafe {
+            match *self {
+                MyOption { is_some: true, contents: MyOptionContents { ref init } } => Some(init),
+                MyOption { is_some: false, .. } => None,
+            }
+        }
     }
 }
-
-// then to:
-'a: match val.0.enum#discriminant {
-    discriminant_of!(Option, Some) => match val.1.enum#discriminant {
-        discriminant_of!(Option, None) => {
-            // branch 1
-        }
-        discriminant_of!(Option, Some) => continue 'a,
-    },
-    _ => match val {
-        (_, Some(_)) => .., // branch 2
-        (None, None) => .., // branch 3
-    }
-}
-
-// and finally to:
-'a: match val.0.enum#discriminant {
-    discriminant_of!(Option, Some) => match val.1.enum#discriminant {
-        discriminant_of!(Option, None) => {
-            // branch 1
-        }
-        discriminant_of!(Option, Some) => continue 'a,
-    },
-    _ => match val.1.enum#discriminant {
-        discriminant_of!(Option, Some) => {
-            // branch 2
-        }
-        discriminant_of!(Option, None) => match val.0.enum#discriminant {
-            discriminant_of!(Option, None) => .., // branch 3
-            _ => unsafe { unreachable_unchecked() },
-        },
-    },
-}
 ```
 
-This way of doing things might look weird but it has the benefit of not duplicating the body of
-branches. That's also what rustc does today[^2].
+I don't know if this sufficient motivation, nor exactly the extent of optimizations we'd lose if we
+set this in stone.
 
+### Modifying discriminants in match guards
 
-[^1]: It's not _that_ sophisticated actually, e.g. on the second example below it could figure out
-that matching on `val.1` first produces better code. But we don't do that kind of reasoning yet.
-[^2]: There's a subtle point here spec-wise: it's not yet settled in Rust what the compiler is or
-isn't allowed to do with patterns. This desugaring is roughly what the compiler does today, but we
-may decide to specify something less precise to leave space for future optimizations.
+Orthogonally to this, this skips over some borrow-checking considerations: today the borrow-checker
+prevents match guards from altering discriminants that participate in the match, which is required
+for soundness. This desugaring ignores that entirely; see also [Borrow
+Checking](borrow-checking.md).
+
+[^1]: At least one difference is that rustc tests or-pattern alternatives after other patterns to
+reduce duplicate work. So `matches!($x, (true|true, false))` is actually compiled to `matches!($x.1,
+false) && matches!($x.0, true|true)`. There are also details around enums with only one variant.

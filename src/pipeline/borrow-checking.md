@@ -6,6 +6,8 @@ borrow-checking must not influence runtime behavior.
 
 So there does not need to be a desugaring related to borrow-checking.
 
+---
+
 ## Discussion
 
 The question remains of when to run borrow-checking. Ideally we'd run it at the end of all the

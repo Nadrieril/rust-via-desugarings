@@ -73,6 +73,8 @@ This is not allowed in today's Rust, but would be with the [Moving Out Of
 After this step, all assignments of `!Copy` types are to statically uninitialized places (hence
 won't cause implicit drops), and all drops are explicit.
 
+---
+
 ## Discussion
 
 One massive limitation of our current approach is that we're missing information about which drops

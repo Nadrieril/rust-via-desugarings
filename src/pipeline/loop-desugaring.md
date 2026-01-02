@@ -5,6 +5,7 @@
 for $pat in $iter {
     $loop_body
 }
+
 // becomes
 {
     let mut iter = IntoIterator::into_iter($iter);
@@ -19,6 +20,7 @@ And then:
 while $condition {
     $loop_body
 }
+
 // becomes
 loop {
     if $condition {
@@ -28,5 +30,3 @@ loop {
     }
 }
 ```
-
-TODO: is this correct wrt temporaries?

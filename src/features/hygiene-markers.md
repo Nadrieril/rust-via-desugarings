@@ -47,6 +47,8 @@ To be able to expand the macro in a semantics-preserving way, this feature adds 
 So the macro above would expand to `#[edition = "2021"] if let ...` or `#[edition = "2024"] if let
 ...`.
 
+---
+
 ## Discussion
 
 I do not know if there are other hygiene considerations that can affect program semantics. If so

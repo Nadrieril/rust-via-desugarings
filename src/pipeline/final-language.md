@@ -6,13 +6,13 @@ operations, as follows:
 - All locals are individually pre-declared as `let x;`/`let mut x;` at the start of their scope;
 - The only compound expressions are place expressions, made of locals `x`, builtin deref `*x`, field
   access `x.field` and builtin indexing `x[i]`;
-- The only control-flow constructs are blocks, `match` (on integers) and `loop`, along with `break` (valid for
+- The only control-flow constructs are blocks, `if` and `loop`, along with `break` (valid for
   loops and blocks), `continue` (valid for loops only) and `return`;
 - Statements are limited to the following:
     - `$place = $expr`;
     - `$place = call($expr, $expr..)`;
     - `let _ = $place` (needs to be kept for accurate borrow-checking);
-    - control-flow constructs: `match`/`loop`/`return`/`break`/`continue`;
+    - control-flow constructs: `if`/`loop`/`return`/`break`/`continue`;
     - `drop!($place)`;
     - `inline_asm!(..)`;
 
@@ -38,6 +38,8 @@ Missing:
 This is the level at which we can start to talk about precise semantics. The state-of-the art for
 this, that exists today, is [MiniRust](https://github.com/minirust/minirust). MiniRust is a tiny
 language that resembles MIR, with a formal and executable semantics.
+
+---
 
 ## Discussion
 

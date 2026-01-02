@@ -3,9 +3,9 @@
 - [Introduction](introduction.md)
 - [Desugaring Steps](pipeline/overview.md)
   - [Name Resolution & Macro Expansion](pipeline/name-resolution-macro-expansion.md)
-  - [TODO: Control-flow Desugarings](pipeline/control-flow.md)
-    - [TODO: Loop Desugaring](pipeline/loop-desugaring.md)
-    - [TODO: Try Desugaring](pipeline/try-desugaring.md)
+  - [Control-flow Desugarings](pipeline/control-flow.md)
+    - [Loop Desugaring](pipeline/loop-desugaring.md)
+    - [Try Desugaring](pipeline/try-desugaring.md)
     - [TODO: Lazy Boolean Operators and Let chains](pipeline/let-chains.md)
   - [TODO: Invisible Expression Transformations](pipeline/expr-transforms.md)
     - [TODO: Autoderef](pipeline/autoderef.md)
@@ -18,11 +18,14 @@
       <!-- TODO: make copies explicit, any other place-to-val is a move -->
       <!-- TODO: explicit binding scopes: forward-declare all bindings? storage_dead them? -->
     - [TODO: Temporaries and Intermediate Subexpressions](pipeline/temporaries.md)
+      <!-- TODO: block unnesting, e.g. `if { ...; cond } {}` -->
   - [Pattern Desugarings](pipeline/patterns.md)
     - [TODO: Desugaring Patterns to Matches](pipeline/everything-is-match.md)
+      <!-- TODO: const-to-pat -->
+      <!-- TODO: never patterns -->
     - [TODO: Or-patterns](pipeline/or-patterns.md)
     - [TODO: Match Bindings](pipeline/match-bindings.md)
-    - [TODO: Match Unnesting](pipeline/match-desugaring.md)
+    - [Match Lowering](pipeline/match-desugaring.md)
       <!-- TODO: desugar match-continue -->
   - [Closure Desugarings](pipeline/closures.md)
     - [Closure Capture](pipeline/closure-capture.md)
@@ -40,9 +43,9 @@
   - [Explicit Hygiene Markers](features/hygiene-markers.md)
   - [TODO: Explicit Return Place](features/return-place.md)
   - [Explicit Copy/Move](features/explicit-copy-move.md)
-  - [TODO: `let place`?](features/let-place.md)
+    <!-- - [TODO: `let place`?](features/let-place.md) -->
   - [TODO: Moving Out Of `&mut`](features/moving-out-of-mut.md)
   - [Move Expressions for Closure Captures](features/move-expressions.md)
-  - [TODO: Non-Dropping Assignment](features/non-dropping-assignment.md)
-  - [TODO: Phased Initialization](features/phased-initialization.md)
+    <!-- - [TODO: Non-Dropping Assignment](features/non-dropping-assignment.md) -->
+    <!-- - [TODO: Phased Initialization](features/phased-initialization.md) -->
   - [Unique-Immutable Borrow](features/uniq-borrow.md)

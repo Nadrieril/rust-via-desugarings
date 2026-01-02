@@ -6,6 +6,8 @@ to a given place. Unlike `&mut T` however, it doesn't allow mutating the pointed
 The point of this borrow is that a `&uniq &mut T` is allowed to mutate the underlying `T` but not
 the `&mut T` itself. This is used to [desugar closure captures](../pipeline/closure-capture.md).
 
+---
+
 ## Discussion
 
 This borrow actually [exists in the
