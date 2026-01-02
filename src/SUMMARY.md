@@ -33,7 +33,7 @@
       <!-- TODO: wait shit, need unwind blocks for that -->
     - [Borrow Checking?](pipeline/borrow-checking.md)
       <!-- [Coroutine Transformation](pipeline/coroutine.md) -->
-  - [TODO: The Final Language: MiniRust?](pipeline/minirust.md)
+  - [TODO: The Final Language](pipeline/final-language.md)
 - [Extra Language Features](language-features.md)
   - [TODO: Enum Projections](features/enum-projections.md)
   - [TODO: Enum Discriminant Access](features/enum-discriminant.md)

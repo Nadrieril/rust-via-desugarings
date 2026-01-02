@@ -13,4 +13,4 @@ Here is a birds-eye view of the transformations we'll be doing:
   implicitly.
 
 At the end of all that, the resulting program should be much closer to MIR/MiniRust. See [the
-corresponding chapter](minirust.md) for discussion.
+corresponding chapter](final-language.md) for discussion.
