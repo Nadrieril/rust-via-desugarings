@@ -24,9 +24,9 @@
     - [TODO: Match Bindings](pipeline/match-bindings.md)
     - [TODO: Match Unnesting](pipeline/match-desugaring.md)
       <!-- TODO: desugar match-continue -->
-  - [TODO: Closure Desugarings](pipeline/closures.md)
-    - [TODO: Closure Capture](pipeline/closure-capture.md)
-    - [TODO: Closure To Struct Desugaring](pipeline/closure-adt.md)
+  - [Closure Desugarings](pipeline/closures.md)
+    - [Closure Capture](pipeline/closure-capture.md)
+    - [Closure To Struct Desugaring](pipeline/closure-adt.md)
   - [Ownership Desugarings](pipeline/explicit-ownership.md)
     - [Explicit Copies/Moves](pipeline/copy-move.md)
     - [Drop Elaboration](pipeline/drop-elaboration.md)
@@ -44,3 +44,4 @@
   - [Move Expressions for Closure Captures](features/move-expressions.md)
   - [TODO: Non-Dropping Assignment](features/non-dropping-assignment.md)
   - [TODO: Phased Initialization](features/phased-initialization.md)
+  - [Unique-Immutable Borrow](features/uniq-borrow.md)

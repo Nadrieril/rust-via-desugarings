@@ -8,8 +8,7 @@ The way I understand it, it works as follows: `move($expr)` is an expression val
 that:
 1. Evaluates `$expr` in the parent of the closure;
 2. Stores the result inside the closure;
-3. The `move(..)` expression itself is a place expression that corresponds to where that result is
-   stored (basically it's a field of the closure).
+3. Acts as a place expression for the place where that result is stored (i.e. the field of the closure object).
 
 For example, a function that increments a captured variable can be expressed as:
 ```rust
@@ -33,3 +32,19 @@ let mut replace = |new: u32| Option::replace(&mut move(x), new);
 
 Here the `&mut move(..)` directly borrows the place where we stored the initial value, and modifies
 it on each call. That would not work if `move(..)` was a value expression.
+
+Move expressions can be nested: `move(move($expr))` evaluates the inner `move($expr)` when the outer
+closure is created, then the outer `move(move($expr))` when the inner closure is created:
+```rust
+let mut x = Some(42);
+let generate_replacer = || {
+  do_some_stuff();
+  |new: u32| Option::replace(&mut move(move(x)), new)
+};
+// is equivalent to:
+let generate_replacer = || {
+  do_some_stuff();
+  let inner_x = move(x);
+  |new: u32| Option::replace(&mut move(inner_x), new)
+};
+```
