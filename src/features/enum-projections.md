@@ -9,7 +9,7 @@ That place then has one field for each field of the variant.
 For example:
 ```rust
 let opt: &mut Option<u32> = ...;
-if let Some(x) = *opt {
+if let Some(ref mut x) = *opt {
     // x: &mut u32 here
 }
 
