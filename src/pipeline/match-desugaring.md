@@ -105,3 +105,5 @@ Checking](borrow-checking.md).
 [^1]: At least one difference is that rustc tests or-pattern alternatives after other patterns to
 reduce duplicate work. So `matches!($x, (true|true, false))` is actually compiled to `matches!($x.1,
 false) && matches!($x.0, true|true)`. There are also details around enums with only one variant.
+Also constants in patterns get turned into patterns, which may behave differently than plain `==`
+comparison does in terms of exact UB.

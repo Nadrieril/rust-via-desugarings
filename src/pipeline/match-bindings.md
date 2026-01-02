@@ -1,43 +1,44 @@
 # Match Bindings
 
 Patterns operate in two steps: we first check if the pattern matches, and then assign each binding
-of the pattern. In this step we make the assignments explicit, leaving patterns that don't contain
-bindings.
+of the pattern. In this step we make the assignments explicit, leaving only patterns that don't
+contain bindings.
 
-To make this work, we need the capability to refer to places inside enum variants. I propose the
-syntax `$place.$variant_name`, e.g. `place.Some`:
+Every subpattern unambiguously refers to a subplace of the scrutinee place.
+Using [Enum Projections](../features/enum-projections.md), we can name that place
+and bind it explicitly.
 
+For example:
 ```rust
-let res: Result<&u32, Error> = ...;
-match res {
-   Ok(&x) => ..,
-   Err(ref e) => ..,
+match $scrutinee {
+   Struct { a: Enum::Variant { ref mut x, y: $pat }, b } => $arm,
+   ..
 }
-// desugars to:
-match res {
-   Ok(&_) => {
-      let x = unsafe { *res.Ok.0 };
-      ..
+
+// becomes
+match $scrutinee {
+   Struct { a: Enum::Variant { x: _, y: $pat }, b: _ } => {
+      let x = unsafe { &mut $scrutinee.a.Variant.x }; // variant access is unsafe
+      let b = $scrutinee.b;
+      $arm
    }
-   Err(_) => {
-      let e = unsafe { &res.Err.0 };
-      ..
-   }
+   ..
 }
 ```
 
-That operation is unsafe because it is only valid if the enum is indeed in the right variant.
-
-This is straightforward enough, except for match guards: for match guards we do a little hack so
-that they only get shared-ref access to the binding, yet get a binding of the expected type:
+This covers plain patterns.
+Match guards behave a bit differently, because they we only give them shared-ref access to the
+bindings.
+In order for the bindings to still have the expected type, we do a little hack whereby we replace
+every use of the binding in the guard[^1] :
 ```rust
-let opt: Option<T> = ...;
 match opt {
    Some(x) if { foo!(x) } => ..,
    Some(ref x) if { bar!(x) } => ..,
    Some(ref mut x) if { baz!(x) } => ..,
    _ => ..,
 }
+
 // desugars to:
 match opt {
    // Note the extra deref in `foo!(*x)`
@@ -60,3 +61,5 @@ match opt {
 ```
 
 After this step, all patterns are free of bindings.
+
+[^1]: This is in fact exactly what rustc does internally. I wish there was a cleaner way to do this.

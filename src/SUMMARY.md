@@ -22,12 +22,9 @@
       <!-- TODO: block unnesting, e.g. `if { ...; cond } {}` -->
   - [Pattern Desugarings](pipeline/patterns.md)
     - [TODO: Desugaring Patterns to Matches](pipeline/everything-is-match.md)
-      <!-- TODO: const-to-pat -->
-      <!-- TODO: never patterns -->
-    - [TODO: Or-patterns](pipeline/or-patterns.md)
-    - [TODO: Match Bindings](pipeline/match-bindings.md)
+    - [Or-patterns](pipeline/or-patterns.md)
+    - [Match Bindings](pipeline/match-bindings.md)
     - [Match Lowering](pipeline/match-desugaring.md)
-      <!-- TODO: desugar match-continue -->
   - [Closure Desugarings](pipeline/closures.md)
     - [Closure Capture](pipeline/closure-capture.md)
     - [Closure To Struct Desugaring](pipeline/closure-adt.md)
