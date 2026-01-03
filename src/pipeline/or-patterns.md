@@ -97,16 +97,20 @@ match $place {
 }
 
 // could become something like:
+macro_rules! cond_pat {
+    // A conditional pattern: behaves like `$p` if `$i == 0` or like `$q` if `$i == 1`
+    ($i:expr, $p:pat | $q:pat) => {
+        (place pl if $i == 0 && let $p = pl)
+        | (place pl if $i == 1 && let $q = pl)
+    };
+}
 'success: for i in 0..=1 {
     for j in 0..=1 {
         let max_k = if j == 0 { 0 } else { 1 };
         for k in 0..=max_k {
             if let (
-                place p if (i == 0 && let $a = p || i == 1 && let $b = p),
-                Some(place q if (
-                    j == 0 && let $c = q
-                    || j == 1 && let Ok(place r if (k == 0 && let $d = r || k == 1 && let $e = r)) = q
-                ))
+                cond_pat!(i, $a | $b),
+                Some(cond_pat!(j, $c | Ok(cond_pat!(k, $d | $e)),
             ) = $place && guard {
                 $arm
                 break 'success
