@@ -91,16 +91,17 @@ TODO
 - slice patterns
 - monomorphization
 
+By far the trickiest part of all this was the handling of temporaries.
+It infected everything else I tried to do.
+The second trickiest was `let` chains + `if let` guards.
+Third was or-patterns.
+
+These all depend on each other in non-trivial ways.
+
 TODO
 
 Things to add/try before publishing:
-- try let place for match guards
-- can we desugar bindings & patterns simultaneously then? with `if let && let` instead of
-  `matches!`.
-- can we base all the pattern desugarings on `if let` then? the or-pat + guard still needs special
-  handling. `if let $p = $e` => `if let place p = $e && let $p' = p && let bindings = binding_modes`, then compile??
-- but need temporaries handling before we transform `match`es into `if let`s, and need `let && let`
-  desugaring before we can desugar temporaries? maybe? really gotta figure out temporaries
+- `if let .. && let x; && ..`, then do temporaries first.
 - `on_unwind function_call(..) { $cleanup_blocks; }`
 - try accurate borrowck
 

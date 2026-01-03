@@ -8,8 +8,10 @@ The first step is to move any nested `|` to the outside of a pattern, e.g. `(0 |
 `(0, 2) | (0, 3) | (1, 2) | (1, 3)` (see Discussion below about the combinatorial explosion). This
 expansion is done left-to-right.
 
-Or-patterns inherently give rise to non-tree-like control-flow. Just like for let-chains, we express
-that using named block breaks:
+Inside let chains, we simply turn `let $pat1 | $pat2 = $expr` into `let $pat1 = $expr || let $pat2
+= $expr` using [Extended Let Chains](../features/extended-let-chains.md).
+
+Inside matches, we encode the non-tree-like control-flow directly:
 ```rust
 match $place {
     $pat1 | $pat2 if $guard => $arm,
@@ -70,19 +72,40 @@ After this step, patterns don't involve `|`.
 
 ## Discussion
 
+### Drop order
+
+The let-chain desugaring is actually incorrect wrt drop order: or-patterns declare their bindings in
+the order given by the first subpattern
+([Reference](https://doc.rust-lang.org/reference/destructors.html#r-destructors.scope.bindings.or-patterns)),
+but our desugaring will drop them in the order of the alternative that succeeds.
+
+### Combinatorial explosion
+
 This desugaring has the benefit of simplicity but two big drawbacks: it duplicates user code (the
-match guards), which is unfortunate, and more importantly causes combinatorial explosion.
-For example, `(true|false, true|false, true|false, true|false)` desugars to 16 patterns.
+match guards), and more importantly causes combinatorial explosion.
+For example, `(true|false, true|false, true|false, true|false) if $guard` desugars to 16 patterns
+and 16 copies of the guard code.
 
-Today's rustc limits this explosion by only expanding or-patterns when there's a guard or they have
-bindings.
-This can still very much cause combinatorial explosion.
+A more robust approach could be to give an index to each sub-pattern
+and branch/loop on these indices to know the right bindings to use/number of times to run a guard.
+For example, using [guard patterns](https://rust-lang.github.io/rfcs//3637-guard-patterns.html):
 
-A more robust approach could be to to give an index to each or-alternative
-(e.g. using [guard patterns](https://rust-lang.github.io/rfcs//3637-guard-patterns.html) +
-[`if let` guards](https://rust-lang.github.io/rfcs/2294-if-let-guard.html)),
-and branch on these indices to know the right bindings to use/number of times to run a guard.
+```rust
+match $place {
+    ($a | $b, Some($c | $d)) if $guard => $arm,
+    _ => {}
+}
 
-This might look like `(true if let i=0 | false if let i=1, true if let j=0 | false if let j=1, ..)`.
-This would unfortunately mean we couldn't desugar patterns to simple `matches!` anymore;
-I have not found a satisfactory solution to this conundrum.
+// could become something like:
+'success: for i in 0..=1 {
+    for j in 0..=1 {
+        if let (
+            place p if (i == 0 && let $a = p || i == 1 && let $b = p),
+            Some(place q if (j == 0 && let $c = q || j == 1 && let $d = q))
+        ) && guard {
+            $arm
+            break 'success
+        }
+    }
+}
+```

@@ -1,4 +1,4 @@
-# `let place`
+# Place Aliases
 
 `let place p = $expr;` evaluates `$expr` to a place expression and then works as an alias to that
 place. `place p` is allowed anywhere a binding is, e.g. in patterns `let Some(place p) = ...`,
@@ -6,7 +6,8 @@ except inside or-patterns.
 
 It expresses the idea of "compute a place once and use it many times". In practice, if we apply our
 initial desugaring steps to `let place p = $expr;`, we end up with `$expr` being a side-effect-free
-place expression, which we can then syntactically substitute wherever `p` is used.
+place expression, which we can then syntactically substitute wherever `p` is used
+(this is done in the [Desugaring Bindings](../pipeline/desugaring-bindings.md) step).
 
 For example:
 ```rust

@@ -16,8 +16,6 @@ In this step, for each expression `$expr` to be coerced, we first add a `let tmp
 then assign it `tmp = $expr;` (these two steps can be merged), then use `tmp` where the expression was.
 The placement of the `let x;` determines how long the value will live since it affects drop order.
 To get the right scope, extra blocks `{ .. }` may be added.
-To ensure correct drop order, explicit `scope_end!(tmp);` statements (see [Explicit End Of
-Scope](../features/scope-end.md)) may also be added.
 
 For example:
 ```rust
@@ -41,7 +39,6 @@ let s = if { let tmp1 = Option::clone(&opt); Option::is_some(&tmp1) } {
     &tmp4
 };
 ```
-
 Or:
 ```rust
 let opt: RwLock<Option<u32>> = ...
@@ -52,17 +49,16 @@ if let Some(x) = Option::as_ref(&*Result::unwrap(RwLock::read(&opt))) {
 }
 
 // becomes (in edition 2024):
-{
-    let tmp = Result::unwrap(RwLock::read(&opt));
-    if let Some(x) = Option::as_ref(&*tmp) {
-        ...
-    } else {
-        scope_end!(tmp); // The temporary is dropped here
-        ...
-    }
-    // The temporary is dropped here if it wasn't before.
+if let tmp = Result::unwrap(RwLock::read(&opt)) && let Some(x) = Option::as_ref(&*tmp) {
+    ...
+} else {
+    ...
 }
 ```
+
+Note how in let chains we may introduce the temporaries as part of the let chain to get the
+right scope. Our [Extended Let Chains](../features/extended-let-chains.md) allow forward declarations
+`let x;` in the middle of a let chain for that purpose.
 
 Taking an example from the [edition
 book](https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html):
