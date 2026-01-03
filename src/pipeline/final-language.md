@@ -90,6 +90,7 @@ TODO
 - missing info for borrowck
 - slice patterns
 - monomorphization
+- I end up duplicating user code
 
 By far the trickiest part of all this was the handling of temporaries.
 It infected everything else I tried to do.

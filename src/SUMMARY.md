@@ -38,7 +38,7 @@
     - [Match Guard Mutable Bindings](pipeline/guard-bindings.md)
     - [Desugaring Matches](pipeline/match-desugaring.md)
     - [Pattern Unnesting](pipeline/pattern-unnesting.md)
-    - [TODO: Let Chains](pipeline/let-chains.md)
+    - [Let Chains](pipeline/let-chains.md)
       <!-- TODO: handle plain bindings somewhere -->
     - [Desugaring Bindings](pipeline/desugaring-bindings.md)
   - [Closure Desugarings](pipeline/closures.md)

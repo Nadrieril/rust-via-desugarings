@@ -35,17 +35,12 @@ if $expr1 || $expr2 {
 }
 
 // becomes
-'exit: {
-    // TODO: how to get the drop order right
-    if $expr1 {
-        // uhh somehow forward the bindings in the right order
-    } else if $expr2 {
-        // uhh somehow forward the bindings in the right order
-    } else {
-        $else
-        break 'exit
-    }
+if $expr1 {
     $then
+} else if $expr2 {
+    $then
+} else {
+    $else
 }
 ```
 
@@ -66,3 +61,18 @@ if true {
 ```
 
 After this step, the only remaining branching construct is `if` on booleans.
+
+---
+
+## Discussion
+
+Once more we have patterns + alternations causing us to duplicate user code.
+It is surprisingly tricky to avoid, because we need to make sure that drop order is correct on failure of any
+condition and on unwind at any point.
+Until I find a better solution, this duplication has the benefit of being immensely simple.
+
+Unlike here, when desugaring or-patterns in matches we didn't need to duplicate the arm body.
+That's because the drop order of or-patterns is defined to not depend on which alternative is
+chosen.
+This may prove to be trouble when mixing or-patterns and if-let guard patterns however,
+so my bet is on changing or-patterns to drop depending on which alternative succeeded.
