@@ -38,7 +38,7 @@ if $expr1 || $expr2 {
 if $expr1 {
     $then
 } else if $expr2 {
-    $then
+    $then // duplicated :/
 } else {
     $else
 }

@@ -22,7 +22,7 @@ An "operand" `$operand` is:
 - A place access `copy!($place)` or `move!($place)` (see [Explicit Copy/Move](../features/explicit-copy-move.md));
 - A constant `$const`.
 
-An "rvalue" `$rvalue` is:
+An "value expression" `$val_expr` is:
 - An operand `$operand`;
 - A borrow `&$place`/`&mut $place`/`&raw const $place`/`&raw mut $place`;
 - A cast `$operand as $ty`;
@@ -31,7 +31,7 @@ An "rvalue" `$rvalue` is:
 
 A "statement" `$statement` is:
 - A variable declaration `let x: $ty;`/`let mut x: $ty;`.
-- Assignment `$place = $rvalue`;
+- Assignment `$place = $val_expr`;
   <!-- - Place mention `let _ = $place;` (needs to be kept for accurate borrow-checking); -->
 - Function call `$place = $operand($operand..)`;
 - If expression `if $operand { $block } else { $block }`;
