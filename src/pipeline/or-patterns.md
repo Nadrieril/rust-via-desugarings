@@ -92,19 +92,25 @@ For example, using [guard patterns](https://rust-lang.github.io/rfcs//3637-guard
 
 ```rust
 match $place {
-    ($a | $b, Some($c | $d)) if $guard => $arm,
+    ($a | $b, Some($c | Ok($d | $e))) if $guard => $arm,
     _ => {}
 }
 
 // could become something like:
 'success: for i in 0..=1 {
     for j in 0..=1 {
-        if let (
-            place p if (i == 0 && let $a = p || i == 1 && let $b = p),
-            Some(place q if (j == 0 && let $c = q || j == 1 && let $d = q))
-        ) && guard {
-            $arm
-            break 'success
+        let max_k = if j == 0 { 0 } else { 1 };
+        for k in 0..=max_k {
+            if let (
+                place p if (i == 0 && let $a = p || i == 1 && let $b = p),
+                Some(place q if (
+                    j == 0 && let $c = q
+                    || j == 1 && let Ok(place r if (k == 0 && let $d = r || k == 1 && let $e = r)) = q
+                ))
+            ) = $place && guard {
+                $arm
+                break 'success
+            }
         }
     }
 }
