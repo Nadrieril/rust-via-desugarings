@@ -17,11 +17,11 @@ match $place {
 ```
 into:
 ```rust
-if matches!($place, $pat1) && $guard1 {
+if let $pat1 = $place && $guard1 {
     $arm1
-} else if matches!($place, $pat2) && $guard2 {
+} else if let $pat2 = $place && $guard2 {
     $arm2
-} else if matches!($place, $pat3) {
+} else if let $pat3 = $place {
     $arm3
 } else {
     unsafe { unreachable_unchecked() }
@@ -30,28 +30,28 @@ if matches!($place, $pat1) && $guard1 {
 
 ## Unnesting patterns
 
-Of course this gains us nothing if `matches!` just expanded right back to a `match` expression.
-Instead, we'll compile each `matches!` expression down to built-in comparisons by recursively
-simplifying the expressions.
+Of course this gains us nothing if the `if let` to expanded right back to `match` expressions.
+Instead, we'll compile each `let` expression down to built-in comparisons by recursively simplifying
+the expressions.
 
 By way of example:
-- `matches!($x, _)` => `true`;
-- `matches!($x, 42u32)` => `$x == 42u32`;
-- `matches!($x, 42u32..=73u32)` => `42u32 <= $x && $x <= 73u32`;
-- `matches!($x, &$p)` => `matches!(*$x, $p)`;
-- `matches!($x, ($p0, $p1))` => `matches!($x.0, $p0) && matches!($x.1, $p1)`;
-- `matches!($x, Struct { a: $pa, b: $pb })` => `matches!($x.a, $pa) && matches!($x.b, $pb)`;
-- `matches!($x, Enum::Variant { a: $pa, b: $pb }))` => `$x.enum#discriminant == discriminant_of!(Enum, Variant) &&
-  matches!($x.Variant.a, $pa) && matches!($x.Variant.b, $pb)`;
-- `matches!($x, [$pa, .., $pz])` => `$x.len() >= 2 && matches!($x[0], $pa) && matches!($x[x.len() - 1], $pz)`.
+- `let _ = $x` => `true`;
+- `let 42u32 = $x` => `$x == 42u32`;
+- `let 42u32..=73u32 = $x` => `42u32 <= $x && $x <= 73u32`;
+- `let &$p = $x` => `let $p = *$x`;
+- `let ($p0, $p1) = $x` => `let $p0 = $x.0 && let $p1 = $x.1`;
+- `let Struct { a: $pa, b: $pb } = $x` => `let $pa = $x.a && let $pa = $x.b`;
+- `let Enum::Variant { a: $pa, b: $pb } = $x` => `$x.enum#discriminant == discriminant_of!(Enum, Variant) &&
+  let $pa = $x.Variant.a && let $pb = $x.Variant.b`;
+- `let [$pa, .., $pz] = $x` => `let len = core::slice::len(&raw const $x) && len >= 2 && let $pa = $x[0] && let $pz = $x[len - 1]`.
 
 Note that we use [Enum Projections](../features/enum-projections.md) and [Enum Discriminant
 Access](../features/enum-discriminant.md) for enums. Note also that we don't deal with or-patterns
 because they've been dealt with already.
 
-Note that the left-to-right order is important here; these are lazy boolean operators. In fact the
-outcome of this desugaring step must go back to [Control-flow Desugarings](control-flow.md) to fix
-that up.
+Note that the left-to-right order is important here; these are lazy boolean operators.
+After this step we go back to [Control-flow Desugarings](control-flow.md) to fix that up,
+and continue until no new `let` chains are produced.
 
 At the end of this step, the only remaining branching construct is `if`.
 
@@ -101,6 +101,21 @@ Orthogonally to this, this skips over some borrow-checking considerations: today
 prevents match guards from altering discriminants that participate in the match, which is required
 for soundness. This desugaring ignores that entirely; see also [Borrow
 Checking](borrow-checking.md).
+
+### Why go `if let` -> `match` -> `if let`?
+
+The current series of desugarings looks silly for `if let`: we go through a match then back to `if
+let`. The reasoning is that `match`es have a special interaction
+between guards and or-patterns, so we must expand or-patterns before turning `match`es to `if let`s.
+
+Now if we didn't first turn `if let`s to `match`es, we'd need to handle or-patterns in `if let`
+separately, which would look a bit redundant (also we need to handle or-patterns before we can
+separate bindings from patterns).
+Hence this choice I made to go through `match`.
+
+And why not then move this whole thing before the first `if let`-chain desugaring? Because before we
+turn `match`es to `if let`s we must handle temporary lifetime extension, and before we can handle
+temporary lifetime extension we must expand `let` chains, I think.
 
 ### Looping back to earlier desugarings
 
