@@ -8,8 +8,8 @@
     - [Try Desugaring](pipeline/try-desugaring.md)
     - [TODO: Lazy Boolean Operators and Let chains](pipeline/let-chains.md)
   - [Type-Directed Expression Transformations](pipeline/expr-transforms.md)
-    - [TODO: Autoderef](pipeline/autoderef.md)
     - [Method Resolution & Operator Overload](pipeline/method-resolution.md)
+    - [TODO: Autoderef](pipeline/autoderef.md)
     - [Coercions](pipeline/coercions.md)
     - [TODO: Match Ergonomics](pipeline/match-ergonomics.md)
       <!-- TODO: indexing -->
@@ -29,8 +29,10 @@
   - [Pattern Desugarings](pipeline/patterns.md)
     - [Desugaring Patterns to Matches](pipeline/everything-is-match.md)
     - [Or-patterns](pipeline/or-patterns.md)
-    - [Match Bindings](pipeline/match-bindings.md)
-    - [Match Lowering](pipeline/match-desugaring.md)
+    - [By-Value Bindings](pipeline/by-value-bindings.md)
+    - [Match Guard Mutable Bindings](pipeline/guard-bindings.md)
+    - [Pattern Unnesting](pipeline/match-desugaring.md)
+    - [`let place` Desugaring](pipeline/let-place-desugaring.md)
   - [Closure Desugarings](pipeline/closures.md)
     - [Closure Capture](pipeline/closure-capture.md)
     - [Closure To Struct Desugaring](pipeline/closure-adt.md)
@@ -47,7 +49,7 @@
   - [Explicit Copy/Move](features/explicit-copy-move.md)
   - [Explicit End Of Scope](features/scope-end.md)
   - [Explicit Hygiene Markers](features/hygiene-markers.md)
-    <!-- - [TODO: `let place`?](features/let-place.md) -->
+  - [`let place`](features/let-place.md)
     <!-- TODO: on_unwind! ( $expr, { block } ) -->
   - [Move Expressions for Closure Captures](features/move-expressions.md)
   - [Moving Out Of `&mut`](features/moving-out-of-mut.md)

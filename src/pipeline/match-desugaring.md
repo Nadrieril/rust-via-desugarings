@@ -5,9 +5,7 @@ or integers. In this step we do that transformation.
 
 ## `match` to `if`
 
-Because we've dealt with all the bindings, all remaining patterns have no bindings. Moreover the
-scrutinee of a match has been turned into a side-effect-less place expression.
-We can therefore transform:
+We start by transforming:
 ```rust
 match $place {
     $pat1 if $guard1 => $arm1,
@@ -27,6 +25,10 @@ if let $pat1 = $place && $guard1 {
     unsafe { unreachable_unchecked() }
 }
 ```
+
+This is valid because 1. the scrutinee of the match has been turned into a side-effect-less place
+expression, and 2. we've dealt with any trickiness related to guards, either related to or-patterns
+or to bindings.
 
 ## Unnesting patterns
 
