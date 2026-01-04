@@ -25,7 +25,7 @@ An "operand" `$operand` is:
 
 An "value expression" `$val_expr` is:
 - An operand `$operand`;
-- A borrow `&$place`/`&mut $place`/`&raw const $place`/`&raw mut $place`;
+- A borrow `&$place`/`&mut $place`/`&raw const $place`/`&raw mut $place`/[`&uniq $place`](../features/uniq-borrow.md);
 - A cast `$operand as $ty`;
 - A built-in operation `$operand + $operand`, `$operand >= $operand`, `!$operand`, etc;
 - A repeat expression `[$operand; $const]`.
@@ -43,6 +43,8 @@ A "statement" `$statement` is:
 - Named block `'a: { $block };`;
 - Jumps `break 'a`/`continue 'a`;
 - Return `return $operand`;
+- [`scope_end!($local)`](../features/scope-end.md)
+- [`drop_in_place!($place)`](../features/in-place-drop.md)
 - `inline_asm!(..)`.
 
 A "block" `$block` is a list of `;`-terminated statements. It is always of type `()`.
