@@ -8,7 +8,10 @@ function body, what was a `move(..)` expression is replaced with the appropriate
 
 Let's take our previous examples again:
 ```rust
-let mut increment = || *move(&mut x) += 1;
+let mut increment = || {
+    let place x = *move(&mut x);
+    x = copy!(x) + 1
+};
 
 // desugars to
 struct Closure<'a> {
@@ -22,14 +25,18 @@ impl FnOnce<()> for Closure<'_> {
 }
 impl FnMut<()> for Closure<'_> {
     fn call_mut(&mut self, _args: ()) {
-        *self.capture1 += 1
+        let place x = *self.capture1;
+        x = copy!(x) + 1
     }
 }
 let mut increment = Closure { capture1: &mut x };
 ```
 and
 ```rust
-let mut replace = |new: u32| Option::replace(&mut move(x), new);
+let mut replace = |new: u32| {
+    let place x = move(x);
+    Option::replace(&mut x, copy!(new))
+};
 
 // desugars to
 struct Closure {
@@ -43,14 +50,17 @@ impl FnOnce<(u32,)> for Closure {
 }
 impl FnMut<(u32,)> for Closure {
     fn call_mut(&mut self, (new,): (u32,)) -> Option<u32> {
-        Option::replace(&mut self.capture1, new)
+        let place x = self.capture1;
+        Option::replace(&mut x, copy!(new))
     }
 }
 let mut replace = Closure { capture1: x };
 ```
 
-To clean up the newly generated closure expressions, we run the [Intermediate Subexpression
-Elimination](subexpr-elim.md) and [Explicit
-Copies/Moves](copy-move.md) steps again.
+To clean up the newly generated closure expressions, we run the
+[Intermediate Subexpression Elimination](subexpr-elim.md),
+[Explicit Copies/Moves](copy-move.md)
+and [Desugaring Bindings](desugaring-bindings.md)
+steps again.
 
 After this step, there are no closure expressions left.

@@ -13,36 +13,48 @@ This gets eventually compiled to a data type that stores references to, or the c
 captured places. The compiler determines automatically how to capture each place depending on how it
 is used in the closure/async block.
 
-In this step, we use [`move` expressions](../features/move-expressions.md) to make all these
-captures explicit (note that this is very different from `move!(..)` introduced in [Explicit
-Copies/Moves](copy-move.md)).
+In this step, we use [`move` expressions](../features/move-expressions.md) and [`let
+place`](../features/let-place.md) to make all these captures explicit (note that this is very
+different from `move!(..)` introduced in [Explicit Copies/Moves](copy-move.md)).
 
+For every captured place, we introduce at the start of the closure a `let place p = ...;` that uses
+a move expression.
+The rest of the closure stays unchanged.
 Our initial example becomes:
 ```rust
-let mut increment = || x += 1;
+let mut increment = || x = copy!(x) + 1;
 
 // desugars to:
-let mut increment = || *move(&mut x) += 1;
+let mut increment = || {
+    let place x = *move(&mut x);
+    x = copy!(x) + 1
+};
 ```
 
 Another example:
 ```rust
 let mut x = Some(42);
-let mut replace = move |new: u32| Option::replace(&mut x, new);
+let mut replace = move |new: u32| Option::replace(&mut x, copy!(new));
 
 // desugars to:
-let mut replace = |new: u32| Option::replace(&mut move(x), new);
+let mut replace = |new: u32| {
+    let place x = move(x);
+    Option::replace(&mut x, copy!(new))
+};
 ```
 
 This final example uses a unique immutable borrow (which we introduce in [Unique-Immutable
-Borrow](../features/uniq-borrow.md)) since a `&mut` borrow would require `let mut xs`:
+Borrow](../features/uniq-borrow.md)) since a `&mut` borrow would require `let mut rx`:
 ```rust
 let mut x = 42;
 let rx = &mut x;
 let mut increment = || *rx += 1;
 
 // desugars to:
-let mut increment = || **move(&uniq rx) += 1;
+let mut increment = || {
+    let place rx = *move(&uniq rx);
+    *rx += 1
+};
 ```
 
 See [the Reference](https://doc.rust-lang.org/reference/types/closure.html#r-type.closure) for

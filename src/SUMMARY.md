@@ -32,8 +32,6 @@
     - [Desugaring Bindings](pipeline/desugaring-bindings.md)
   - [Closure Desugarings](pipeline/closures.md)
     - [Closure Capture](pipeline/closure-capture.md)
-      <!-- TODO: didn't clarify what happens with multiple references to the same place!
-            e.g. `x = x + 1`. let place is an insanely cool solution -->
     - [Closure To Struct Desugaring](pipeline/closure-adt.md)
   - [Desugaring Nested Scopes]()
     - [Removing Tail Expressions]()
