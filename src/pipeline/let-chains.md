@@ -143,8 +143,8 @@ if (let Some(a) = foo() && let Some(b) = a.method())
          && { scope_end!(foo_left); true }
          && { bar_right = bar(); true }
          && bar_right.is_some()
-         && { b_left = bar_right.Some.0; true }
-         && { method_right = b_left.right(); true }
+         && { b_right = bar_right.Some.0; true }
+         && { method_right = b_right.method(); true }
          && method_right.is_some()
          && { a_right = method_right.Some.0; true }
          && { branch = false; true }
