@@ -4,11 +4,10 @@ Closures and async blocks can "capture" places from their surrounding environmen
 implicit operation. To make this explicit I propose to use a feature called "move expressions"
 that's been discussed lately.
 
-The way I understand it, it works as follows: `move($expr)` is an expression valid in a closure
-that:
+This feature adds a `move($expr)` expression, valid in a closure, that:
 1. Evaluates `$expr` in the parent of the closure;
 2. Stores the result inside the closure;
-3. Acts as a place expression for the place where that result is stored (i.e. the field of the closure object).
+3. Acts as a place alias for the place where that result is stored (i.e. the field of the closure object).
 
 For example, a function that increments a captured variable can be expressed as:
 ```rust

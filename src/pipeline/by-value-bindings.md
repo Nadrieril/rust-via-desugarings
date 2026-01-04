@@ -1,7 +1,7 @@
 # By-Value Bindings
 
-By-value bindings are special because they need to work in two steps: first we check that the whole
-pattern matches, then we can set the by-value bindings.
+By-value bindings in patterns are special because they need to work in two steps: first we check
+that the whole pattern matches, then we can set the by-value bindings.
 To get flexibility in the coming steps, we transform these bindings using [`let
 place`](../features/let-place.md) and [If Let Guards](../features/if-let-guards.md).
 

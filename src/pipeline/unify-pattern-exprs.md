@@ -1,6 +1,6 @@
 # Desugaring Pattern Expressions
 
-This steps transforms all the expressions that involve patterns into `match` or `if let` expressions.
+This step transforms all the expressions that involve patterns into either `match` or `if let` expressions.
 
 Patterns can show up in the following locations. In what follows, `$pat` is a pattern that's not
 a simple binding.
@@ -38,34 +38,33 @@ a simple binding.
 - let else
 
   ```rust
-  let $pat = $expr else { $else };
+  {
+    let $pat = $expr else { $else };
+    $body
+  }
   // becomes
-  let x1;
-  ..
-  let xn;
   if let $pat = $expr {
-    x1 = ..;
-    ..
-    xn = ..;
+      $body
   } else {
-    $else
+      $else
   }
   ```
-  where each of the `xi` is one of the variables bound in `$pat`;
+  Where we added a block to make `let else` the first statement of its block.
 
 - Destructuring assignment
   ```rust
   $pat = $expr;
   // becomes
-  if let $pat = $expr {
-    x1 = ..;
+  if let $pat_ = $expr {
+    x1 = x1_;
     ..
-    xn = ..;
+    xn = x1_;
   } else {
-    $else
+    unsafe { core::hint::unreachable_unchecked() }
   }
   ```
-  where each of the `xi` is one of the variables bound in `$pat`;
+  where each of the `xi` is one of the variables bound in `$pat`, and `$pat_` is the outcome of
+  changing `$pat` to use the variables `xi_` instead;
 
 - Matches
 

@@ -23,4 +23,5 @@ if let &&Some(ref x) = opt {
 }
 ```
 
-After this step, patterns have exact types and explicit binding modes.
+After this step, patterns have exact types and explicit binding modes (i.e. `x` vs `ref x` vs
+`ref mut x`).

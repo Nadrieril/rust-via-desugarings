@@ -15,7 +15,7 @@ match .. {
 
 // becomes
 match .. {
-    // To give only shared-access but have `x` keep its type, we do a little hack:
+    // To give only shared-access but have `x` keep its type, we use the little trick again:
     $pat if let x1 = &x && let place x = *x1 && $guard => {
         $arm
     }

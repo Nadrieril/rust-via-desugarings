@@ -1,6 +1,6 @@
 # Phased Initialization
 
-I propose that the following should be allowed[^1] :
+This feature allows the following[^1] :
 ```rust
 let x: (u32, u32);
 x.0 = 42;
@@ -12,8 +12,8 @@ Until the value is fully initialized, panic/going out of scope would simply drop
 already-initialized fields. The moment the last field is initialized, the value is treated as a full
 value, and dropping it would use its `Drop` impl, if any.
 
-Note that by that token, `let x: ();` is sufficient to initialize a ZST. This may or may not be
-desirable.
+Note that by that token, `let x: ZST;` is sufficient to initialize a fieldless `struct ZST;`. This
+may or may not be desirable.
 
 For enums, I propose to use the semantics of [RFC 3727](https://github.com/rust-lang/rfcs/pull/3727)
 along with the syntax of [RFC 3607](https://github.com/rust-lang/rfcs/pull/3607) that we saw in

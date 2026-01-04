@@ -3,11 +3,13 @@
 ## Let Chain Disjunctions
 
 This feature enables `if let $pat = $expr || let $pat = $expr`.
-This is similar to let chains in the kind of syntax allowed.
+This works as one would expect.
 
 This can be mixed with normal boolean conditions and `&&`-based let chains.
-If any binding is bound in both alternatives, it must have the same type.
-Such a binding can then be referred to in the arm body.
+If any binding is bound in both alternatives, it must have the same type in both
+and it can then be referred to in the `if` body.
+[`let place`](./let-place.md) bindings cannot be referred to in the arm body,
+unless we accept the "conditional let place" feature which I'm feeling icky about.
 
 ```rust
 if let Some(y) = foo()

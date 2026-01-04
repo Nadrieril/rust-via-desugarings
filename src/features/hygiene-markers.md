@@ -1,6 +1,6 @@
 # Explicit Hygiene Markers
 
-Macro hygiene is not only there to avoid identifier name clashes. It affects language semantics in
+Macro hygiene is not only there to avoid identifier name clashes; it affects language semantics in
 at least one other way: editions. When the behavior of a program depends on the edition, the edition
 to use is taken from an appropriate token; for example for the [if let
 rescope](https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html) changes
@@ -45,7 +45,7 @@ Naively expanding macros could therefore change program semantics.
 To be able to expand the macro in a semantics-preserving way, this feature adds a `#[edition
 = "..."]` attribute that changes the edition of the following token.
 So the macro above would expand to `#[edition = "2021"] if let ...` or `#[edition = "2024"] if let
-...`.
+...` depending on the edition of the crate that declares it.
 
 ---
 

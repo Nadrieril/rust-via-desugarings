@@ -35,7 +35,7 @@ We desugar them all into binding declarations and assignments:
 
 - Place aliases:
 
-    For place aliases, we now the RHS is already a side-effect-free place expression.
+    For place aliases, the RHS is already a side-effect-free place expression.
     We can therefore simply substitute `$place` for `p` syntactically.
     For example:
     ```rust
@@ -48,4 +48,4 @@ We desugar them all into binding declarations and assignments:
     something_else(x.field);
     ```
 
-At the end of this step, the only bindings left are by-value.
+At the end of this step, all the bindings are declared uninitialized (`let x;`/`let mut x;`).

@@ -6,10 +6,10 @@ chains](../features/extended-let-chains.md).
 
 <!-- After the previous desugarings, the only patterns left are bindings, which makes our task easy. -->
 
-In what follows, `$expr1`/`$expr2` are expressions made of boolean expressions, `let $binding
-= $place`, and `&&` and `||` operators.
+In what follows, `$expr1`/`$expr2` are expressions made of `&&`, `||`, `let $binding
+= $place`, `let binding;`, and boolean expressions.
 
-First, the base case:
+First, the base cases:
 ```rust
 if let $binding = $place {
     $then
@@ -26,7 +26,23 @@ if true {
 }
 ```
 
-Then the `&&` case, with a simple block-break to jump over the `else` branch:
+```rusthttps://rust-lang.github.io/unsafe-code-guidelines/glossary.html#undefined-behavior
+if let $binding; {
+    $then
+} else {
+    $else
+}
+
+// becomes
+if true {
+    let $binding;
+    $then
+} else {
+    $else
+}
+```
+
+Then the `&&` case, using block-`break` to jump over the `else` branch:
 ```rust
 if $expr1 && $expr2 {
     $then
@@ -68,30 +84,35 @@ After this step, the only remaining branching construct is `if` on booleans.
 ## Avoiding duplication
 
 We'd like to avoid duplicating user code, especially as in this case
-this can lead to exponential blowup.
-The tricky part is preserving drop order including on unwind.
+this can lead to exponential blowup of code size.
+The tricky part is preserving drop order, particularly on unwind.
 This section proposes a solution;
 it is quite involved, yet it's the simplest I found.
 
 First we get rid of non-`place` bindings in two steps:
 1. Move binding declarations to the left by turning every `$bool_expr && let x;` into `let x; &&
    $bool_expr`;
-2. Move binding declarations out of `||` as follows, where `x1` is a fresh name. This works
-   symmetrically on either side of `||`.
+2. Move binding declarations out of `||` as follows, where `x1` is a fresh name.
+    (This uses [`scope_end!`](../features/scope-end.md))
     ```rust
     (let x; && $expr1) || $expr2
     // becomes
     let x1; && (let place x = x1 && $expr1 || { scope_end!(x1); true } && $expr2)
     ```
+    ```rust
+    $expr1 || (let x; && $expr2)
+    // becomes
+    let x1; && ({ scope_end!(x1); true } && $expr1 || let place x = x1 && $expr2)
+    ```
 
-This produces new top-level `&&`-chains, onto which we can recursively apply the `&&` case above.
+This produces new top-level `&&`-chains, onto which we recursively apply the `&&` case above.
 This takes care to declare a series of bindings in the correct order for each branch,
-which ensures correct drop order on unwind.
+which ensures correct drop order even on unwind.
 
 Now the only bindings left are `let place` bindings.
 We first move these to the right by transforming `let place p = $place && $expr`
 into `$expr && let place p = $place`.
-If `$expr` mentioned `p`, we substitute `$place` instead.
+If `$expr` mentioned `p`, we substitute `$place` in its stead.
 This even allows swapping two `let place` bindings.
 
 By the above the order of the `let place` bindings is unimportant,
@@ -161,7 +182,7 @@ if (let Some(a) = foo() && let Some(b) = a.method())
 ## Discussion
 
 The hoops we have to jump through to avoid duplicating code are not great.
-The thing we're trying to express is simple, but expressing it
+The thing we're trying to express is (somewhat) simple, but expressing it
 in surface Rust is hard.
 
 An alternative to the proposed approach would be to make all the scope ends and unwind paths
@@ -169,6 +190,8 @@ explicit beforehand, which would give us full control over
 the order in which locals are dropped.
 Attempts at writing this in a compositional way have so far failed,
 hence the conditional `let place` approach.
+
+An in-between solution could be a feature to control drop order of bindings dynamically.
 
 Spec-wise we can possibly just keep the version that duplicates;
 it has the benefit of utmost simplicity.

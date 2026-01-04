@@ -36,4 +36,4 @@ This is not allowed in today's Rust, but is legal for us thanks to the [Moving O
 `&mut`](../features/moving-out-of-mut.md) feature.
 
 After this step, all assignments are to statically uninitialized places (hence won't cause implicit
-drops), and every `scope_end` is a no-op because the place is already known to be uninitialized.
+drops), and `scope_end` never needs to drop anything.

@@ -7,7 +7,8 @@ formally.
 
 I'm writing this book in the context of two projects that are working towards formalizing Rust:
 - [MiniRust](https://github.com/minirust/minirust) aims to specify the operational semantics of
-  Rust, i.e. what it means to execute Rust, including a precise delineation of what is and isn't UB;
+  Rust, i.e. what it means to execute Rust, including a precise delineation of what is and isn't
+  [Undefined Behavior](https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#undefined-behavior);
 - [a-mir-formality](https://github.com/rust-lang/a-mir-formality) aims to describe, among other
   things, the trait and type system of Rust (including borrow-checking).
 
@@ -20,13 +21,13 @@ simplified+precise form[^1].
 
 I have three goals in writing this, in order of importance:
 
-1. Explanatory: I would like Rust users to reach for this book when they don't understand a piece of Rust
-   code or an error message. I care more to show where and what kind of transformations happen
-   rather than exactly how they happen.
+1. Explanatory: I would like this book to be a reference to reach for when one doesn't understand
+   a piece of Rust code or an error message. I care more to show where and what kind of
+   transformations happen rather than exactly how they happen.
 
 2. Specificatory: I want this book to be sufficiently complete (if not precise) that we could
    imagine building a specification for Rust on top of it. There should be no unknown unknowns when
-   reading this, and when details are skimmed over there should be a link to a source of truth about
+   reading this. When details are skimmed over there should be a link to a source of truth about
    what really happens.
 
 3. Implementablory: I want this to be close enough to the reality of the compiler that we could make
@@ -47,8 +48,8 @@ I see this book more as a guide for how to read the Reference.
 ## Caveats
 
 In order for each step to produce valid and understandable Rust code, I took the liberty to assume
-the existence of a few choice language features that don't exist in real Rust.
-See the ["Extra language features"](language-features.md) chapter for details.
+the existence of a number of language features that don't exist in real Rust.
+See the [Extra Language Features](language-features.md) chapter for details.
 
 While I do my best to be precise and correct, this is just a fun project I'm doing with my current
 knowledge of Rust. This book will contain mistakes, imprecisions and omissions; please [open an

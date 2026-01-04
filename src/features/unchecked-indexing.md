@@ -1,8 +1,10 @@
 # Unchecked Indexing
 
-Indexing `$place[$index]` is a place operation that has the side effect of panicking on
+`$place[$index]` is a place operation that has the side effect of panicking on
 out-of-bounds access.
-There is no equivalent place expression for indexing that does not do a bounds check.
 
-This feature introduces the place expression `unchecked_index!($place, $index)` that does just that.
-Just like builtin indexing, this also supports range indexing.
+This feature introduces the place expression `unchecked_index!($place, $index)` that does the same
+but without the bounds check.
+Just like built-in indexing, this supports range indexing.
+
+It is of course unsafe to use.

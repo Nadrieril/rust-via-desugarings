@@ -19,10 +19,10 @@
     - [Bound Checks](pipeline/bound-checks.md)
     - [Overflow Checks](pipeline/overflow-checks.md)
     - [Functional Record Update](pipeline/fru.md)
-      <!-- TODO: somewhere here desugar `$place += $expr` for the builtin case -->
+      <!-- TODO: somewhere here desugar `$place += $expr` for the built-in case -->
     - [Explicit Copies/Moves](pipeline/copy-move.md)
   - [Pattern Desugarings](pipeline/patterns.md)
-    - [Desugaring Pattern Expressions](pipeline/everything-is-match.md)
+    - [Desugaring Pattern Expressions](pipeline/unify-pattern-exprs.md)
     - [Or-patterns](pipeline/or-patterns.md)
     - [By-Value Bindings](pipeline/by-value-bindings.md)
     - [Match Guard Mutable Bindings](pipeline/guard-bindings.md)
@@ -39,9 +39,9 @@
     - [Explicit Drop Locations](pipeline/explicit-drop.md)
     - [Explicit Unwind Cleanup](pipeline/explicit-unwind.md)
     - [Scope Flattening](pipeline/scope-flattening.md)
-  - [Ownership Desugarings](pipeline/explicit-ownership.md)
-    - [Drop Elaboration](pipeline/drop-elaboration.md)
+  - [Final Desugarings](pipeline/final-desugarings.md)
     - [Phased Initialization](pipeline/phased-initialization.md)
+    - [Drop Elaboration](pipeline/drop-elaboration.md)
     - [Borrow Checking?](pipeline/borrow-checking.md)
       <!-- [Coroutine Transformation](pipeline/coroutine.md) -->
   - [The Final Language](pipeline/final-language.md)
@@ -55,6 +55,7 @@
   - [Explicit Hygiene Markers](features/hygiene-markers.md)
   - [Extended Let Chains](features/extended-let-chains.md)
   - [If Let Guards](features/if-let-guards.md)
+  - [In-Place Drop](features/in-place-drop.md)
   - [Move Expressions for Closure Captures](features/move-expressions.md)
   - [Moving Out Of `&mut`](features/moving-out-of-mut.md)
   - [Phased Initialization](features/phased-initialization.md)

@@ -38,7 +38,7 @@ This proposal has the benefit and drawback of setting in stone a particular orde
 This is useful for unsafe code that may want to know exactly what is accessed in which order, and
 detrimental to optimizations.
 
-The `unsafe` code that motivated me to fix the order is manually-implemented tagged unions:
+The kind of `unsafe` code that may motivate such a rigid order is manually-implemented tagged unions:
 ```rust
 struct MyOption<T> {
     is_some: bool,
@@ -69,7 +69,15 @@ set this in stone.
 There are tiny discrepancies between this proposed desugaring and what the lang team has decided to
 be true today. For example, non-`#[non_exhaustive]` enums with a single variant don't incur
 a discriminant read today but do in this desugaring.
-I propose that we should change the language in this case, to make the language simpler.
+These topics are in flux so I'll keep the simple desugaring for now.
+
+### Slice patterns
+
+Our desugaring of slice patterns is incorrect wrt borrow-checking, because the borrow-checker can
+actually track the disjointness of borrows such as `let [ref mut x, ref mut y] = $place`.
+To express this, we'd need a feature to represent indexing with indices that the borrow-checker is
+allowed to inspect (it normally does not inspect indices).
+MIR has such an operation.
 
 [^1]: At least one difference is that rustc tests or-pattern alternatives after other patterns to
 reduce duplicate work. So `matches!($x, (true|true, false))` is actually compiled to `matches!($x.1,

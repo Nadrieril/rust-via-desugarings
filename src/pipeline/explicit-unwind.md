@@ -3,11 +3,9 @@
 In this step we make explicit the cleanup that happens on unwinding, using the [Cleanup On
 Unwinding](../features/on-unwind.md) feature.
 
-We surround every function call and use of `ensure_dropped` with a `on_unwind` block.
+We surround every function call and every use of `ensure_dropped` with an `on_unwind` block.
 In the cleanup part of this block, we add `ensure_dropped!($local); scope_end!($local);` statements
 for each in-scope local, in reverse order of declaration.
-For the block around `ensure_dropped!($local)`, we skip adding a duplicate `ensure_dropped!($local)`
-in its cleanup path.
 
 ```rust
 let n = 42;
@@ -34,12 +32,14 @@ x = on_unwind String::new() {
     scope_end!(n);
 };
 on_unwind ensure_dropped!(x) {
+    ensure_dropped!(x);
     scope_end!(x);
     ensure_dropped!(n);
     scope_end!(n);
 };
 scope_end!(x);
 on_unwind ensure_dropped!(n) {
+    ensure_dropped!(n);
     scope_end!(n);
 };
 scope_end!(n);

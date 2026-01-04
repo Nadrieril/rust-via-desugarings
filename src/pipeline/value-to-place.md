@@ -14,7 +14,7 @@ You may also enjoy [this blog post](https://blog.m-ou.se/super-let/) with a more
 
 In this step, for each expression `$expr` to be coerced, we first add a `let tmp;` statement,
 then assign it `tmp = $expr;` (these two steps can be merged), then use `tmp` where the expression was.
-The placement of the `let x;` determines how long the value will live since it affects drop order.
+The placement of the `let tmp;` determines how long the value will live and its drop order.
 To get the right scope, extra blocks `{ .. }` may be added.
 
 For example:
@@ -108,27 +108,3 @@ let x = &TMP; // this allows `x` to have type `&'static u32`
 ```
 
 After this step, all place contexts contain place expressions.
-
-
-
-<!-- This step also desugars every nested value expression: -->
-<!-- ```rust -->
-<!-- let x = 1 + 2 + Some(3).as_ref().unwrap(); -->
-<!-- // becomes, before this step: -->
-<!-- let x = <u32 as Add<u32>>::add(1, <u32 as Add<&u32>>::add(2, Option::unwrap(Option::as_ref(&Some(3))))); -->
-<!-- // becomes, after this step: -->
-<!-- let tmp1 = Some(3); -->
-<!-- let tmp2 = &tmp1; -->
-<!-- let tmp3 = Option::as_ref(tmp2); -->
-<!-- let tmp4 = Option::unwrap(tmp3); -->
-<!-- let tmp5 = <u32 as Add<&u32>>::add(2, tmp4); -->
-<!-- let x = <u32 as Add<u32>>::add(1, tmp5); -->
-<!-- ``` -->
-
-<!-- The only nested expressions that remain are place expressions: -->
-<!-- ```rust -->
-<!-- let x = &(0, (1, 2)).1.1; -->
-<!-- // becomes: -->
-<!-- let tmp = (0, (1, 2)); -->
-<!-- let x = &tmp.1.1; // we can't assign `tmp.1` to a temporary in general -->
-<!-- ``` -->

@@ -12,10 +12,10 @@ the `&mut T` itself. This is used to [desugar closure captures](../pipeline/clos
 
 This borrow actually [exists in the
 compiler](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.MutBorrowKind.html#variant.ClosureCapture)
-for exactly the same reason we need it: for capturing `&mut` references. It is simply not exposed to
-users.
+for exactly the same reason we need it: for capturing `&mut` references.
+It is just not exposed to users.
 
 I'm not sure if this is useful for anything else. I recall from [discussions on true
-reborrowing](https://haibane-tenshi.github.io/rust-reborrowing/) that possibly the signature for
-a true reborrow function could be `fn reborrow<'a, 'b>(x: &'a uniq &'b mut T) -> &'a mut T` but
-I haven't thought this through in detail.
+reborrowing](https://haibane-tenshi.github.io/rust-reborrowing/) that possibly a function like `fn
+reborrow<'a, 'b>(x: &'a uniq &'b mut T) -> &'a mut T` is more true to what reborrowing does than the
+same function with a `&mut &mut T` argument, but I haven't thought this through in detail.

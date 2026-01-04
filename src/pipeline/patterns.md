@@ -1,3 +1,4 @@
 # Pattern Desugarings
 
-At the end of this series of steps no patterns remain and all bindings are by-value.
+At the end of this series of steps no patterns remain and all bindings are declared uninitialized
+(`let x;`/`let mut x;`).

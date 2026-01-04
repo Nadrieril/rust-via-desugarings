@@ -17,24 +17,13 @@ expr!(place!($base[$index]))
 
 // becomes:
 {
-    assert!($index < core::slice::length(&raw const $base), "appropriate message");
+    let len = core::slice::length(&raw const $base);
+    assert!($index < len, "appropriate message");
     expr!(place!(unchecked_index!($base, $index)))
 }
 ```
 
 We do something similar for range indexing.
-
-Example:
-```rust
-(*x)[i + 2] = 42;
-
-// becomes:
-{
-    let index = i + 2;
-    assert!(index < core::slice::length(&raw const *x), "...");
-    unchecked_index!(*x, index) = 42;
-}
-```
 
 At the end of this step, there are no checked indexing place expressions left.
 
@@ -42,7 +31,7 @@ At the end of this step, there are no checked indexing place expressions left.
 
 ## Discussion
 
-This desugaring is actually unsound:
+This desugaring is actually unsound if we don't run borrow-checking before doing it:
 ```rust
 let mut x: &[[u32; 1]] = &[[42]];
 let _ = &mut x[0][{x = &[]; 0}];
@@ -56,5 +45,6 @@ let _ = {
 };
 ```
 
-Rustc avoids this using borrow-checking tricks that we should find a way to emulate.
+Rustc rejects this code using borrow-checking tricks.
+We should probably find a way to emulate them.
 See [Borrow Checking](borrow-checking.md).

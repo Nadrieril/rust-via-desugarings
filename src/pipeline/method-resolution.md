@@ -2,13 +2,12 @@
 
 Method calls are the expressions that look like `$receiver.method($args..)`. Method calls in Rust
 involve a fair bit of implicit magic: the receiver expression may be referenced and/or dereferenced
-to get to the right type, and figuring out which methods are available will likely involve trait
-solving.
+to get to the right type, and figuring out which methods are available requires trait solving.
 
 Explaining how that works is out of scope for this guide (see the [Reference
 section](https://doc.rust-lang.org/reference/expressions/method-call-expr.html#method-call-expressions));
 whatever the exact process, the result is that we replace each method call with a full-unambiguous
-function call expression:
+function call expression and some expression adjustments:
 
 ```rust
 let opt = Some(42);
@@ -19,10 +18,10 @@ let x: &i32 = Option::unwrap(<Option<&i32> as Clone>::clone(&Option::as_ref(&opt
 
 The `<Type as Trait>::method(self, args..)` syntax is called UFCS (Uniform Function Call Syntax) and
 allows specifying exactly what trait method is getting called. Note also how `opt` got borrowed into
-`&opt` in order to match the `self` type required for `Option::as_ref`.
+`&opt` in order to match the type required for `Option::as_ref`.
 
-On top of postfix method calls, there are also a number of operations that stand for trait method
-calls:
+Aside postfix method calls, a number of operations can be overridden
+using traits. We desugar such overridden operations into the appropriate method call:
 - `a + b -> Add::add(a, b)`
 - `a += b -> AddAssign::add_assign(&mut a, b)`
 - `a - b -> Sub::sub(a, b)`
@@ -30,11 +29,8 @@ calls:
 - `a[b] -> Index::index(&a, b)/IndexMut::index_mut(&mut a, b)`
 - `f(args...) -> Fn::call/FnMut::call_mut/FnOnce::call_once(f, (args...))`
 
-and a few others. All the non-builtin uses of these operations get desugared to the appropriate
-trait method call. "Built-in" here means the most basic version of that operation, e.g. addition on
-integers, indexing on arrays/slices, function call on function pointers etc.
-Those don't get desugared, the rest do.
-
+The non-overriden versions of these operations stay unchanged.
+For example `+` on integers is built-in, but on integer references is defined by a trait:
 ```rust
 let x = 1 + 2 + &3;
 // becomes

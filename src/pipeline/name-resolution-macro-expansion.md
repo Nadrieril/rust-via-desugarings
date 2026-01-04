@@ -4,7 +4,7 @@ Name Resolution is the process by which Rust figures out what every identifier (
 function call, module, import, etc) refers to. Macro expansion is the process of running a macro and
 replacing the macro call with its output.
 
-Funnily enough, the two are intertwined: a macro may emit new macros, which will affect the
+The two are intertwined: a macro may emit new macros, which will affect the
 state of name resolution for macros. For instance:
 
 ```rust
@@ -23,7 +23,7 @@ fn main() {
 }
 ```
 
-In fact the whole process is somewhat stateful: we must expand things from bottom to top and I think
+In fact the whole process is stateful: we must expand things from bottom to top and I think
 even the order in which we explore modules can have consequences.
 
 To represent the output of name resolution and hygiene, as part of our desugaring we expand all

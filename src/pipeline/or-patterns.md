@@ -2,11 +2,12 @@
 
 "Or-patterns" are the patterns that look like `$pat | $pat`.
 They are tricky when they have bindings and when they're under match guards.
-In this step we desugar them into explicit control-flow.
+We desugar them in this step.
 
-The first step is to move any nested `|` to the outside of a pattern, e.g. `(0 | 1, 2 | 3)` becomes
-`(0, 2) | (0, 3) | (1, 2) | (1, 3)` (see Discussion below about the combinatorial explosion). This
-expansion is done left-to-right.
+We first "normalize" or-patterns by moving any nested `|` to the outside of a pattern, e.g. `(0 | 1,
+2 | 3)` becomes `(0, 2) | (0, 3) | (1, 2) | (1, 3)` (see Discussion below about the combinatorial
+explosion).
+This expansion is done left-to-right.
 
 Inside let chains, we simply turn `let $pat1 | $pat2 = $expr` into `let $pat1 = $expr || let $pat2
 = $expr` using [Extended Let Chains](../features/extended-let-chains.md).
@@ -40,29 +41,8 @@ match $place {
             $remaining_arms
         });
     }
-    $arm_ // modified to use `x1_` instead of `x1` etc
+    $arm_ // modified to use `xi_` instead of `xi`
 }
-```
-
-Note an interesting property that this desugaring makes clear: a single match guard may run several
-times. This can be observed, e.g. (see also [this
-test](https://github.com/rust-lang/rust/blob/267cae5bdbd602dd13f3851b9c96ce93697e59a0/tests/ui/or-patterns/search-via-bindings.rs)):
-```rust
-let mut guard_count = 0;
-match (false, false) {
-    (a, _) | (_, a) if { guard_count += 1; a } => {}
-    _ => {}
-}
-assert_eq!(guard_count, 2);
-
-// is equivalent to:
-let mut guard_count = 0;
-match (false, false) {
-    (a, _) if { guard_count += 1; a } => {}
-    (_, a) if { guard_count += 1; a } => {}
-    _ => {}
-}
-assert_eq!(guard_count, 2);
 ```
 
 After this step, patterns don't involve `|`.
@@ -78,10 +58,35 @@ the order given by the first subpattern
 ([Reference](https://doc.rust-lang.org/reference/destructors.html#r-destructors.scope.bindings.or-patterns)),
 but our desugaring will drop them in the order of the alternative that succeeds.
 
-This may prove to be trouble when mixing or-patterns and if-let [guard
+I expect that design choice to prove to be trouble when mixing or-patterns and if-let [guard
 patterns](https://rust-lang.github.io/rfcs//3637-guard-patterns.html) however,
 so I'd actually propose we make or-patterns drop their bindings in the order of the alternative that succeeded.
 This would make the proposed desugaring correct.
+
+### Running guards several times
+
+Note an interesting property that this desugaring makes clear: a single match guard may run several
+times. This can be observed, e.g.:
+```rust
+let mut guard_count = 0;
+match (false, false) {
+    (a, _) | (_, a) if { guard_count += 1; a } => {}
+    _ => {}
+}
+assert_eq!(guard_count, 2); // succeeds
+
+// is equivalent to:
+let mut guard_count = 0;
+match (false, false) {
+    (a, _) if { guard_count += 1; a } => {}
+    (_, a) if { guard_count += 1; a } => {}
+    _ => {}
+}
+assert_eq!(guard_count, 2); // succeeds
+```
+
+See also [this fun
+test](https://github.com/rust-lang/rust/blob/267cae5bdbd602dd13f3851b9c96ce93697e59a0/tests/ui/or-patterns/search-via-bindings.rs).
 
 ### Combinatorial explosion
 

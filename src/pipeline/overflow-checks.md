@@ -1,6 +1,6 @@
 # Overflow Checks
 
-Depending on compilation flags, builtin arithmetic operations may introduce overflow checks.
+Depending on compilation flags, built-in arithmetic operations may introduce overflow checks.
 We desugar them here.
 
 ```rust
@@ -19,4 +19,4 @@ $a + $b
 We do similar checks for subtraction, multiplication, division, remainder, and right/left shifts.
 Some checks are not optional, like the zero check for division and remainder.
 
-After this step, all builtin arithmetic operations are infallible.
+After this step, all built-in arithmetic operations are infallible.

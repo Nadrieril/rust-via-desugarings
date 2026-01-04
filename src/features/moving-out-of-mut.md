@@ -11,10 +11,10 @@ fn foo(x: &mut Vec<u32>) {
     let vec: Vec<_> = *x; // move out
     // can't call any functions oops
     *x = vec; // write a value back
-    // now we can do anything
+    // now we're back to normal
 }
 ```
 
 The purpose of this feature in this document is to [Make dropping
-explicit](../pipeline/drop-elaboration.md). As a general feature, it could be useful if we could
-track which function can panic or not.
+explicit](../pipeline/drop-elaboration.md).
+If we wanted it as a general feature, we may need things like `nopanic` functions to make it usable.

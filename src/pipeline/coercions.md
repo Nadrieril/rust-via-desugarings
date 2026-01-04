@@ -9,9 +9,8 @@ section](https://doc.rust-lang.org/reference/type-coercions.html?#r-coerce.site)
 The allowed coercions are then listed
 [here](https://doc.rust-lang.org/reference/type-coercions.html?#r-coerce.types).
 
-In this step, we desugar these coercions into explicit conversions.
-The outcome is either an `as`-cast `$expr as $ty` or a reborrow making use of
-`Deref`/`DerefMut`.
+In this step, we desugar these coercions into explicit conversions. The outcome is either an
+`as`-cast (`$expr as $ty`) or a reborrow (e.g. `&*$expr`).
 
 For example:
 ```rust

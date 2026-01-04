@@ -1,8 +1,9 @@
 # Place Aliases
 
+This feature adds `place p` bindings, allowed anywhere patterns are except inside or-patterns.
+
 `let place p = $expr;` evaluates `$expr` to a place expression and then works as an alias to that
-place. `place p` is allowed anywhere a binding is, e.g. in patterns `let Some(place p) = ...`,
-except inside or-patterns.
+place.
 
 It expresses the idea of "compute a place once and use it many times". In practice, if we apply our
 initial desugaring steps to `let place p = $expr;`, we end up with `$expr` being a side-effect-free
@@ -51,16 +52,16 @@ something(&(*tmp).field);
 something_else(&mut (*tmp).field);
 ```
 
-For that to work, we first infer for each place alias whether it is used by-ref, by-ref-mut or by-move
-(like closure captures I think).
-We then use that information when desugaring autoderefs to know which `Deref` variant to call.
+For that to work, when determining the mutability that a `place p` binding requires of its matched
+place, we consider the mutability required of `p` anywhere it is used.
+This is done in the [`Deref`/`DerefMut` Desugarings](pipeline/smart-ptr-deref.md) step.
 
 ## Conditional Place Aliases
 
 This is bit of a crazy feature extension, added to avoid duplicating code
 in [Let Chain Desugaring](../pipeline/let-chains.md).
 
-This introduces a builtin macro `if_place!($bool, $place1, $place2)`, valid as a place expression, which
+This introduces a built-in macro `if_place!($bool, $place1, $place2)`, valid as a place expression, which
 behaves as follows:
 - It propagates any place operation to the inside: `if_place!($bool, $place1, $place2).field
   = if_place!($bool, $place1.field, $place2.field)`;

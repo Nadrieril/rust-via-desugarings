@@ -29,6 +29,8 @@ An "value expression" `$val_expr` is:
 - A cast `$operand as $ty`;
 - A built-in operation `$operand + $operand`, `$operand >= $operand`, `!$operand`, etc;
 - A repeat expression `[$operand; $const]`.
+<!-- - A coroutine yield `yield $operand`; -->
+<!-- - An async block `async { $block }`. -->
 
 A "statement" `$statement` is:
 - A variable declaration `let x: $ty;`/`let mut x: $ty;`.
@@ -54,29 +56,29 @@ This target language is intentionally very close to
 - Our language has structured control-flow whereas MIR has a graph of blocks with `goto`s;
 - MIR has `StorageLive`/`StorageDead` statements to track allocation/deallocation of locals; we
   instead have `let x;` to allocate and `scope_end!(x)` (see [Explicit End Of
-  Scope](../features/scope-end.md)) that marks where the local is deinitialized. This may not be
-  exactly equivalent;
+  Scope](../features/scope-end.md)) that marks where the local is deinitialized. This may or may not
+  be exactly equivalent;
 - Instead of `return value;`, MIR has a return place that must be written to before returning.
 
 There a probably a ton of subtle differences I haven't noticed,
-but overall going from this to MIR looks pretty straightforward.
+but so far going from this to MIR looks pretty straightforward.
 
 ## Difference with MiniRust
 
 MiniRust is intentionally quite close to MIR[^3]. Beyond the differences with MIR we already saw,
 from what I know to get valid MiniRust we'd also need at least the following:
 - Corountine transform, which transforms `async` blocks into state machines; I didn't know where to
-  fit that in the desugarings;
+  fit that in the desugarings and generally skipped anything related to `async`;
 - Change a bunch of intrinsic calls like `ptr::read`, `u32::add_with_overflow` to built-in
   operations.
 
-But I haven't investigated in detail.
+There's likely more, I haven't investigated in detail yet.
 
 ---
 
 ## Discussion
 
-I feel like this accomplished the goals I set out in the introduction.
+I feel like this accomplished the goals I set out in the introduction pretty well.
 I noted decisions made and caveats throughout the book.
 
 The most important caveat to note is the question of borrow-checking.
@@ -87,28 +89,30 @@ I am leaving this question open for now.
 
 I am also left unsatisfied with [the desugaring of `||`-chains](let-chains.md).
 It seems we have two bad choices: duplicate user code (and risk exponential blowup),
-or emit nasty code.
+or emit nasty-looking code.
+There may be a clever language feature that can alleviate this conundrum.
 
 ## Conclusion
 
 I am pretty pleased with the shape this took.
 I am now convinced that this way of presenting things is fruitful.
-In an idealized universe, this book would be combined with MiniRust and a-mir-formality to make
+In an ideal universe this book would be combined with MiniRust and a-mir-formality to make
 a reference interpreter written in literate programming style;
 if I had to choose I would quite like that as an official spec for Rust.
 
-By far the trickiest part of all this was the interaction between temporaries and patterns[^4].
-I'd like to thank @dianne for helping me figure out a pass ordering that doesn't loop onto itself
-all over the place and helping me get temporary lifetimes right.
+By far the trickiest part of all this was the interaction between temporaries and patterns[^4]. I'd
+like to thank @dianne for helping me get temporary lifetimes right and figure out a pass ordering
+that doesn't loop onto itself all over the place.
 
-I don't know what will become of this book now. I'd like it to become some form of official document
-that is kept up-to-date as the language evolves. Only time will tell if this will be deemed
-a worthy investment.
+I don't know what will become of this book now.
+It would be a shame for it not to be kept up-to-date as the language evolves.
+Only time will tell if this will be deemed a worthy investment.
 
-Thanks for reading, and please let me know[^1] if you found this useful!
-If you find mistakes or missing details please open an issue or a PR!
+Thanks for reading, and please come chat[^1] if you've read this far!
+If you find mistakes or missing details I welcome
+[issues](https://github.com/Nadrieril/rust-via-desugarings/issues) and PRs.
 
-[^1]: I'm @Nadrieril on the [rust-lang Zulip](https://rust-lang.zulipchat.com), that's the easiest way to reach me.
+[^1]: Check my [GitHub profile](https://github.com/Nadrieril) for contact info.
 [^2]: MIR is actually a bunch of languages in a trenchcoat. The MIR I'm talking about here is a MIR
 post-drop elaboration but pre-coroutine transform.
 [^3]: In this case, a different MIR than I was talking about. MiniRust is closer to [runtime

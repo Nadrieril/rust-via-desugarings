@@ -1,6 +1,6 @@
 # Match Desugaring
 
-We simply transform:
+We can now simply transform:
 ```rust
 match $place {
     $pat1 if $guard1 => $arm1,
@@ -22,7 +22,13 @@ if let $pat1 = $place && $guard1 {
 ```
 
 This is valid because 1. the scrutinee of the match has been turned into a side-effect-less place
-expression, and 2. we've dealt with any trickiness related to guards, either related to or-patterns
+expression, and 2. we've dealt with any trickiness around guards, either related to or-patterns
 or to bindings.
 
-At the end of this step the only remaining branching construct is `if let else`.
+If there are no arms, we emit:
+```rust
+let _ = $place;
+unsafe { core::hint::unreachable_unchecked() }
+```
+
+At the end of this step the only remaining branching and pattern construct is `if let else`.
