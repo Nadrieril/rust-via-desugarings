@@ -46,5 +46,7 @@ let mut increment = || **move(&uniq rx) += 1;
 
 See [the Reference](https://doc.rust-lang.org/reference/types/closure.html#r-type.closure) for
 details about what gets captured and how.
+Thanks to previous desugarings all place uses are explicit, which makes the analysis
+straightforward.
 
 After this step, all closure and async block captures are explicit, using `move` expressions.

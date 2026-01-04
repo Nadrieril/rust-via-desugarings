@@ -26,16 +26,16 @@ An "value expression" `$val_expr` is:
 - An operand `$operand`;
 - A borrow `&$place`/`&mut $place`/`&raw const $place`/`&raw mut $place`;
 - A cast `$operand as $ty`;
-- A built-in operation `$op + $op`, `$op >= $op`, `!$op`, etc;
-- A repeat expression `[$op; $const]`.
+- A built-in operation `$operand + $operand`, `$operand >= $operand`, `!$operand`, etc;
+- A repeat expression `[$operand; $const]`.
 
 A "statement" `$statement` is:
-- A variable declaration `let x: $ty;`/`let mut x: $ty;`.
 - Assignment `$place = $val_expr`;
   <!-- - Place mention `let _ = $place;` (needs to be kept for accurate borrow-checking); -->
 - Function call `$place = $operand($operand..)`;
 - If expression `if $operand { $block } else { $block }`;
 - Loop expression `'a: loop { $block }`;
+- Unwind cleanup expression `on_unwind { $block } { $block }` (see [Cleanup On Unwinding](../features/on-unwind.md));
 - Named block `'a: { $block };`;
 - Jumps `break 'a`/`continue 'a`;
 - Return `return $operand`;
@@ -43,7 +43,8 @@ A "statement" `$statement` is:
 
 A "block" `$block` is a list of `;`-terminated statements. It is always of type `()`.
 
-A fully desugared program is a block.
+A fully desugared program is a series of variable declarations `let x: $ty;`/`let mut x: $ty;`
+followed by a block.
 
 ## Difference with MIR
 
@@ -102,7 +103,6 @@ These all depend on each other in non-trivial ways.
 TODO
 
 Things to add/try before publishing:
-- `if let .. && let x; && ..`, then do temporaries first.
 - `on_unwind function_call(..) { $cleanup_blocks; }`
 - try accurate borrowck
 

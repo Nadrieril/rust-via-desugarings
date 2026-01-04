@@ -66,3 +66,6 @@ behaves as follows:
   = if_place!($bool, $place1.field, $place2.field)`;
 - When a non-place operation is done to it, it turns into a normal `if`: `&if_place!($bool, $place1, $place2)
   = if $bool { &$place1 } else { &$place2 }`.
+
+This is the only feature among those proposed that I don't actually wish to see in the language.
+I hope we can find a cleaner solution to the code duplication problem.

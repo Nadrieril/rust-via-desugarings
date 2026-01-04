@@ -64,6 +64,13 @@ impl<T> MyOption<T> {
 I don't know if this sufficient motivation, nor exactly the extent of optimizations we'd lose if we
 set this in stone.
 
+### Precise semantics
+
+There are tiny discrepancies between this proposed desugaring and what the lang team has decided to
+be true today. For example, non-`#[non_exhaustive]` enums with a single variant don't incur
+a discriminant read today but do in this desugaring.
+I propose that we should change the language in this case, to make the language simpler.
+
 [^1]: At least one difference is that rustc tests or-pattern alternatives after other patterns to
 reduce duplicate work. So `matches!($x, (true|true, false))` is actually compiled to `matches!($x.1,
 false) && matches!($x.0, true|true)`. There are also details around enums with only one variant.
