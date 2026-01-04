@@ -31,20 +31,27 @@ At the end of this step, there are no checked indexing place expressions left.
 
 ## Discussion
 
-This desugaring is actually unsound if we don't run borrow-checking before doing it:
-```rust
-let mut x: &[[u32; 1]] = &[[42]];
-let _ = &mut x[0][{x = &[]; 0}];
+This desugaring is actually incorrect:
+in a case like `x[$i][$j]`
+today's rustc does the first bound check before
+evaluating `$j`.
 
-// becomes:
-let _ = {
-    let i = 0;
-    assert!(i < x.len());
-    let j = {x = &[]; 0};
-    &mut unchecked_index!(unchecked_index!(*x, 0), j); // out of bounds access
-};
-```
+A real desugaring may need to use `let place`, I'm not sure.
 
-Rustc rejects this code using borrow-checking tricks.
-We should probably find a way to emulate them.
-See [Borrow Checking](borrow-checking.md).
+<!-- This desugaring is actually unsound if we don't run borrow-checking before doing it: -->
+<!-- ```rust -->
+<!-- let mut x: &[[u32; 1]] = &[[42]]; -->
+<!-- let _ = &mut x[0][{x = &[]; 0}]; -->
+
+<!-- // becomes: -->
+<!-- let _ = { -->
+<!--     let i = 0; -->
+<!--     assert!(i < x.len()); -->
+<!--     let j = {x = &[]; 0}; -->
+<!--     &mut unchecked_index!(unchecked_index!(*x, 0), j); // out of bounds access -->
+<!-- }; -->
+<!-- ``` -->
+
+<!-- Rustc rejects this code using borrow-checking tricks. -->
+<!-- We should probably find a way to emulate them. -->
+<!-- See [Borrow Checking](borrow-checking.md). -->
