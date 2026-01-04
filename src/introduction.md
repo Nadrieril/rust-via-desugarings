@@ -51,6 +51,9 @@ In order for each step to produce valid and understandable Rust code, I took the
 the existence of a number of language features that don't exist in real Rust.
 See the [Extra Language Features](language-features.md) chapter for details.
 
+This also mostly doesn't include `async`, in large parts because I'm not very familiar with the
+details of how it's implemented.
+
 While I do my best to be precise and correct, this is just a fun project I'm doing with my current
 knowledge of Rust. This book will contain mistakes, imprecisions and omissions; please [open an
 issue](https://github.com/Nadrieril/rust-via-desugarings/issues) or PR if you notice any!
