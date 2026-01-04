@@ -45,83 +45,74 @@ A "statement" `$statement` is:
 
 A "block" `$block` is a list of `;`-terminated statements. It is always of type `()`.
 
-A fully desugared program is a block.
+A fully desugared function body is a block.
 
 ## Difference with MIR
 
 This target language is intentionally very close to
 [MIR](https://rustc-dev-guide.rust-lang.org/mir/index.html)[^2]. The main differences are:
 - Our language has structured control-flow whereas MIR has a graph of blocks with `goto`s;
-- MIR explicitly tracks what cleanups happen on unwinding;
 - MIR has `StorageLive`/`StorageDead` statements to track allocation/deallocation of locals; we
   instead have `let x;` to allocate and `scope_end!(x)` (see [Explicit End Of
   Scope](../features/scope-end.md)) that marks where the local is deinitialized. This may not be
   exactly equivalent;
 - Instead of `return value;`, MIR has a return place that must be written to before returning.
-  That's easy to recover from what we have;
-- Bounds checks?;
 
-The biggest missing piece is without a doubt the info about drops on unwind.
-As discussed in [Drop Elaboration](drop-elaboration.md), this defeats part of the point of doing
-drop elaboration early, since it will have to be done again to know what drops happen on unwind.
-We might need to come up with a language feature that can express cleanup-on-unwind.
-
-I also expect there to be a lot more hidden subtleties I haven't accounted for, e.g. around constant
-evaluation or opaque types.
+There a probably a ton of subtle differences I haven't noticed,
+but overall going from this to MIR looks pretty straightforward.
 
 ## Difference with MiniRust
 
-MiniRust is intentionally quite close to MIR[^3]. Beyond the differences with MIR we already saw, to
-get valid MiniRust we'd also need the following:
+MiniRust is intentionally quite close to MIR[^3]. Beyond the differences with MIR we already saw,
+from what I know to get valid MiniRust we'd also need at least the following:
 - Corountine transform, which transforms `async` blocks into state machines; I didn't know where to
-  fit it in the desugarings;
+  fit that in the desugarings;
 - Change a bunch of intrinsic calls like `ptr::read`, `u32::add_with_overflow` to built-in
   operations.
-- Anything else?
 
-<!-- This is the level at which we can start to talk about precise semantics. The state-of-the art for -->
-<!-- this, that exists today, is [MiniRust](https://github.com/minirust/minirust). MiniRust is a tiny -->
-<!-- language that resembles MIR, with a formal and executable semantics. -->
-
-TODO
+But I haven't investigated in detail.
 
 ---
 
 ## Discussion
 
-- missing info for borrowck
-- slice patterns
-- monomorphization
-- I end up duplicating user code
+I feel like this accomplished the goals I set out in the introduction.
+I noted decisions made and caveats throughout the book.
 
-By far the trickiest part of all this was the handling of temporaries.
-It infected everything else I tried to do.
-The second trickiest was `let` chains + `if let` guards.
-Third was or-patterns.
+The most important caveat to note is the question of borrow-checking.
+In [the relevant section](borrow-checking.md), I highlight how borrow-checking after our desugarings
+would allow unsound code to compile.
+We therefore need to either borrow-check somewhere in the middle or desugar differently.
+I am leaving this question open for now.
 
-These all depend on each other in non-trivial ways.
-
-TODO
-
-Things to add/try before publishing:
-- `on_unwind function_call(..) { $cleanup_blocks; }`
-- try accurate borrowck
+I am also left unsatisfied with [the desugaring of `||`-chains](let-chains.md).
+It seems we have two bad choices: duplicate user code (and risk exponential blowup),
+or emit nasty code.
 
 ## Conclusion
 
-<!-- should only use a limited set of -->
-<!-- basic operations. At that level, type-checking ideally is really just a check that doesn't change -->
-<!-- program behavior. -->
+I am pretty pleased with the shape this took.
+I am now convinced that this way of presenting things is fruitful.
+In an idealized universe, this book would be combined with MiniRust and a-mir-formality to make
+a reference interpreter written in literate programming style;
+if I had to choose I would quite like that as an official spec for Rust.
 
-My hope with these desugarings is that we can reach a subset of Rust that is as precise as MiniRust
-is today, thus bridging the gap from source Rust to MiniRust. I don't think we're quite there yet
-but hopefully this is a good step in that direction!
+By far the trickiest part of all this was the interaction between temporaries and patterns[^4].
+I'd like to thank @dianne for helping me figure out a pass ordering that doesn't loop onto itself
+all over the place and helping me get temporary lifetimes right.
 
-Thanks for reading, please open issues if you find mistakes or missing details, and let me know[^1] if
-you found this useful!
+I don't know what will become of this book now. I'd like it to become some form of official document
+that is kept up-to-date as the language evolves. Only time will tell if this will be deemed
+a worthy investment.
+
+Thanks for reading, and please let me know[^1] if you found this useful!
+If you find mistakes or missing details please open an issue or a PR!
 
 [^1]: I'm @Nadrieril on the [rust-lang Zulip](https://rust-lang.zulipchat.com), that's the easiest way to reach me.
 [^2]: MIR is actually a bunch of languages in a trenchcoat. The MIR I'm talking about here is a MIR
 post-drop elaboration but pre-coroutine transform.
 [^3]: In this case, a different MIR than I was talking about. MiniRust is closer to [runtime
 MIR](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.MirPhase.html#variant.Runtime).
+[^4]: Desugaring or-patterns required temporaries to be handled, but these seemed to require let
+chains to be desugared, but we can't desugar let chains in if let guards before desugaring match
+guards in some form, etc etc. It was all a big fun mutually-dependent knot.

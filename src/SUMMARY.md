@@ -44,7 +44,7 @@
     - [Phased Initialization](pipeline/phased-initialization.md)
     - [Borrow Checking?](pipeline/borrow-checking.md)
       <!-- [Coroutine Transformation](pipeline/coroutine.md) -->
-  - [TODO: The Final Language](pipeline/final-language.md)
+  - [The Final Language](pipeline/final-language.md)
 - [Extra Language Features](language-features.md)
   - [Automatic Drop](features/auto-drop.md)
   - [Cleanup On Unwinding](features/on-unwind.md)
