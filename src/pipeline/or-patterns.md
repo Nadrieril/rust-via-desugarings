@@ -79,6 +79,11 @@ the order given by the first subpattern
 ([Reference](https://doc.rust-lang.org/reference/destructors.html#r-destructors.scope.bindings.or-patterns)),
 but our desugaring will drop them in the order of the alternative that succeeds.
 
+This may prove to be trouble when mixing or-patterns and if-let [guard
+patterns](https://rust-lang.github.io/rfcs//3637-guard-patterns.html) however,
+so I'd actually propose we make or-patterns drop their bindings in the order of the alternative that succeeded.
+This would make the proposed desugaring correct.
+
 ### Combinatorial explosion
 
 This desugaring has the benefit of simplicity but two big drawbacks: it duplicates user code (the

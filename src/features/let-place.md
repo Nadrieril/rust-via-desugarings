@@ -54,3 +54,15 @@ something_else(&mut (*tmp).field);
 For that to work, we first infer for each place alias whether it is used by-ref, by-ref-mut or by-move
 (like closure captures I think).
 We then use that information when desugaring autoderefs to know which `Deref` variant to call.
+
+## Conditional Place Aliases
+
+This is bit of a crazy feature extension, added to avoid duplicating code
+in [Let Chain Desugaring](../pipeline/let-chains.md).
+
+This introduces a builtin macro `if_place!($bool, $place1, $place2)`, valid as a place expression, which
+behaves as follows:
+- It propagates any place operation to the inside: `if_place!($bool, $place1, $place2).field
+  = if_place!($bool, $place1.field, $place2.field)`;
+- When a non-place operation is done to it, it turns into a normal `if`: `&if_place!($bool, $place1, $place2)
+  = if $bool { &$place1 } else { &$place2 }`.
