@@ -38,8 +38,7 @@ if $expr1 && $expr2 {
 'exit: {
     if $expr1 {
         if $expr2 {
-            $then
-            break 'exit
+            break 'exit $then;
         }
     }
     $else

@@ -24,7 +24,7 @@ match $place {
     ..
     let xn_;
     'arm: {
-        match $place {
+        break 'match_end (match $place {
             $pat1 if $guard => {
                 x1_ = x1;
                 ..
@@ -38,8 +38,7 @@ match $place {
                 break 'arm
             },
             $remaining_arms
-        }
-        break 'match_end
+        });
     }
     $arm_ // modified to use `x1_` instead of `x1` etc
 }

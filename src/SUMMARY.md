@@ -19,6 +19,7 @@
     - [Bound Checks](pipeline/bound-checks.md)
     - [Overflow Checks](pipeline/overflow-checks.md)
     - [Functional Record Update](pipeline/fru.md)
+      <!-- TODO: somewhere here desugar `$place += $expr` for the builtin case -->
     - [Explicit Copies/Moves](pipeline/copy-move.md)
   - [Pattern Desugarings](pipeline/patterns.md)
     - [Desugaring Pattern Expressions](pipeline/everything-is-match.md)
@@ -31,8 +32,10 @@
     - [Desugaring Bindings](pipeline/desugaring-bindings.md)
   - [Closure Desugarings](pipeline/closures.md)
     - [Closure Capture](pipeline/closure-capture.md)
+      <!-- TODO: didn't clarify what happens with multiple references to the same place!
+            e.g. `x = x + 1`. let place is an insanely cool solution -->
     - [Closure To Struct Desugaring](pipeline/closure-adt.md)
-  - [Intermediate Subexpression Elimination]()
+  - [Desugaring Nested Scopes]()
     - [Removing Tail Expressions]()
     - [Explicit Binding Scopes]()
     - [Explicit Unwind Paths]()
@@ -42,7 +45,8 @@
       <!-- TODO: 
         - replace tail expressions with assignments, includes `break val`
           e.g. `let b = { ..; $expr }` -> `let b; { ..; b = expr; };`
-        - add `scope_end`s everywhere
+        - add `scope_end`s everywhere (don't forget before assignments)
+        - also add conditional_drops, what's the diff??? need to do that before unwind paths for sure
         - add explicit unwind paths with more `scope_end`s
             around calls and scope_end!()
         - forward-declare all bindings at start of function, with type annotations
@@ -70,3 +74,4 @@
   - [Place Aliases](features/let-place.md)
   - [Unchecked Indexing](features/unchecked-indexing.md)
   - [Unique-Immutable Borrow](features/uniq-borrow.md)
+- [Worked Examples](worked-examples.md)
