@@ -9,9 +9,9 @@
     - [Lazy Boolean Operators](pipeline/boolean-operators.md)
   - [Type-Directed Expression Transformations](pipeline/expr-transforms.md)
     - [Method Resolution & Operator Overload](pipeline/method-resolution.md)
-    - [TODO: Autoderef]()
-      <!-- - [TODO: Autoderef](pipeline/autoderef.md) -->
+    - [Autoderef](pipeline/autoderef.md)
     - [Coercions](pipeline/coercions.md)
+    - [`Deref`/`DerefMut` Desugarings](pipeline/smart-ptr-deref.md)
     - [Match Ergonomics](pipeline/match-ergonomics.md)
   - [Expression Unnesting](pipeline/expr-unnesting.md)
     - [Temporaries and Lifetime Extension](pipeline/value-to-place.md)

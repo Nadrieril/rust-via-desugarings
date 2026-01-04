@@ -10,17 +10,18 @@ The allowed coercions are then listed
 [here](https://doc.rust-lang.org/reference/type-coercions.html?#r-coerce.types).
 
 In this step, we desugar these coercions into explicit conversions.
-The outcome is either an `as`-cast `$expr as $ty` or an autoreborrow like `<$ty as
-Deref>::deref($expr)`.
+The outcome is either an `as`-cast `$expr as $ty` or a reborrow making use of
+`Deref`/`DerefMut`.
 
 For example:
 ```rust
 fn foo(s: &str) { .. }
 let x: String = ...;
-foo(&x);
+let string_ref: &String = &x;
+foo(string_ref);
 
 // becomes:
-foo(<String as Deref>::deref(&x));
+foo(&**string_ref);
 ```
 
 ```rust

@@ -1,33 +1,9 @@
 # Autoderef
 
-TODO: every place context has an associated mutability. for patterns, comes from bindings. for `let
-place`, comes from inference.
+"Autoderef" refers the fact that postfix operations can work through
+references by automatically inserting derefs.
+Some such derefs were introduced in the previous section already.
 
-Autoderef is what allows using `&T`/`&mut T`/`SmartPtr<T>` values as it they were of type `T`. In
-this phase we only concern ourselves with a limited set of autoderef cases: those that come from
-explicit place operations.
-
-The place operations in question are deref (`*x`) and field access (`x.field`).
-
-- Field access:
-
-    Given the expression `x.field`, TODO
-
-Autoderef turns `&T` into `T` by inserting repeated `*` operations. In surface Rust, you get
-autoderef on field access and on explicit `*x` (the latter is only a type-directed sugar that works
-the same way as method resolution). For example:
-```rust
-struct Wrapper(Box<String>);
-impl Wrapper { fn first(&self) -> &str { &self.0[..1] } }
-
-let w = Wrapper(Box::new("hi".to_owned()));
-let c = w.first().chars().next().unwrap();
-let len = (*w.0).len();
-// becomes
-let c = Wrapper::first(&w).chars().next().unwrap();
-let len = (*(*w).0).len();
-```
-
-This keeps deref coercions separate from coercions proper: here we only insert actual deref ops that
-will panic if the `Deref` impl does. Method-call autoderef lives in the method resolution step
-because it interacts with autoref and trait lookup.
+In this step we desugar the remaining case: field access. In the expression `x.field`, if `x`
+does not have a field `field` then we desugar it to `(*x).field` and try again, until it is no
+longer legal to dereference the place.

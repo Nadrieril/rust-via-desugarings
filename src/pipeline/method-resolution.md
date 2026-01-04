@@ -19,8 +19,7 @@ let x: &i32 = Option::unwrap(<Option<&i32> as Clone>::clone(&Option::as_ref(&opt
 
 The `<Type as Trait>::method(self, args..)` syntax is called UFCS (Uniform Function Call Syntax) and
 allows specifying exactly what trait method is getting called. Note also how `opt` got borrowed into
-`&opt` in order to match the `self` type required for `Option::as_ref`. This may even insert calls
-to `deref`/`deref_mut` (like in the previous section).
+`&opt` in order to match the `self` type required for `Option::as_ref`.
 
 On top of postfix method calls, there are also a number of operations that stand for trait method
 calls:
