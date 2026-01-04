@@ -62,3 +62,5 @@
   - [Unchecked Indexing](features/unchecked-indexing.md)
   - [Unique-Immutable Borrow](features/uniq-borrow.md)
 - [Worked Examples](worked-examples.md)
+  - [Example 1: A pattern match](worked-examples/pattern-match.md)
+  - [Example 2: Closure capture and bounds checks](worked-examples/closure-capture-and-bounds.md)
