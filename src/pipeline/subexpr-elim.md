@@ -2,10 +2,13 @@
 
 In this step we add intermediate variables for every subexpression.
 
-Specifically, if an expression that isn't a simple binding can be written `expr!($subexpr)` where
-`$subexpr` is a
-[value expression](https://nadrieril.github.io/blog/2025/12/06/on-places-and-their-magic.html),
-we rewrite it to `{ let tmp = $subexpr; expr!(tmp) }`.
+Specifically, if an expression that isn't a simple binding can be written `expr!($subexpr)`,
+we rewrite it.
+If `$subexpr` is a [value expression](https://nadrieril.github.io/blog/2025/12/06/on-places-and-their-magic.html),
+we rewrite it to `{ let tmp = $subexpr; expr!(tmp) }`;
+if it is a place expression,
+we rewrite it to `{ let place tmp = $subexpr; expr!(tmp) }`;
+
 We do this in an order that preserves normal left-to-right evaluation order.
 We skip subexpressions that are constants.
 
@@ -45,20 +48,24 @@ let x = {
 };
 ```
 
-The only nested expressions that remain (apart from blocks and control-flow operations) are place
-expressions:
+An example that will be important for [Bounds Checks](./bound-checks.md):
 ```rust
-let x = &(0, (1, 2)).1.1;
+expr!($place[$i][$j])
 
-// becomes:
-let tmp1 = (1, 2)
-let tmp2 = (0, tmp1);
-let x = &tmp2.1.1; // assigning `tmp2.1` to a temporary would be incorrect
+// becomes
+{
+    let place p = $place;
+    let i = $i;
+    let place q = p[i]; // order is important because the bound check happens here
+    let j = $j;
+    let place r = q[j];
+    expr!(r)
+}
 ```
 
 At the end of this step, every [value
 context](https://nadrieril.github.io/blog/2025/12/06/on-places-and-their-magic.html)
-contains either a constant or a variable.
+contains either a constant or a variable and every place expression is non-nested.
 
 ---
 

@@ -4,23 +4,18 @@ After desugaring temporaries, the remaining place expressions
 are _mostly_ side-effect free. The exception is bounds checks.
 In this step we make bounds checks explicit.
 
-The tricky part is where to place the check.
-Given a place expression `$place` that contains an indexing subexpression,
-let `expr!($place)` be the smallest value expression that contains it.
+After the previous desugarings, all place expressions are broken into `let place` bindings, so the
+only way an indexing expression may show up is as `let place q = p[i];` where `p` and `i` are
+bindings.
 
-Now write `$place` as `place!($base[$index])` where `$base` contains no bound-checked indexing (this
-is to make sure we do the checks in the right order).
-
-Then we desugar as follows, using [Unchecked Indexing](../features/unchecked-indexing.md):
+We desugar this as follows, using [Unchecked Indexing](../features/unchecked-indexing.md):
 ```rust
-expr!(place!($base[$index]))
+let place q = p[i];
 
 // becomes:
-{
-    let len = core::slice::length(&raw const $base);
-    assert!($index < len, "appropriate message");
-    expr!(place!(unchecked_index!($base, $index)))
-}
+let len = core::slice::length(&raw const p);
+assert!(i < len, "appropriate message");
+let place q = unchecked_index!(p, i);
 ```
 
 We do something similar for range indexing.
@@ -31,27 +26,24 @@ At the end of this step, there are no checked indexing place expressions left.
 
 ## Discussion
 
-This desugaring is actually incorrect:
-in a case like `x[$i][$j]`
-today's rustc does the first bound check before
-evaluating `$j`.
+This desugaring is actually unsound if we don't run borrow-checking before doing it:
+```rust
+let mut x: &[[u32; 1]] = &[[42]];
+let _ = &mut x[0][{x = &[]; 0}];
 
-A real desugaring may need to use `let place`, I'm not sure.
+// becomes:
+let _ = {
+    let i = 0;
+    let len = x.len();
+    assert!(i < len);
+    let p = unchecked_index!(x, i);
+    let j = {x = &[]; 0};
+    &mut p[j] // out of bounds access
+};
+```
 
-<!-- This desugaring is actually unsound if we don't run borrow-checking before doing it: -->
-<!-- ```rust -->
-<!-- let mut x: &[[u32; 1]] = &[[42]]; -->
-<!-- let _ = &mut x[0][{x = &[]; 0}]; -->
+Rustc rejects this code using borrow-checking tricks.
+See [Borrow Checking](borrow-checking.md).
 
-<!-- // becomes: -->
-<!-- let _ = { -->
-<!--     let i = 0; -->
-<!--     assert!(i < x.len()); -->
-<!--     let j = {x = &[]; 0}; -->
-<!--     &mut unchecked_index!(unchecked_index!(*x, 0), j); // out of bounds access -->
-<!-- }; -->
-<!-- ``` -->
-
-<!-- Rustc rejects this code using borrow-checking tricks. -->
-<!-- We should probably find a way to emulate them. -->
-<!-- See [Borrow Checking](borrow-checking.md). -->
+`let place` should probably have a way to disallow
+invalidating a place alias.
