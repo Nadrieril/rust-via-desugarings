@@ -9,4 +9,6 @@ Operationally, this compiles to 1. appropriate calls to `core::ptr::drop_in_plac
 the place still initialized, followed by 2. a built-in operation that makes the borrow-checker
 consider the place uninitialized.
 
+Unlike move outs, this is unconditional: it is an error to re-initialize `x` after `scope_end!(x)`.
+
 Note: by this definition, `scope_end!(x); scope_end!(x);` is the same as `scope_end!(x);`.

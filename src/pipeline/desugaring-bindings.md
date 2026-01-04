@@ -1,22 +1,36 @@
 # Desugaring Bindings
 
 All the `let` expressions left are now bindings.
-We desugar them all into by-value bindings:
+We desugar them all into binding declarations and assignments:
+
+- By-value bindings:
+
+    ```rust
+    let x = $place;
+
+    // becomes
+    let x: $ty;
+    x = &$place;
+    ```
 
 - By-ref bindings:
 
     ```rust
     let ref x = $place;
+
     // becomes
-    let x = &$place;
+    let x: $ty;
+    x = &$place;
     ```
 
 - By-ref-mut bindings:
 
     ```rust
     let ref mut x = $place;
+
     // becomes
-    let x = &mut $place;
+    let x: $ty;
+    x = &mut $place;
     ```
 
 - Place aliases:

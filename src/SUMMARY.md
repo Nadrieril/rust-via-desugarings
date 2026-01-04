@@ -33,24 +33,12 @@
   - [Closure Desugarings](pipeline/closures.md)
     - [Closure Capture](pipeline/closure-capture.md)
     - [Closure To Struct Desugaring](pipeline/closure-adt.md)
-  - [Desugaring Nested Scopes]()
-    - [Removing Tail Expressions]()
-    - [Explicit Binding Scopes]()
-    - [Explicit Unwind Paths]()
-    - [Pre-Declaring All Bindings]()
-    - [Scope Flattening]()
-      <!-- - [Temporaries and Subexpressions](pipeline/temporaries.md) -->
-      <!-- TODO: 
-        - replace tail expressions with assignments, includes `break val`
-          e.g. `let b = { ..; $expr }` -> `let b; { ..; b = expr; };`
-        - add `scope_end`s everywhere (don't forget before assignments)
-        - also add conditional_drops, what's the diff??? need to do that before unwind paths for sure
-        - add explicit unwind paths with more `scope_end`s
-            around calls and scope_end!()
-        - forward-declare all bindings at start of function, with type annotations
-        - remove all non-control-flow scopes
-        - don't forget to update drop elab once we have explicit `scope_end`s
-      -->
+  - [Desugaring Nested Scopes](pipeline/desugar-scopes.md)
+    - [Removing Tail Expressions](pipeline/remove-tail-exprs.md)
+    - [Explicit Binding Scopes](pipeline/scope-end.md)
+    - [Explicit Drop Locations](pipeline/explicit-drop.md)
+    - [Explicit Unwind Cleanup](pipeline/explicit-unwind.md)
+    - [Scope Flattening](pipeline/scope-flattening.md)
   - [Ownership Desugarings](pipeline/explicit-ownership.md)
     - [Drop Elaboration](pipeline/drop-elaboration.md)
     - [Phased Initialization](pipeline/phased-initialization.md)
@@ -58,6 +46,7 @@
       <!-- [Coroutine Transformation](pipeline/coroutine.md) -->
   - [TODO: The Final Language](pipeline/final-language.md)
 - [Extra Language Features](language-features.md)
+  - [Automatic Drop](features/auto-drop.md)
   - [Cleanup On Unwinding](features/on-unwind.md)
   - [Enum Discriminant Access](features/enum-discriminant.md)
   - [Enum Projections](features/enum-projections.md)

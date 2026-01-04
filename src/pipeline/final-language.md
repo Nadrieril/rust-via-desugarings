@@ -31,6 +31,7 @@ An "value expression" `$val_expr` is:
 - A repeat expression `[$operand; $const]`.
 
 A "statement" `$statement` is:
+- A variable declaration `let x: $ty;`/`let mut x: $ty;`.
 - Assignment `$place = $val_expr`;
   <!-- - Place mention `let _ = $place;` (needs to be kept for accurate borrow-checking); -->
 - Function call `$place = $operand($operand..)`;
@@ -44,8 +45,7 @@ A "statement" `$statement` is:
 
 A "block" `$block` is a list of `;`-terminated statements. It is always of type `()`.
 
-A fully desugared program is a series of variable declarations `let x: $ty;`/`let mut x: $ty;`
-followed by a block.
+A fully desugared program is a block.
 
 ## Difference with MIR
 

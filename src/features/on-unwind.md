@@ -17,9 +17,6 @@ function_call()
 // becomes:
 let x = String::new();
 on_unwind function_call() {
-  on_unwind scope_end!(x) {
-    // double panic!
-    std::process::abort();
-  };
+  scope_end!(x);
 };
 ```

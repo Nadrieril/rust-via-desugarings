@@ -1,8 +1,13 @@
 # Drop Elaboration
 
-Values are dropped when locals go out of scope, and when a place is written to.
+We know where drops may happen, so we now only need to decide which drops to run at each relevant
+program point.
 
-To desugar drops, I introduce the following macro[^1] :
+Dropping happens in-place by running the compiler-generated `core::ptr::drop_in_place` function on
+the place to be dropped.
+That function takes care to recursively call `Drop::drop` for all the subtypes that require it. For
+our purposes we introduce the following macro[^1], which calls `core::ptr::drop_in_place` then calls
+`mem::forget` so that the borrow-checker can tell that the place has been deinitialized.
 ```rust
 macro_rules! drop_in_place {
     ($place:expr) => {{
@@ -14,14 +19,13 @@ macro_rules! drop_in_place {
 }
 ```
 
-We can't just call `drop($place)` because drop actually happens in-place, which is
-soundness-critical for pinned types. This is what this macro does: it causes the appropriate drop
-code to run (using the compiler-generated `drop_in_place`), and calls `mem::forget` so that the
-borrow-checker can tell that the place no longer needs to be dropped. 
+In this step we'll replace every `ensure_dropped!($place)` with a series of
+appropriate calls to `drop_in_place!($subplace)`.
 
-Now for any local or part of a local that hasn't been explicitly moved out, we insert calls to
-`drop_in_place!`. This can require adding extra booleans ("drop flags") if different branches
-haven't moved the same places:
+For any subplace of `$place` that hasn't been explicitly moved out, we insert a call to
+`drop_in_place!`.
+This can require adding extra booleans ("drop flags") if different branches haven't moved the same
+places:
 ```rust
 let x = Struct {
     a: String::new(),
@@ -32,62 +36,34 @@ if foo() {
 } else {
     drop(move!(x.b));
 }
+ensure_dropped!(x.a);
 x.a = "some other string".to_owned();
+ensure_dropped!(x);
+scope_end!(x);
 
 // becomes:
-let need_drop_a = true;
-let need_drop_b = true;
+let a_is_initialized = true;
+let b_is_initialized = true;
 if foo() {
-    need_drop_a = false;
     drop(move!(x.a));
+    a_is_initialized = false;
 } else {
-    need_drop_b = false;
     drop(move!(x.b));
+    b_is_initialized = false;
 }
-if need_drop_a {
+if a_is_initialized {
     drop_in_place!(x.a);
 }
 x.a = "some other string".to_owned();
-if need_drop_b {
+if b_is_initialized {
     drop_in_place!(x.b);
 }
 drop_in_place!(x.a);
+scope_end!(x);
 ```
 
-See the [corresponding Reference section](https://doc.rust-lang.org/reference/destructors.html) for
-details.
+(I'm hiding unwind paths in these examples for legibility.)
 
-One tricky case is assignment through a mutable reference:
-```rust
-let a: &mut String = ...;
-*a = String::new(); // this drops the previous string
-
-// becomes:
-drop_in_place!(*a);
-*a = String::new(); // borrowck knows there's no previous string to drop
-```
-
-This is not allowed in today's Rust, but would be with the [Moving Out Of
-`&mut`](../features/moving-out-of-mut.md) feature.
-
-Note that in this step we also `drop_in_place!` bindings of `Copy` types, to make sure that the end
-of their scope is made explicit. If we didn't we might accidentally consider a reference to
-a binding to be valid for longer than it was in the original program.
-
-After this step, all assignments are to statically uninitialized places (hence won't cause implicit
-drops), and all drops are explicit. Moreover, at the end of each scope, the bindings declared in
-that scope have been moved out of.
-
----
-
-## Discussion
-
-One massive limitation of our current approach is that we're missing information about which drops
-run when unwinding.
-In `rustc` drop elaboration runs on MIR, which has explicit control-flow for unwind paths.
-In particular, MIR can express "if the function call `foo()` panics, then we drop this
-or that place before continuing to unwind".
-Expressing this in surface Rust today would require a `catch_unwind` around every function call
-which is just unmanageable.
+After this step, all the code involved in dropping values is explicit.
 
 [^1]: The `cast_mut` dance is there because `&raw mut local` would require the local to be declared `let mut`.
