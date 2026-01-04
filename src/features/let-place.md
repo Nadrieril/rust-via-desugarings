@@ -54,7 +54,7 @@ something_else(&mut (*tmp).field);
 
 For that to work, when determining the mutability that a `place p` binding requires of its matched
 place, we consider the mutability required of `p` anywhere it is used.
-This is done in the [`Deref`/`DerefMut` Desugarings](pipeline/smart-ptr-deref.md) step.
+This is done in the [`Deref`/`DerefMut` Desugarings](../pipeline/smart-ptr-deref.md) step.
 
 ## Conditional Place Aliases
 

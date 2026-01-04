@@ -44,6 +44,12 @@
     - [Drop Elaboration](pipeline/drop-elaboration.md)
     - [Borrow Checking?](pipeline/borrow-checking.md)
       <!-- [Coroutine Transformation](pipeline/coroutine.md) -->
+      <!-- Extra MIR steps suggested by dianne: -->
+      <!-- - box deref elaboration -->
+      <!--   -> would need `mark_uninitialized!(*b); let x = unsafe { ptr::read(b as ...) }` type things -->
+      <!-- - moves for packed drops -->
+      <!-- - derefer -->
+      <!--   -> could keep `let place p = *$place` in the final language. would help with FP. -->
   - [The Final Language](pipeline/final-language.md)
 - [Extra Language Features](language-features.md)
   - [Automatic Drop](features/auto-drop.md)
