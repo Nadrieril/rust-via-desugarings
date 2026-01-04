@@ -49,4 +49,8 @@ impl FnMut<(u32,)> for Closure {
 let mut replace = Closure { capture1: x };
 ```
 
+To clean up the newly generated closure expressions, we run the [Intermediate Subexpression
+Elimination](subexpr-elim.md) and [Explicit
+Copies/Moves](copy-move.md) steps again.
+
 After this step, there are no closure expressions left.

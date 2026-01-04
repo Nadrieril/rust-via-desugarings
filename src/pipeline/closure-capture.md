@@ -14,7 +14,8 @@ captured places. The compiler determines automatically how to capture each place
 is used in the closure/async block.
 
 In this step, we use [`move` expressions](../features/move-expressions.md) to make all these
-captures explicit.
+captures explicit (note that this is very different from `move!(..)` introduced in [Explicit
+Copies/Moves](copy-move.md)).
 
 Our initial example becomes:
 ```rust

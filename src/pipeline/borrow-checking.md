@@ -16,7 +16,7 @@ matches, so borrow-checking here would accept more code than we'd like.
 
 If we wanted to have accurate borrow-checking, we'd need:
 - Fake borrows/fake reads of the places involved in a match;
-- Some shenanigans around bounds checks to reject `x[0][{x = &[]; 0}]`;
+- Some shenanigans around bounds checks to reject `x[0][{x = &[]; 0}]` (see [Bound Checks](bound-checks.md));
 - Some false edges I don't recall where (I know MIR has some for loops and match guards but both of
   these are irrelevant for us);
 - Information about the liveness of places on unwind probably;

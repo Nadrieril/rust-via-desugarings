@@ -16,7 +16,8 @@ A "place expression" `$place` is:
 - An enum field access `$place.$variant_name.$field_name`;
 - A discriminant access `$place.enum#discriminant` (see [Enum Discriminant
   Access](../features/enum-discriminant.md));
-- Indexing into a slice of array `$place[$operand]`.
+- Unchecked indexing `unchecked_index!($place, $operand)`, `unchecked_index!($place,
+  $operand..=$operand)` (see [Unchecked Indexing](../features/unchecked-indexing.md)).
 
 An "operand" `$operand` is:
 - A place access `copy!($place)` or `move!($place)` (see [Explicit Copy/Move](../features/explicit-copy-move.md));

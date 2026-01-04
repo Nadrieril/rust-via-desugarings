@@ -7,15 +7,17 @@
     - [Loop Desugaring](pipeline/loop-desugaring.md)
     - [Try Desugaring](pipeline/try-desugaring.md)
     - [Lazy Boolean Operators](pipeline/boolean-operators.md)
-      <!-- - [TODO: Overflow and Bounds Checks]() -->
   - [Type-Directed Expression Transformations](pipeline/expr-transforms.md)
     - [Method Resolution & Operator Overload](pipeline/method-resolution.md)
     - [TODO: Autoderef]()
       <!-- - [TODO: Autoderef](pipeline/autoderef.md) -->
     - [Coercions](pipeline/coercions.md)
     - [Match Ergonomics](pipeline/match-ergonomics.md)
-  - [Explicit Place Uses](pipeline/explicit-places.md)
+  - [Expression Unnesting](pipeline/expr-unnesting.md)
     - [Temporaries and Lifetime Extension](pipeline/value-to-place.md)
+    - [TODO: Intermediate Subexpression Elimination](pipeline/subexpr-elim.md)
+    - [Bound Checks](pipeline/bound-checks.md)
+    - [Overflow Checks](pipeline/overflow-checks.md)
     - [Functional Record Update](pipeline/fru.md)
     - [Explicit Copies/Moves](pipeline/copy-move.md)
   - [Pattern Desugarings](pipeline/patterns.md)
@@ -31,7 +33,6 @@
     - [Closure Capture](pipeline/closure-capture.md)
     - [Closure To Struct Desugaring](pipeline/closure-adt.md)
   - [Intermediate Subexpression Elimination]()
-    - [Block Unnesting]()
     - [Removing Tail Expressions]()
     - [Explicit Binding Scopes]()
     - [Explicit Unwind Paths]()
@@ -39,8 +40,6 @@
     - [Scope Flattening]()
       <!-- - [Temporaries and Subexpressions](pipeline/temporaries.md) -->
       <!-- TODO: 
-        - unnest blocks: any `expr!({ .. })` becomes `{ let b = { .. }; expr!(b) }`
-            - start by adding explicit `return` at end of function
         - replace tail expressions with assignments, includes `break val`
           e.g. `let b = { ..; $expr }` -> `let b; { ..; b = expr; };`
         - add `scope_end`s everywhere
@@ -69,4 +68,5 @@
   - [Moving Out Of `&mut`](features/moving-out-of-mut.md)
   - [Phased Initialization](features/phased-initialization.md)
   - [Place Aliases](features/let-place.md)
+  - [Unchecked Indexing](features/unchecked-indexing.md)
   - [Unique-Immutable Borrow](features/uniq-borrow.md)
