@@ -23,3 +23,29 @@ context!(*<T as DerefMut>::deref_mut(&mut $expr))
 // otherwise, if the context is considered immutable:
 context!(*<T as Deref>::deref(&$expr))
 ```
+
+For example:
+```rust
+let arc: Arc<Option<i32>> = ...;
+if arc.is_some() { .. }
+
+// becomes, before this step:
+if Option::is_some(&*arc) { .. }
+
+// becomes, after this step:
+if Option::is_some(&*Deref::deref(&arc)) { .. }
+```
+
+```rust
+let mut v: Vec<u32> = ...;
+match *v {
+    [0, ref mut rest @ ..] => ..,
+    _ => ..,
+}
+
+// becomes, because the pattern context is seen to be mutable:
+match *DerefMut::deref_mut(&mut v) {
+    [0, ref mut rest @ ..] => ..,
+    _ => ..,
+}
+```

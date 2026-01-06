@@ -8,6 +8,7 @@
     - [Try Desugaring](pipeline/try-desugaring.md)
     - [Lazy Boolean Operators](pipeline/boolean-operators.md)
   - [Type-Directed Expression Transformations](pipeline/expr-transforms.md)
+      <!-- important: we need the `use Trait;` statements for method res! -->
     - [Method Resolution & Operator Overload](pipeline/method-resolution.md)
     - [Autoderef](pipeline/autoderef.md)
     - [Coercions](pipeline/coercions.md)
@@ -30,6 +31,8 @@
     - [Pattern Unnesting](pipeline/pattern-unnesting.md)
     - [Let Chains](pipeline/let-chains.md)
     - [Desugaring Bindings](pipeline/desugaring-bindings.md)
+      <!-- explicit types on all bindings -->
+      <!-- explicit types on generic calls -->
   - [Closure Desugarings](pipeline/closures.md)
     - [Closure Capture](pipeline/closure-capture.md)
     - [Closure To Struct Desugaring](pipeline/closure-adt.md)
@@ -47,6 +50,7 @@
       <!-- Extra MIR steps suggested by dianne: -->
       <!-- - box deref elaboration -->
       <!--   -> would need `mark_uninitialized!(*b); let x = unsafe { ptr::read(b as ...) }` type things -->
+      <!--   -> could use that for drop_in_place actually -->
       <!-- - moves for packed drops -->
       <!-- - derefer -->
       <!--   -> could keep `let place p = *$place` in the final language. would help with FP. -->

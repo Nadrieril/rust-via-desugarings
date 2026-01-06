@@ -4,7 +4,7 @@ Type coercions are implicit operations that change the type of a value.
 They happen automatically at certain locations when the expected type
 doesn't match the actual type of an expression.
 
-The locations where locations can happen are called "coercion sites" and listed in [this Reference
+The locations where coercions can happen are called "coercion sites" and listed in [this Reference
 section](https://doc.rust-lang.org/reference/type-coercions.html?#r-coerce.site).
 The allowed coercions are then listed
 [here](https://doc.rust-lang.org/reference/type-coercions.html?#r-coerce.types).
