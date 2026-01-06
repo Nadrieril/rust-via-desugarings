@@ -10,9 +10,11 @@
   - [Type-Directed Expression Transformations](pipeline/expr-transforms.md)
       <!-- important: we need the `use Trait;` statements for method res! -->
     - [Method Resolution & Operator Overload](pipeline/method-resolution.md)
+      <!-- TODO: two-phase borrows -->
     - [Autoderef](pipeline/autoderef.md)
     - [Coercions](pipeline/coercions.md)
     - [`Deref`/`DerefMut` Desugarings](pipeline/smart-ptr-deref.md)
+      <!-- TODO: Index/IndexMut works the same as this -->
     - [Match Ergonomics](pipeline/match-ergonomics.md)
   - [Expression Unnesting](pipeline/expr-unnesting.md)
     - [Temporaries and Lifetime Extension](pipeline/value-to-place.md)

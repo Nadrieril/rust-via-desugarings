@@ -23,7 +23,7 @@ fn main() {
 }
 ```
 
-In fact the whole process is stateful: we must expand things from top to bottom and I think
+In fact the whole process is stateful: we must expand items in declaration order and I think
 even the order in which we explore modules can have consequences.
 
 To represent the output of name resolution and hygiene, as part of our desugaring we expand all
