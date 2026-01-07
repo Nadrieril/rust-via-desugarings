@@ -1,2 +1,2 @@
 serve:
-    mdbook serve
+    cd book && mdbook serve

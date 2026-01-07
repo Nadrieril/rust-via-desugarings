@@ -33,12 +33,12 @@ jobs:
           git: https://github.com/Nadrieril/mdbook-backlinks
 
       - name: Build book
-        run: mdbook build
+        run: cd book && mdbook build
 
       - name: Upload built book
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .book-build/html
+          path: book/build/html
 
   deploy:
     needs: build
