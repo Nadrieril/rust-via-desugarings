@@ -38,7 +38,7 @@ jobs:
       - name: Upload built book
         uses: actions/upload-pages-artifact@v3
         with:
-          path: book/html
+          path: .book-build/html
 
   deploy:
     needs: build
