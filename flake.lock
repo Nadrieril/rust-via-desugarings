@@ -2,6 +2,21 @@
   "nodes": {
     "crane": {
       "locked": {
+        "lastModified": 1767744144,
+        "narHash": "sha256-9/9ntI0D+HbN4G0TrK3KmHbTvwgswz7p8IEJsWyef8Q=",
+        "owner": "ipetkov",
+        "repo": "crane",
+        "rev": "2fb033290bf6b23f226d4c8b32f7f7a16b043d7e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ipetkov",
+        "repo": "crane",
+        "type": "github"
+      }
+    },
+    "crane_2": {
+      "locked": {
         "lastModified": 1766774972,
         "narHash": "sha256-8qxEFpj4dVmIuPn9j9z6NTbU+hrcGjBOvaxTzre5HmM=",
         "owner": "ipetkov",
@@ -53,7 +68,7 @@
     },
     "mdbook-backlinks": {
       "inputs": {
-        "crane": "crane",
+        "crane": "crane_2",
         "flake-utils": "flake-utils_2",
         "nixpkgs": "nixpkgs",
         "rust-overlay": "rust-overlay"
@@ -120,9 +135,11 @@
     },
     "root": {
       "inputs": {
+        "crane": "crane",
         "flake-utils": "flake-utils",
         "mdbook-backlinks": "mdbook-backlinks",
-        "nixpkgs": "nixpkgs_3"
+        "nixpkgs": "nixpkgs_3",
+        "rust-overlay": "rust-overlay_2"
       }
     },
     "rust-overlay": {
@@ -135,6 +152,26 @@
         "owner": "oxalica",
         "repo": "rust-overlay",
         "rev": "2be15c4abeba7ade2cf9bc4c17ab310441e533b9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "type": "github"
+      }
+    },
+    "rust-overlay_2": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1767754000,
+        "narHash": "sha256-znoNJs2QZFl+wCFLd6FbUJ00c74kvzOjyQYXc45uFvo=",
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "rev": "0b3a5ad260479f2c9bdadf3ba5b2a4be359cfcdd",
         "type": "github"
       },
       "original": {

@@ -26,7 +26,7 @@ if true {
 }
 ```
 
-```rusthttps://rust-lang.github.io/unsafe-code-guidelines/glossary.html#undefined-behavior
+```rust
 if let $binding; {
     $then
 } else {
