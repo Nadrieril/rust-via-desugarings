@@ -2,5 +2,8 @@
 
 To make the desugarings possible/easier, this book takes the liberty to assume a few extra Rust
 features available; this section describes them.
-A number of them have been proposed by others at some point of other, some even have RFCs.
-It is to be noted that a lot of them are direct translations of existing MIR operations.
+
+These are overwhelmingly not my ideas!
+These come from RFCs, giving a syntax to existing MIR operations, or ideas I've seen float around in
+random Zulip threads over the years.
+I tried to give credit when I knew who to credit.
