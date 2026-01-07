@@ -81,7 +81,12 @@ if $expr1 {
 
 After this step, the only remaining branching construct is `if` on booleans.
 
-## Avoiding duplication
+
+---
+
+## Discussion
+
+### Avoiding duplication
 
 We'd like to avoid duplicating user code, especially as in this case
 this can lead to exponential blowup of code size.
@@ -175,11 +180,6 @@ if (let Some(a) = foo() && let Some(b) = a.method())
     }
 }
 ```
-
-
----
-
-## Discussion
 
 The hoops we have to jump through to avoid duplicating code are not great.
 The thing we're trying to express is (somewhat) simple, but expressing it
