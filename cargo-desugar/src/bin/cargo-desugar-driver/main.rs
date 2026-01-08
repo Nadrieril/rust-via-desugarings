@@ -4,16 +4,16 @@
 use core::fmt;
 use std::env;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use rust_via_desugarings::{
     desugar::desugar_thir,
     options::{CliOpts, DESUGAR_ARGS_ENV},
+    print::print_thir,
     util::arg_value,
 };
 use rustc_driver::{Callbacks, Compilation};
-use rustc_interface::{interface::Compiler, Config};
+use rustc_interface::{Config, interface::Compiler};
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_build::thir::print::thir_tree;
 use rustc_session::config::{OutputType, OutputTypes};
 
 extern crate rustc_driver;
@@ -72,7 +72,7 @@ impl Callbacks for DesugarCallbacks {
         rustc_hir::def_id::DEF_ID_DEBUG
             .swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
         for ldid in tcx.hir_body_owners() {
-            println!("{}", thir_tree(tcx, ldid));
+            println!("{}", print_thir(tcx, ldid));
         }
         Compilation::Continue
     }

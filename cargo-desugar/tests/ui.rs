@@ -13,8 +13,9 @@ use std::{
     error::Error,
     ffi::OsStr,
     fs::read_to_string,
+    io::Write,
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
     sync::LazyLock,
 };
 use walkdir::{DirEntry, WalkDir};
@@ -105,6 +106,30 @@ fn parse_magic_comments(input_path: &std::path::Path) -> anyhow::Result<MagicCom
         }
     }
     Ok(comments)
+}
+
+/// Run rustfmt on captured output to stabilize diffs; falls back to the original output on error.
+fn rustfmt_output(output: &str) -> String {
+    let mut child = match Command::new("rustfmt")
+        .arg("--emit")
+        .arg("stdout")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+    {
+        Ok(child) => child,
+        Err(_) => return output.to_owned(),
+    };
+    if let Some(stdin) = child.stdin.as_mut() {
+        let _ = stdin.write_all(output.as_bytes());
+    }
+    match child.wait_with_output() {
+        Ok(result) if result.status.success() => {
+            String::from_utf8(result.stdout).unwrap_or_else(|_| output.to_owned())
+        }
+        _ => output.to_owned(),
+    }
 }
 
 struct Case {
@@ -207,7 +232,7 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
         LazyLock::new(|| Regex::new(r"thread 'rustc' \(\d+\) panicked").unwrap());
     let stderr = RE.replace_all(&stderr, "thread 'rustc' panicked");
 
-    let test_output: &str = match test_case.magic_comments.test_kind {
+    let test_output = match test_case.magic_comments.test_kind {
         TestKind::KnownPanic => {
             if output.status.code() != Some(101) {
                 let status = if output.status.success() {
@@ -219,7 +244,7 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
                     "Command: `{cmd_str}`\nCompilation was expected to panic but instead {status}:\n{stderr}"
                 );
             }
-            &stderr
+            stderr.into_owned()
         }
         TestKind::KnownFailure => {
             if output.status.success() || output.status.code() == Some(101) {
@@ -232,16 +257,17 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
                     "Command: `{cmd_str}`\nCompilation was expected to fail but instead {status}:\n{stderr}"
                 );
             }
-            &stderr
+            stderr.into_owned()
         }
         TestKind::Pass => {
             if !output.status.success() {
                 bail!("Command: `{cmd_str}`\nCompilation failed:\n{stderr}")
             }
-            &stdout
+            stdout
         }
         TestKind::Skip => unreachable!(),
     };
+    let test_output = rustfmt_output(&test_output);
     if test_case.magic_comments.check_output {
         compare_or_overwrite(test_output, &test_case.expected)?;
     } else if test_case.expected.exists() {
