@@ -31,6 +31,7 @@ jobs:
         with:
           crate: mdbook-backlinks
           git: https://github.com/Nadrieril/mdbook-backlinks
+          rev: 2fb722cd5df25a0d7d5d250910dd0bbc428e61e5
 
       - name: Build book
         run: cd book && mdbook build
