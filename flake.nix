@@ -20,12 +20,12 @@
           overlays = [ (import inputs.rust-overlay) ];
         };
 
-        rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain;
+        rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./cargo-desugar/rust-toolchain;
         craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchain;
         craneArgs = {
-          src = craneLib.cleanCargoSource ./.;
+          src = craneLib.cleanCargoSource ./cargo-desugar;
         };
-        crate = pkgs.callPackage
+        cargo-desugar = pkgs.callPackage
           ({ bintools
            , craneLib
            , lib
@@ -43,13 +43,24 @@
                 ];
                 cargoArtifacts = craneLib.buildDepsOnly craneArgs;
                 passthru.check-fmt = craneLib.cargoFmt craneArgs;
+
+                # Make sure the toolchain is in $PATH so that `cargo` can work
+                # properly.
+                postFixup = ''
+                  wrapProgram $out/bin/cargo-desugar \
+                    --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ rustToolchain ]}" \
+                    --prefix PATH : "${lib.makeBinPath [ rustToolchain ]}"
+                ''
+                + (lib.optionalString stdenv.isDarwin ''
+                  install_name_tool -add_rpath "${rustToolchain}/lib" "$out/bin/cargo-desugar-driver"
+                '');
               }
             ))
           { inherit craneLib rustToolchain; };
       in
       {
         packages = {
-          default = crate;
+          default = cargo-desugar;
           inherit rustToolchain;
         };
         checks = {

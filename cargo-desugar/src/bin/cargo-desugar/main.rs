@@ -1,13 +1,15 @@
-#![feature(rustc_private)]
-
 use std::{env, path::PathBuf, process::Command};
 
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
-use rust_via_desugarings::options::{CliOpts, DESUGAR_ARGS_ENV};
-use rust_via_desugarings::util::arg_value;
 
-extern crate rustc_driver;
+use options::{CliOpts, DESUGAR_ARGS_ENV};
+use util::arg_value;
+
+#[path = "../../options.rs"]
+mod options;
+#[path = "../../util.rs"]
+mod util;
 
 #[derive(Debug, Parser)]
 #[command(name = "cargo-desugar")]
@@ -121,7 +123,7 @@ fn handle_exit_status(exit_status: std::process::ExitStatus) -> Result<()> {
 
 fn driver_path() -> anyhow::Result<PathBuf> {
     let mut path = env::current_exe()?;
-    path.set_file_name("cargo_desugar_driver");
+    path.set_file_name("cargo-desugar-driver");
     Ok(path)
 }
 

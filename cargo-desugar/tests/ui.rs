@@ -200,7 +200,7 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
     }
 
     // Run cargo-desugar.
-    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("cargo_desugar"));
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("cargo-desugar"));
     cmd.arg("rustc");
 
     // cargo-desugar args

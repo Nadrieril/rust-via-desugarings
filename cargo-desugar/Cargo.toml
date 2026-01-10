@@ -8,11 +8,11 @@ name = "rust_via_desugarings"
 path = "src/lib.rs"
 
 [[bin]]
-name = "cargo_desugar"
+name = "cargo-desugar"
 path = "src/bin/cargo-desugar/main.rs"
 
 [[bin]]
-name = "cargo_desugar_driver"
+name = "cargo-desugar-driver"
 path = "src/bin/cargo-desugar-driver/main.rs"
 
 [[test]]
