@@ -25,6 +25,14 @@
         craneArgs = {
           src = craneLib.cleanCargoSource ./cargo-desugar;
         };
+
+        rustc-source = pkgs.fetchFromGitHub {
+          owner = "rust-lang";
+          repo = "rust";
+          rev = "94b49fd998d6723e0a9240a7cff5f9df37b84dd8";
+          sha256 = "sha256-gNaSgFKWIavLvtr9xuZRrOwzSExPT3+9obJ+sOyTFms=";
+        };
+
         cargo-desugar = pkgs.callPackage
           ({ bintools
            , craneLib
@@ -70,6 +78,7 @@
           # # To run `cargo outdated` and `cargo udeps`
           # LD_LIBRARY_PATH =
           #   pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.openssl pkgs.curl pkgs.zlib ];
+          RUSTC_SRC = rustc-source;
 
           packages = [
             pkgs.mdbook
