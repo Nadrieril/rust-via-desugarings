@@ -14,6 +14,9 @@ use anyhow::{Context, Result, anyhow, bail};
 use libtest_mimic::Trial;
 use walkdir::WalkDir;
 
+/// How many of the rustc tests to run, for now.
+static HOW_MANY_TESTS: usize = 200;
+
 #[derive(Debug, Clone)]
 struct Config {
     workdir: PathBuf,
@@ -230,12 +233,18 @@ fn run_rustc(
 
 fn run_desugar(
     cfg: &Config,
+    out_dir: &Path,
     args: &[String],
     input: &Path,
     desugared: &Path,
 ) -> Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
     let mut cmd = Command::new(&cfg.cargo_desugar_bin);
-    cmd.arg("rustc").arg("--").args(args).arg(input);
+    cmd.arg("rustc")
+        .arg("--")
+        .arg("--out-dir")
+        .arg(out_dir)
+        .args(args)
+        .arg(input);
     let output = cmd
         .output()
         .with_context(|| format!("error running: {cmd:?}"))?;
@@ -295,6 +304,7 @@ fn perform_test(case: &TestCase) -> Result<()> {
         fs::remove_file(&desugared)?;
     }
     let build_orig = cfg.build_root.join(rel_dir).join("orig");
+    let build_desugar = cfg.build_root.join(rel_dir).join("desugar");
     let build_desugared = cfg.build_root.join(rel_dir).join("desugared");
     let logs_dir = cfg.logs_root.join(rel_dir);
     let orig_log = logs_dir.join(format!("{stem}.orig.log"));
@@ -316,13 +326,14 @@ fn perform_test(case: &TestCase) -> Result<()> {
 
     let (desugar_status, _desugar_stdout, desugar_stderr) = run_desugar(
         cfg,
+        &build_desugar,
         &case.directives.rustc_args,
         &case.input_path,
         &desugared,
     )?;
     write_log(&desugar_log, b"", &desugar_stderr)?;
     if !desugar_status.success() {
-        // Copy the file as-is, to check that rustc also errors on it.
+        // Copy the file as-is.
         fs::copy(&case.input_path, &desugared).with_context(|| {
             format!(
                 "copying {} to {}",
@@ -343,17 +354,28 @@ fn perform_test(case: &TestCase) -> Result<()> {
     if orig_status.success() == desugared_status.success() {
         Ok(())
     } else {
+        let selected_log = if !desugared_status.success() {
+            desugared_stderr
+        } else {
+            orig_stderr
+        };
         bail!(
             "status mismatch:\n \
             original:  {orig_status}\n \
             desugared: {desugared_status}\n\
-            logs:\n \
+            files:\n \
             {}\n \
             {}\n \
+            {}\n \
+            {}\n \
+            {}\n\n\
             {}",
+            case.input_path.display(),
+            desugared.display(),
             orig_log.display(),
             desugar_log.display(),
-            desugared_log.display()
+            desugared_log.display(),
+            String::from_utf8_lossy(&selected_log),
         )
     }
 }
@@ -370,7 +392,7 @@ fn collect_tests(cfg: Arc<Config>) -> Result<Vec<Trial>> {
         .filter(|e| e.file_type().is_file())
         .map(|e| e.into_path())
         .filter(|e| e.extension().is_some_and(|ext| ext == "rs"))
-        .take(50)
+        .take(HOW_MANY_TESTS)
     {
         tests.push(setup_test(cfg.clone(), path)?);
     }

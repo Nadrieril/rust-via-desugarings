@@ -1,19 +1,24 @@
-use crate::desugar::Body;
+use itertools::Itertools;
+use std::fmt::Write;
+
 use rustc_ast::LitKind;
-use rustc_hir::{self as hir};
+use rustc_hir::{self as hir, def_id::DefId};
 use rustc_middle::{
     mir::{AssignOp, BinOp, BorrowKind, FakeBorrowKind, UnOp},
     thir::{self, Pat, PatKind, Thir},
     ty::{AssocContainer, TyCtxt, TyKind},
 };
-use std::fmt::Write;
+
+use crate::desugar::Body;
 
 pub fn print_thir<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> String {
-    let def_path = tcx.def_path_str(body.def_id);
-    let mut printer = ThirPrinter { tcx, body };
     let mut output = String::new();
-    writeln!(output, "fn {def_path}()").unwrap();
-    writeln!(output, "{}", printer.expr(body.root_expr, 0)).unwrap();
+    let mut printer = ThirPrinter { tcx, body };
+    let def_path = printer.path(body.def_id.into());
+    let fn_sig = tcx.fn_sig(body.def_id).instantiate_identity();
+    let ret_ty = fn_sig.output();
+    writeln!(output, "fn {def_path}() -> {ret_ty}").unwrap();
+    writeln!(output, "{}", printer.expr_in_block(body.root_expr, 0)).unwrap();
     output
 }
 
@@ -29,6 +34,14 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
 
     fn indent(&self, level: usize) -> String {
         "    ".repeat(level)
+    }
+
+    fn path(&self, def_id: DefId) -> String {
+        let mut path = self.tcx.def_path_str(def_id);
+        if def_id.is_local() {
+            path = path.replace("::", "__");
+        }
+        path
     }
 
     fn expr(&mut self, id: thir::ExprId, indent: usize) -> String {
@@ -54,12 +67,9 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                 s
             }
             thir::ExprKind::Call { fun, args, .. } => {
-                let args = args
-                    .iter()
-                    .map(|arg| self.expr(*arg, indent))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("{}({})", self.expr(*fun, indent), args)
+                let fun = self.expr(*fun, indent);
+                let args = args.iter().map(|arg| self.expr(*arg, indent)).format(", ");
+                format!("{}({})", fun, args)
             }
             thir::ExprKind::ByUse { expr, .. } => {
                 format!("{}.use", self.expr(*expr, indent))
@@ -168,23 +178,15 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                 format!("[{}; {}]", self.expr(*value, indent), count)
             }
             thir::ExprKind::Array { fields } => {
-                let items = fields
-                    .iter()
-                    .map(|f| self.expr(*f, indent))
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                let items = fields.iter().map(|f| self.expr(*f, indent)).format(", ");
                 format!("[{}]", items)
             }
             thir::ExprKind::Tuple { fields } => {
-                let items = fields
-                    .iter()
-                    .map(|f| self.expr(*f, indent))
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                let items = fields.iter().map(|f| self.expr(*f, indent)).format(", ");
                 format!("({})", items)
             }
             thir::ExprKind::Adt(adt) => {
-                let adt_name = self.tcx.def_path_str(adt.adt_def.did());
+                let adt_name = self.path(adt.adt_def.did());
                 if adt.fields.is_empty() {
                     format!("{} {{}}", adt_name)
                 } else {
@@ -209,8 +211,7 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                     .upvars
                     .iter()
                     .map(|u| self.expr(*u, indent))
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                    .format(", ");
                 format!("/* closure upvars: [{upvars}] */ || {{ ... }}")
             }
             thir::ExprKind::Literal { lit, neg } => {
@@ -225,62 +226,48 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                         && let Some(trait_def_id) = assoc.trait_container(self.tcx)
                     {
                         let method_generics = self.tcx.generics_of(*def_id);
-                        let trait_arg_count = method_generics.parent_count;
-                        let self_ty = args.type_at(0);
-                        let trait_args = args
-                            .iter()
-                            .take(trait_arg_count)
-                            .skip(1)
-                            .map(|a| a.to_string())
-                            .collect::<Vec<_>>()
-                            .join(", ");
-                        let method_args = args
-                            .iter()
-                            .skip(trait_arg_count)
-                            .map(|a| a.to_string())
-                            .collect::<Vec<_>>()
-                            .join(", ");
-                        let trait_args_suffix = if trait_args.is_empty() {
+                        let ([self_ty, trait_args @ ..], method_args) =
+                            args.split_at(method_generics.parent_count)
+                        else {
+                            unreachable!()
+                        };
+                        let trait_args = if trait_args.is_empty() {
                             String::new()
                         } else {
+                            let trait_args = trait_args.iter().format(", ");
                             format!("::<{trait_args}>")
                         };
-                        let method_args_suffix = if method_args.is_empty() {
+                        let method_args = if method_args.is_empty() {
                             String::new()
                         } else {
+                            let method_args = method_args.iter().format(", ");
                             format!("::<{method_args}>")
                         };
+                        let method_name = assoc.name();
                         format!(
-                            "<{} as {}{}>::{}{}",
-                            self_ty,
-                            self.tcx.def_path_str(trait_def_id),
-                            trait_args_suffix,
-                            assoc.name(),
-                            method_args_suffix
+                            "<{self_ty} as {}{trait_args}>::{method_name}{method_args}",
+                            self.path(trait_def_id),
                         )
                     } else {
-                        let args = args
-                            .iter()
-                            .map(|a| a.to_string())
-                            .collect::<Vec<_>>()
-                            .join(", ");
+                        let name = self.path(*def_id);
                         if args.is_empty() {
-                            self.tcx.def_path_str(*def_id)
+                            name
                         } else {
-                            format!("{}::<{}>", self.tcx.def_path_str(*def_id), args)
+                            let args = args.iter().format(", ");
+                            format!("{name}::<{args}>")
                         }
                     }
                 }
                 _ => "()".to_string(),
             },
-            thir::ExprKind::NamedConst { def_id, .. } => self.tcx.def_path_str(*def_id),
+            thir::ExprKind::NamedConst { def_id, .. } => self.path(*def_id),
             thir::ExprKind::ConstParam { param, .. } => param.name.to_string(),
             thir::ExprKind::StaticRef { def_id, .. } => {
-                format!("&{}", self.tcx.def_path_str(*def_id))
+                format!("&{}", self.path(*def_id))
             }
             thir::ExprKind::InlineAsm(_) => "asm!(...)".to_string(),
             thir::ExprKind::ThreadLocalRef(def_id) => {
-                format!("thread_local!({})", self.tcx.def_path_str(*def_id))
+                format!("thread_local!({})", self.path(*def_id))
             }
             thir::ExprKind::Yield { value } => format!("yield {}", self.expr(*value, indent)),
         }
@@ -388,7 +375,7 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                 }
                 format!(
                     "{}::{} {{ {} }}",
-                    self.tcx.def_path_str(adt_def.did()),
+                    self.path(adt_def.did()),
                     variant.name,
                     parts.join(", ")
                 )
@@ -428,14 +415,7 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                 parts.extend(suffix.iter().map(|p| self.pat(p)));
                 format!("[{}]", parts.join(", "))
             }
-            PatKind::Or { pats } => {
-                let parts = pats
-                    .iter()
-                    .map(|p| self.pat(p))
-                    .collect::<Vec<_>>()
-                    .join(" | ");
-                parts
-            }
+            PatKind::Or { pats } => pats.iter().map(|p| self.pat(p)).format(" | ").to_string(),
             PatKind::Never => "!".to_string(),
             PatKind::Error(_) => "<pat error>".to_string(),
         }
