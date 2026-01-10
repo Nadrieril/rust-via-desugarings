@@ -56,7 +56,9 @@ impl<'tcx> Body<'tcx> {
 }
 
 pub fn desugar_thir<'tcx>(_tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    ValueToPlaceDesugarer::new(body).run();
+    if false {
+        ValueToPlaceDesugarer::new(body).run();
+    }
 }
 
 // Entirely silly PoC desugaring pass.
