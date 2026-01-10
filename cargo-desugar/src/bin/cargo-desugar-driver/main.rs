@@ -54,30 +54,27 @@ impl Callbacks for RunCompilerNormallyCallbacks {
 pub struct DesugarCallbacks {}
 impl Callbacks for DesugarCallbacks {
     fn config(&mut self, config: &mut Config) {
+        // Set up our own `DefId` debug routine.
+        rustc_hir::def_id::DEF_ID_DEBUG
+            .swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
         config.opts.unstable_opts.no_codegen = true;
         config.opts.output_types = OutputTypes::new(&[(OutputType::Metadata, None)]);
         config.override_queries = Some(|_sess, providers| {
             providers.thir_body = |tcx, def_id| {
-                let (body, expr_id) =
+                let (body, root) =
                     (rustc_interface::DEFAULT_QUERY_PROVIDERS.thir_body)(tcx, def_id)?;
                 let mut body = body.steal();
-                desugar_thir(tcx, &mut body);
-                Ok((tcx.alloc_steal_thir(body), expr_id))
+                desugar_thir(tcx, def_id, &mut body);
+                println!("{}", print_thir(tcx, def_id, &body, root));
+                Ok((tcx.alloc_steal_thir(body), root))
             };
         });
     }
 
-    fn after_expansion<'tcx>(&mut self, _compiler: &Compiler, tcx: TyCtxt<'tcx>) -> Compilation {
-        // Set up our own `DefId` debug routine.
-        rustc_hir::def_id::DEF_ID_DEBUG
-            .swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
+    fn after_analysis<'tcx>(&mut self, _compiler: &Compiler, tcx: TyCtxt<'tcx>) -> Compilation {
         for ldid in tcx.hir_body_owners() {
-            println!("{}", print_thir(tcx, ldid));
+            let _ = tcx.thir_body(ldid); // ensure all thir bodies are built
         }
-        Compilation::Continue
-    }
-
-    fn after_analysis<'tcx>(&mut self, _compiler: &Compiler, _tcx: TyCtxt<'tcx>) -> Compilation {
         Compilation::Stop
     }
 }

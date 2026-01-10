@@ -1,5 +1,5 @@
 use rustc_ast::LitKind;
-use rustc_hir as hir;
+use rustc_hir::{self as hir, def_id::LocalDefId};
 use rustc_middle::{
     mir::{AssignOp, BinOp, BorrowKind, FakeBorrowKind, UnOp},
     thir::{self, Pat, PatKind, Thir},
@@ -7,19 +7,18 @@ use rustc_middle::{
 };
 use std::fmt::Write;
 
-pub fn print_thir<'tcx>(tcx: TyCtxt<'tcx>, def_id: hir::def_id::LocalDefId) -> String {
-    match tcx.thir_body(def_id) {
-        Ok((thir, root)) if !thir.is_stolen() => {
-            let thir = thir.borrow();
-            let def_path = tcx.def_path_str(def_id);
-            let mut printer = ThirPrinter { tcx, thir: &thir };
-            let mut output = String::new();
-            writeln!(output, "fn {def_path}()").unwrap();
-            writeln!(output, "{}", printer.expr(root, 0)).unwrap();
-            output
-        }
-        _ => "error".into(),
-    }
+pub fn print_thir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    body: &thir::Thir<'tcx>,
+    root: thir::ExprId,
+) -> String {
+    let def_path = tcx.def_path_str(def_id);
+    let mut printer = ThirPrinter { tcx, thir: body };
+    let mut output = String::new();
+    writeln!(output, "fn {def_path}()").unwrap();
+    writeln!(output, "{}", printer.expr(root, 0)).unwrap();
+    output
 }
 
 struct ThirPrinter<'tcx, 'a> {
