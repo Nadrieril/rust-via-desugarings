@@ -6,7 +6,7 @@ use std::env;
 
 use anyhow::{Result, bail};
 use rust_via_desugarings::{
-    desugar::desugar_thir,
+    desugar::{Body, desugar_thir},
     options::{CliOpts, DESUGAR_ARGS_ENV},
     print::print_thir,
     util::arg_value,
@@ -63,15 +63,16 @@ impl Callbacks for DesugarCallbacks {
             providers.thir_body = |tcx, def_id| {
                 let (body, root) =
                     (rustc_interface::DEFAULT_QUERY_PROVIDERS.thir_body)(tcx, def_id)?;
-                let mut body = body.steal();
-                desugar_thir(tcx, def_id, &mut body);
-                println!("{}", print_thir(tcx, def_id, &body, root));
-                Ok((tcx.alloc_steal_thir(body), root))
+                let body = body.steal();
+                let mut body = Body::new(tcx, def_id, body, root);
+                desugar_thir(tcx, &mut body);
+                println!("{}", print_thir(tcx, &body));
+                Ok((tcx.alloc_steal_thir(body.thir), root))
             };
         });
     }
 
-    fn after_analysis<'tcx>(&mut self, _compiler: &Compiler, tcx: TyCtxt<'tcx>) -> Compilation {
+    fn after_expansion<'tcx>(&mut self, _compiler: &Compiler, tcx: TyCtxt<'tcx>) -> Compilation {
         for ldid in tcx.hir_body_owners() {
             let _ = tcx.thir_body(ldid); // ensure all thir bodies are built
         }

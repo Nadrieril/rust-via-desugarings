@@ -6,8 +6,14 @@ fn temp() {
 }
 
 fn main() {
-    let a = &temp();
-    let b = [(&temp())];
+    let a = {
+        let tmp230 = temp();
+        &tmp230;
+    };
+    let b = [({
+        let tmp234 = temp();
+        &tmp234;
+    })];
     let c = &temp().0;
     let d = &*<std::string::String as std::ops::Index<std::ops::RangeFull>>::index(
         &temp().0,
@@ -21,17 +27,29 @@ fn main() {
         );
     };
     let f = if true {
-        &temp();
+        {
+            let tmp238 = temp();
+            &tmp238;
+        };
     } else {
         &*{
-            &temp();
+            {
+                let tmp242 = temp();
+                &tmp242;
+            };
         }
     };
     let g = match true {
-        true => &temp(),
+        true => {
+            let tmp246 = temp();
+            &tmp246;
+        }
         false => &*{
             let _ = 123;
-            &temp();
+            {
+                let tmp250 = temp();
+                &tmp250;
+            };
         },
     };
     let h = match temp() {

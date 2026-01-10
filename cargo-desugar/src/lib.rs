@@ -4,6 +4,7 @@ extern crate rustc_ast;
 extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_middle;
+extern crate rustc_span;
 
 pub mod desugar;
 pub mod options;

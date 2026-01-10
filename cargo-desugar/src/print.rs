@@ -1,5 +1,6 @@
+use crate::desugar::Body;
 use rustc_ast::LitKind;
-use rustc_hir::{self as hir, def_id::LocalDefId};
+use rustc_hir::{self as hir};
 use rustc_middle::{
     mir::{AssignOp, BinOp, BorrowKind, FakeBorrowKind, UnOp},
     thir::{self, Pat, PatKind, Thir},
@@ -7,32 +8,31 @@ use rustc_middle::{
 };
 use std::fmt::Write;
 
-pub fn print_thir<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-    body: &thir::Thir<'tcx>,
-    root: thir::ExprId,
-) -> String {
-    let def_path = tcx.def_path_str(def_id);
-    let mut printer = ThirPrinter { tcx, thir: body };
+pub fn print_thir<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> String {
+    let def_path = tcx.def_path_str(body.def_id);
+    let mut printer = ThirPrinter { tcx, body };
     let mut output = String::new();
     writeln!(output, "fn {def_path}()").unwrap();
-    writeln!(output, "{}", printer.expr(root, 0)).unwrap();
+    writeln!(output, "{}", printer.expr(body.root_expr, 0)).unwrap();
     output
 }
 
 struct ThirPrinter<'tcx, 'a> {
     tcx: TyCtxt<'tcx>,
-    thir: &'a Thir<'tcx>,
+    body: &'a Body<'tcx>,
 }
 
 impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
+    fn thir(&self) -> &'a Thir<'tcx> {
+        &self.body.thir
+    }
+
     fn indent(&self, level: usize) -> String {
         "    ".repeat(level)
     }
 
     fn expr(&mut self, id: thir::ExprId, indent: usize) -> String {
-        let expr = &self.thir.exprs[id];
+        let expr = &self.thir().exprs[id];
         match &expr.kind {
             thir::ExprKind::Scope { value, .. } => self.expr(*value, indent),
             thir::ExprKind::Box { value } => format!("box {}", self.expr(*value, indent)),
@@ -287,7 +287,7 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
     }
 
     fn expr_in_block(&mut self, id: thir::ExprId, indent: usize) -> String {
-        match self.thir.exprs[id].kind {
+        match self.thir().exprs[id].kind {
             thir::ExprKind::Block { block } => self.block(block, indent),
             thir::ExprKind::Scope { value, .. } => self.expr_in_block(value, indent),
             thir::ExprKind::Use { source }
@@ -304,7 +304,7 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
     }
 
     fn block(&mut self, id: thir::BlockId, indent: usize) -> String {
-        let block = &self.thir.blocks[id];
+        let block = &self.thir().blocks[id];
         let mut s = format!("{{\n");
         for stmt_id in block.stmts.iter() {
             s.push_str(&self.stmt(*stmt_id, indent + 1));
@@ -319,7 +319,7 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
     }
 
     fn stmt(&mut self, id: thir::StmtId, indent: usize) -> String {
-        let stmt = &self.thir.stmts[id];
+        let stmt = &self.thir().stmts[id];
         match &stmt.kind {
             thir::StmtKind::Expr { expr, .. } => {
                 format!("{}{};\n", self.indent(indent), self.expr(*expr, indent))
@@ -345,7 +345,7 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
     }
 
     fn arm(&mut self, id: thir::ArmId, indent: usize) -> String {
-        let arm = &self.thir.arms[id];
+        let arm = &self.thir().arms[id];
         let mut s = format!("{}{} ", self.indent(indent), self.pat(&arm.pattern));
         if let Some(guard) = arm.guard {
             s.push_str(&format!("if {} ", self.expr(guard, indent)));
@@ -510,6 +510,10 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
     }
 
     fn local_name(&self, id: thir::LocalVarId) -> String {
-        self.tcx.hir_name(id.0).to_string()
+        if let Some(name) = self.body.synthetic_local_name(id.0) {
+            name.to_string()
+        } else {
+            self.tcx.hir_name(id.0).to_string()
+        }
     }
 }
