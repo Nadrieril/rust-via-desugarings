@@ -38,7 +38,7 @@ impl<'tcx> DesugaredBodyPrettyPrinter<'tcx> {
         let mut body = Body::new(self.tcx, def_id, thir.steal(), root);
         desugar_thir(self.tcx, &mut body);
         let mut printer = ThirPrinter::new(self.tcx, &body);
-        Some(printer.expr_in_block(body.root_expr, 0))
+        Some(printer.expr_in_block(body.root_expr))
     }
 }
 
@@ -70,104 +70,85 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
         &self.body.thir
     }
 
-    fn expr(&mut self, id: thir::ExprId, indent: usize) -> String {
+    fn expr(&mut self, id: thir::ExprId) -> String {
         let expr = &self.thir().exprs[id];
         match &expr.kind {
-            thir::ExprKind::Scope { value, .. } => self.expr(*value, indent),
-            thir::ExprKind::Box { value } => format!("box {}", self.expr(*value, indent)),
+            thir::ExprKind::Scope { value, .. } => self.expr(*value),
+            thir::ExprKind::Box { value } => format!("box {}", self.expr(*value)),
             thir::ExprKind::If {
                 cond,
                 then,
                 else_opt,
                 ..
             } => {
-                let mut s = format!(
-                    "if {} {}",
-                    self.expr(*cond, indent),
-                    self.expr_in_block(*then, indent)
-                );
+                let mut s = format!("if {} {}", self.expr(*cond), self.expr_in_block(*then));
                 if let Some(e) = else_opt {
                     s.push_str(" else ");
-                    s.push_str(&self.expr_in_block(*e, indent));
+                    s.push_str(&self.expr_in_block(*e));
                 }
                 s
             }
             thir::ExprKind::Call { fun, args, .. } => {
-                let fun = self.expr(*fun, indent);
-                let args = args.iter().map(|arg| self.expr(*arg, indent)).format(", ");
+                let fun = self.expr(*fun);
+                let args = args.iter().map(|arg| self.expr(*arg)).format(", ");
                 format!("{}({})", fun, args)
             }
             thir::ExprKind::ByUse { expr, .. } => {
-                format!("{}.use", self.expr(*expr, indent))
+                format!("{}.use", self.expr(*expr))
             }
-            thir::ExprKind::Deref { arg } => format!("*{}", self.expr(*arg, indent)),
+            thir::ExprKind::Deref { arg } => format!("*{}", self.expr(*arg)),
             thir::ExprKind::Binary { op, lhs, rhs } => {
                 let op_str = self.bin_op(*op);
-                format!(
-                    "{} {} {}",
-                    self.expr(*lhs, indent),
-                    op_str,
-                    self.expr(*rhs, indent)
-                )
+                format!("{} {} {}", self.expr(*lhs), op_str, self.expr(*rhs))
             }
             thir::ExprKind::LogicalOp { op, lhs, rhs } => {
                 let op_str = match op {
                     thir::LogicalOp::And => "&&",
                     thir::LogicalOp::Or => "||",
                 };
-                format!(
-                    "{} {} {}",
-                    self.expr(*lhs, indent),
-                    op_str,
-                    self.expr(*rhs, indent)
-                )
+                format!("{} {} {}", self.expr(*lhs), op_str, self.expr(*rhs))
             }
             thir::ExprKind::Unary { op, arg } => {
                 let op_str = self.un_op(*op);
-                format!("{}{}", op_str, self.expr(*arg, indent))
+                format!("{}{}", op_str, self.expr(*arg))
             }
-            thir::ExprKind::Cast { source } => format!("({} as _)", self.expr(*source, indent)),
+            thir::ExprKind::Cast { source } => format!("({} as _)", self.expr(*source)),
             thir::ExprKind::Use { source }
             | thir::ExprKind::NeverToAny { source }
             | thir::ExprKind::PlaceUnwrapUnsafeBinder { source }
             | thir::ExprKind::ValueUnwrapUnsafeBinder { source }
-            | thir::ExprKind::WrapUnsafeBinder { source } => self.expr(*source, indent),
+            | thir::ExprKind::WrapUnsafeBinder { source } => self.expr(*source),
             thir::ExprKind::PointerCoercion { source, .. } => {
-                format!("({} as _)", self.expr(*source, indent))
+                format!("({} as _)", self.expr(*source))
             }
-            thir::ExprKind::Loop { body } => format!("loop {}", self.expr_in_block(*body, indent)),
-            thir::ExprKind::LoopMatch { match_data, .. } => self.expr(match_data.scrutinee, indent),
+            thir::ExprKind::Loop { body } => format!("loop {}", self.expr_in_block(*body)),
+            thir::ExprKind::LoopMatch { match_data, .. } => self.expr(match_data.scrutinee),
             thir::ExprKind::Let { expr, pat } => {
-                format!("let {} = {}", self.pat(pat), self.expr(*expr, indent))
+                format!("let {} = {}", self.pat(pat), self.expr(*expr))
             }
             thir::ExprKind::Match {
                 scrutinee, arms, ..
             } => {
-                let mut s = format!("match {} {{\n", self.expr(*scrutinee, indent + 1));
+                let mut s = format!("match {} {{\n", self.expr(*scrutinee));
                 for arm_id in arms.iter() {
-                    s.push_str(&self.arm(*arm_id, indent + 1));
+                    s.push_str(&self.arm(*arm_id));
                 }
                 s.push('}');
                 s
             }
-            thir::ExprKind::Block { block } => self.block(*block, indent),
+            thir::ExprKind::Block { block } => self.block(*block),
             thir::ExprKind::Assign { lhs, rhs } => {
-                format!("{} = {}", self.expr(*lhs, indent), self.expr(*rhs, indent))
+                format!("{} = {}", self.expr(*lhs), self.expr(*rhs))
             }
             thir::ExprKind::AssignOp { op, lhs, rhs } => {
                 let op_str = self.assign_op(*op);
-                format!(
-                    "{} {}= {}",
-                    self.expr(*lhs, indent),
-                    op_str,
-                    self.expr(*rhs, indent)
-                )
+                format!("{} {}= {}", self.expr(*lhs), op_str, self.expr(*rhs))
             }
             thir::ExprKind::Field { lhs, name, .. } => {
-                format!("{}.{}", self.expr(*lhs, indent), name.as_usize())
+                format!("{}.{}", self.expr(*lhs), name.as_usize())
             }
             thir::ExprKind::Index { lhs, index } => {
-                format!("{}[{}]", self.expr(*lhs, indent), self.expr(*index, indent))
+                format!("{}[{}]", self.expr(*lhs), self.expr(*index))
             }
             thir::ExprKind::VarRef { id } => self.local_name(*id),
             thir::ExprKind::UpvarRef { var_hir_id, .. } => self.local_name(*var_hir_id),
@@ -177,38 +158,38 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                     | BorrowKind::Fake(FakeBorrowKind::Shallow | FakeBorrowKind::Deep) => "&",
                     BorrowKind::Mut { .. } => "&mut ",
                 };
-                format!("{}{}", prefix, self.expr(*arg, indent))
+                format!("{}{}", prefix, self.expr(*arg))
             }
             thir::ExprKind::RawBorrow { mutability, arg } => {
                 let prefix = match mutability {
                     hir::Mutability::Mut => "raw mut",
                     hir::Mutability::Not => "raw const",
                 };
-                format!("&{} {}", prefix, self.expr(*arg, indent))
+                format!("&{} {}", prefix, self.expr(*arg))
             }
             thir::ExprKind::Break { value, .. } => match value {
-                Some(v) => format!("break {}", self.expr(*v, indent)),
+                Some(v) => format!("break {}", self.expr(*v)),
                 None => "break".to_string(),
             },
             thir::ExprKind::Continue { .. } => "continue".to_string(),
             thir::ExprKind::ConstContinue { value, .. } => {
-                format!("const_continue {}", self.expr(*value, indent))
+                format!("const_continue {}", self.expr(*value))
             }
             thir::ExprKind::Return { value } => match value {
-                Some(v) => format!("return {}", self.expr(*v, indent)),
+                Some(v) => format!("return {}", self.expr(*v)),
                 None => "return".to_string(),
             },
-            thir::ExprKind::Become { value } => format!("become {}", self.expr(*value, indent)),
+            thir::ExprKind::Become { value } => format!("become {}", self.expr(*value)),
             thir::ExprKind::ConstBlock { .. } => "const { /* ... */ }".to_string(),
             thir::ExprKind::Repeat { value, count } => {
-                format!("[{}; {}]", self.expr(*value, indent), count)
+                format!("[{}; {}]", self.expr(*value), count)
             }
             thir::ExprKind::Array { fields } => {
-                let items = fields.iter().map(|f| self.expr(*f, indent)).format(", ");
+                let items = fields.iter().map(|f| self.expr(*f)).format(", ");
                 format!("[{}]", items)
             }
             thir::ExprKind::Tuple { fields } => {
-                let items = fields.iter().map(|f| self.expr(*f, indent)).format(", ");
+                let items = fields.iter().map(|f| self.expr(*f)).format(", ");
                 format!("({})", items)
             }
             thir::ExprKind::Adt(adt) => {
@@ -221,23 +202,19 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                         parts.push(format!(
                             "{}: {}",
                             field.name.as_usize(),
-                            self.expr(field.expr, indent)
+                            self.expr(field.expr)
                         ));
                     }
                     if let thir::AdtExprBase::Base(base) = &adt.base {
-                        parts.push(format!("..{}", self.expr(base.base, indent)));
+                        parts.push(format!("..{}", self.expr(base.base)));
                     }
                     format!("{} {{ {} }}", adt_name, parts.join(", "))
                 }
             }
             thir::ExprKind::PlaceTypeAscription { source, .. }
-            | thir::ExprKind::ValueTypeAscription { source, .. } => self.expr(*source, indent),
+            | thir::ExprKind::ValueTypeAscription { source, .. } => self.expr(*source),
             thir::ExprKind::Closure(closure) => {
-                let upvars = closure
-                    .upvars
-                    .iter()
-                    .map(|u| self.expr(*u, indent))
-                    .format(", ");
+                let upvars = closure.upvars.iter().map(|u| self.expr(*u)).format(", ");
                 format!("/* closure upvars: [{upvars}] */ || {{ ... }}")
             }
             thir::ExprKind::Literal { lit, neg } => {
@@ -295,46 +272,44 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
             thir::ExprKind::ThreadLocalRef(def_id) => {
                 format!("thread_local!({})", self.path(*def_id))
             }
-            thir::ExprKind::Yield { value } => format!("yield {}", self.expr(*value, indent)),
+            thir::ExprKind::Yield { value } => format!("yield {}", self.expr(*value)),
         }
     }
 
-    fn expr_in_block(&mut self, id: thir::ExprId, indent: usize) -> String {
+    fn expr_in_block(&mut self, id: thir::ExprId) -> String {
         match self.thir().exprs[id].kind {
-            thir::ExprKind::Block { block } => self.block(block, indent),
-            thir::ExprKind::Scope { value, .. } => self.expr_in_block(value, indent),
+            thir::ExprKind::Block { block } => self.block(block),
+            thir::ExprKind::Scope { value, .. } => self.expr_in_block(value),
             thir::ExprKind::Use { source }
             | thir::ExprKind::NeverToAny { source }
             | thir::ExprKind::PlaceUnwrapUnsafeBinder { source }
             | thir::ExprKind::ValueUnwrapUnsafeBinder { source }
             | thir::ExprKind::WrapUnsafeBinder { source }
             | thir::ExprKind::PlaceTypeAscription { source, .. }
-            | thir::ExprKind::ValueTypeAscription { source, .. } => {
-                self.expr_in_block(source, indent)
-            }
-            _ => format!("{{ {} }}", self.expr(id, indent)),
+            | thir::ExprKind::ValueTypeAscription { source, .. } => self.expr_in_block(source),
+            _ => format!("{{ {} }}", self.expr(id)),
         }
     }
 
-    fn block(&mut self, id: thir::BlockId, indent: usize) -> String {
+    fn block(&mut self, id: thir::BlockId) -> String {
         let block = &self.thir().blocks[id];
         let mut s = "{\n".to_string();
         for stmt_id in block.stmts.iter() {
-            s.push_str(&self.stmt(*stmt_id, indent + 1));
+            s.push_str(&self.stmt(*stmt_id));
         }
         if let Some(expr) = block.expr {
-            s.push_str(&self.expr(expr, indent + 1));
+            s.push_str(&self.expr(expr));
             s.push_str(";\n");
         }
         s.push('}');
         s
     }
 
-    fn stmt(&mut self, id: thir::StmtId, indent: usize) -> String {
+    fn stmt(&mut self, id: thir::StmtId) -> String {
         let stmt = &self.thir().stmts[id];
         match &stmt.kind {
             thir::StmtKind::Expr { expr, .. } => {
-                format!("{};\n", self.expr(*expr, indent))
+                format!("{};\n", self.expr(*expr))
             }
             thir::StmtKind::Let {
                 pattern,
@@ -344,11 +319,11 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
             } => {
                 let mut s = format!("let {}", self.pat(pattern));
                 if let Some(init) = initializer {
-                    s.push_str(&format!(" = {}", self.expr(*init, indent)));
+                    s.push_str(&format!(" = {}", self.expr(*init)));
                 }
                 if let Some(else_blk) = else_block {
                     s.push_str(" else ");
-                    s.push_str(&self.block(*else_blk, indent));
+                    s.push_str(&self.block(*else_blk));
                 }
                 s.push_str(";\n");
                 s
@@ -356,14 +331,14 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
         }
     }
 
-    fn arm(&mut self, id: thir::ArmId, indent: usize) -> String {
+    fn arm(&mut self, id: thir::ArmId) -> String {
         let arm = &self.thir().arms[id];
         let mut s = format!("{} ", self.pat(&arm.pattern));
         if let Some(guard) = arm.guard {
-            s.push_str(&format!("if {} ", self.expr(guard, indent)));
+            s.push_str(&format!("if {} ", self.expr(guard)));
         }
         s.push_str("=> ");
-        s.push_str(&self.expr(arm.body, indent));
+        s.push_str(&self.expr(arm.body));
         s.push_str(",\n");
         s
     }
