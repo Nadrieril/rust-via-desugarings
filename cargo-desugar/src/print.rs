@@ -1,13 +1,28 @@
 use itertools::Itertools;
+use std::fmt::{self, Display, Write as _};
+
 use rustc_ast::LitKind;
-use rustc_hir::{self as hir, def_id::DefId};
+use rustc_hir::{
+    self as hir,
+    def::Namespace,
+    def_id::{CrateNum, DefId, LOCAL_CRATE},
+    definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData},
+    limit::Limit,
+};
 use rustc_hir_pretty::{Nested, PpAnn};
 use rustc_middle::{
     mir::{AssignOp, BinOp, BorrowKind, FakeBorrowKind, UnOp},
     thir::{self, Pat, PatKind, Thir},
-    ty::{AssocContainer, TyCtxt, TyKind},
+    ty::{
+        self, AssocContainer, GenericArg, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TyKind,
+        TypeFoldable, TypeFolder, TypeSuperFoldable,
+        print::{FmtPrinter, PrettyPrinter, Print, PrintError, PrintTraitRefExt, Printer},
+    },
 };
-use rustc_span::FileName;
+use rustc_span::{
+    FileName,
+    symbol::{Ident, kw},
+};
 
 use crate::desugar::{Body, desugar_thir};
 
@@ -27,6 +42,274 @@ pub fn print_crate<'tcx>(tcx: TyCtxt<'tcx>) -> String {
 
 struct DesugaredBodyPrettyPrinter<'tcx> {
     tcx: TyCtxt<'tcx>,
+}
+
+struct TypePrinter<'tcx> {
+    inner: FmtPrinter<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
+    empty_path: bool,
+    in_value: bool,
+    printed_type_count: usize,
+    type_length_limit: Limit,
+}
+
+impl<'tcx> TypePrinter<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self {
+            inner: FmtPrinter::new(tcx, Namespace::TypeNS),
+            tcx,
+            empty_path: false,
+            in_value: false,
+            printed_type_count: 0,
+            type_length_limit: tcx.type_length_limit(),
+        }
+    }
+
+    fn finish(self) -> String {
+        self.inner.into_buffer()
+    }
+}
+
+impl fmt::Write for TypePrinter<'_> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.inner.write_str(s)
+    }
+}
+
+impl<'tcx> Printer<'tcx> for TypePrinter<'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn print_def_path(
+        &mut self,
+        def_id: DefId,
+        args: &'tcx [GenericArg<'tcx>],
+    ) -> Result<(), PrintError> {
+        if args.is_empty() {
+            if self.inner.try_print_trimmed_def_path(def_id)? {
+                self.empty_path = false;
+                return Ok(());
+            }
+
+            if self.inner.try_print_visible_def_path(def_id)? {
+                self.empty_path = false;
+                return Ok(());
+            }
+        }
+
+        self.default_print_def_path(def_id, args)
+    }
+
+    fn print_region(&mut self, region: ty::Region<'tcx>) -> Result<(), PrintError> {
+        self.inner.print_region(region)
+    }
+
+    fn print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
+        let placeholder = Ty::new_param(self.tcx, 0, kw::Underscore);
+        struct ScrubUnnameable<'tcx> {
+            tcx: TyCtxt<'tcx>,
+            placeholder: Ty<'tcx>,
+        }
+
+        impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ScrubUnnameable<'tcx> {
+            fn cx(&self) -> TyCtxt<'tcx> {
+                self.tcx
+            }
+
+            fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+                match ty.kind() {
+                    TyKind::Closure(..)
+                    | TyKind::CoroutineClosure(..)
+                    | TyKind::Coroutine(..)
+                    | TyKind::CoroutineWitness(..) => self.placeholder,
+                    _ => ty.super_fold_with(self),
+                }
+            }
+        }
+
+        let mut scrubber = ScrubUnnameable {
+            tcx: self.tcx,
+            placeholder,
+        };
+        let ty = ty.fold_with(&mut scrubber);
+        self.inner.print_type(ty)
+    }
+
+    fn print_dyn_existential(
+        &mut self,
+        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+    ) -> Result<(), PrintError> {
+        self.inner.pretty_print_dyn_existential(predicates)
+    }
+
+    fn print_const(&mut self, ct: ty::Const<'tcx>) -> Result<(), PrintError> {
+        self.inner.pretty_print_const(ct, false)
+    }
+
+    fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+        self.empty_path = true;
+        if cnum == LOCAL_CRATE && !rustc_middle::ty::print::with_resolve_crate_name() {
+            if self.tcx.sess.at_least_rust_2018() && rustc_middle::ty::print::with_crate_prefix() {
+                write!(self, "{}", kw::Crate)?;
+                self.empty_path = false;
+            }
+        } else {
+            write!(self, "{}", self.tcx.crate_name(cnum))?;
+            self.empty_path = false;
+        }
+        Ok(())
+    }
+
+    fn print_path_with_simple(
+        &mut self,
+        print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
+        disambiguated_data: &DisambiguatedDefPathData,
+    ) -> Result<(), PrintError> {
+        print_prefix(self)?;
+        if let DefPathData::ForeignMod | DefPathData::Ctor = disambiguated_data.data {
+            return Ok(());
+        }
+
+        if !self.empty_path {
+            write!(self, "::")?;
+        }
+
+        if let DefPathDataName::Named(name) = disambiguated_data.data.name() {
+            if Ident::with_dummy_span(name).is_raw_guess() {
+                write!(self, "r#")?;
+            }
+        }
+
+        let verbose = self.tcx.sess.verbose_internals();
+        write!(self, "{}", disambiguated_data.as_sym(verbose))?;
+
+        self.empty_path = false;
+        Ok(())
+    }
+
+    fn print_path_with_impl(
+        &mut self,
+        print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
+        self_ty: Ty<'tcx>,
+        trait_ref: Option<ty::TraitRef<'tcx>>,
+    ) -> Result<(), PrintError> {
+        print_prefix(self)?;
+
+        self.generic_delimiters(|p| {
+            write!(p, "impl ")?;
+            if let Some(trait_ref) = trait_ref {
+                trait_ref.print_only_trait_path().print(p)?;
+                write!(p, " for ")?;
+            }
+            self_ty.print(p)?;
+
+            Ok(())
+        })?;
+        self.empty_path = false;
+        Ok(())
+    }
+
+    fn print_path_with_generic_args(
+        &mut self,
+        print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
+        args: &[GenericArg<'tcx>],
+    ) -> Result<(), PrintError> {
+        print_prefix(self)?;
+
+        if !args.is_empty() {
+            if self.in_value {
+                write!(self, "::")?;
+            }
+            self.generic_delimiters(|p| p.comma_sep(args.iter().copied()))?;
+        }
+        self.empty_path = false;
+        Ok(())
+    }
+
+    fn print_path_with_qualified(
+        &mut self,
+        self_ty: Ty<'tcx>,
+        trait_ref: Option<ty::TraitRef<'tcx>>,
+    ) -> Result<(), PrintError> {
+        if trait_ref.is_none() {
+            match self_ty.kind() {
+                TyKind::Adt(..)
+                | TyKind::Foreign(_)
+                | TyKind::Bool
+                | TyKind::Char
+                | TyKind::Str
+                | TyKind::Int(_)
+                | TyKind::Uint(_)
+                | TyKind::Float(_) => {
+                    return self_ty.print(self);
+                }
+                _ => {}
+            }
+        }
+
+        self.generic_delimiters(|p| {
+            self_ty.print(p)?;
+            if let Some(trait_ref) = trait_ref {
+                write!(p, " as ")?;
+                trait_ref.print_only_trait_path().print(p)?;
+            }
+            Ok(())
+        })?;
+        self.empty_path = false;
+        Ok(())
+    }
+}
+
+impl<'tcx> PrettyPrinter<'tcx> for TypePrinter<'tcx> {
+    fn ty_infer_name(&self, id: ty::TyVid) -> Option<rustc_span::Symbol> {
+        self.inner.ty_infer_name(id)
+    }
+
+    fn reset_type_limit(&mut self) {
+        self.printed_type_count = 0;
+        self.inner.reset_type_limit();
+    }
+
+    fn const_infer_name(&self, id: ty::ConstVid) -> Option<rustc_span::Symbol> {
+        self.inner.const_infer_name(id)
+    }
+
+    fn generic_delimiters(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> Result<(), PrintError>,
+    ) -> Result<(), PrintError> {
+        write!(self, "<")?;
+
+        let was_in_value = std::mem::replace(&mut self.in_value, false);
+        f(self)?;
+        self.in_value = was_in_value;
+
+        write!(self, ">")?;
+        Ok(())
+    }
+
+    fn should_truncate(&mut self) -> bool {
+        !self
+            .type_length_limit
+            .value_within_limit(self.printed_type_count)
+    }
+
+    fn should_print_optional_region(&self, region: ty::Region<'tcx>) -> bool {
+        self.inner.should_print_optional_region(region)
+    }
+
+    fn pretty_print_const_pointer<Prov: rustc_middle::mir::interpret::Provenance>(
+        &mut self,
+        _p: rustc_middle::mir::interpret::Pointer<Prov>,
+        ty: Ty<'tcx>,
+    ) -> Result<(), PrintError> {
+        let print = |this: &mut Self| {
+            write!(this, "&_")?;
+            Ok(())
+        };
+        self.typed_value(print, |this| this.print_type(ty), ": ")
+    }
 }
 
 impl<'tcx> DesugaredBodyPrettyPrinter<'tcx> {
@@ -68,6 +351,41 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
 
     fn thir(&self) -> &'a Thir<'tcx> {
         &self.body.thir
+    }
+
+    fn print_ty(&self, ty: Ty<'tcx>) -> String {
+        let mut printer = TypePrinter::new(self.tcx);
+        let _ = ty.print(&mut printer);
+        printer.finish()
+    }
+
+    fn format_generic_args(&self, args: &[GenericArg<'tcx>]) -> impl Display {
+        args.iter().map(|arg| self.generic_arg(*arg)).format(", ")
+    }
+
+    fn generic_arg(&self, arg: GenericArg<'tcx>) -> String {
+        match arg.kind() {
+            GenericArgKind::Type(ty) => self.print_ty(ty),
+            GenericArgKind::Lifetime(reg) => {
+                let mut printer = TypePrinter::new(self.tcx);
+                let _ = reg.print(&mut printer);
+                printer.finish()
+            }
+            GenericArgKind::Const(ct) => {
+                let mut printer = TypePrinter::new(self.tcx);
+                let _ = ct.print(&mut printer);
+                printer.finish()
+            }
+        }
+    }
+
+    fn path_with_args(&self, def_id: DefId, args: GenericArgsRef<'tcx>) -> String {
+        if args.is_empty() {
+            self.path(def_id)
+        } else {
+            let args = self.format_generic_args(args);
+            format!("{}::<{args}>", self.path(def_id))
+        }
     }
 
     fn expr(&mut self, id: thir::ExprId) -> String {
@@ -193,7 +511,7 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                 format!("({})", items)
             }
             thir::ExprKind::Adt(adt) => {
-                let adt_name = self.path(adt.adt_def.did());
+                let adt_name = self.path_with_args(adt.adt_def.did(), adt.args);
                 if adt.fields.is_empty() {
                     format!("{} {{}}", adt_name)
                 } else {
@@ -237,16 +555,17 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                         let trait_args = if trait_args.is_empty() {
                             String::new()
                         } else {
-                            let trait_args = trait_args.iter().format(", ");
+                            let trait_args = self.format_generic_args(trait_args);
                             format!("::<{trait_args}>")
                         };
                         let method_args = if method_args.is_empty() {
                             String::new()
                         } else {
-                            let method_args = method_args.iter().format(", ");
+                            let method_args = self.format_generic_args(method_args);
                             format!("::<{method_args}>")
                         };
                         let method_name = assoc.name();
+                        let self_ty = self.print_ty(self_ty.as_type().unwrap());
                         format!(
                             "<{self_ty} as {}{trait_args}>::{method_name}{method_args}",
                             self.path(trait_def_id),
@@ -256,14 +575,14 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                         if args.is_empty() {
                             name
                         } else {
-                            let args = args.iter().format(", ");
+                            let args = self.format_generic_args(args);
                             format!("{name}::<{args}>")
                         }
                     }
                 }
                 _ => "()".to_string(),
             },
-            thir::ExprKind::NamedConst { def_id, .. } => self.path(*def_id),
+            thir::ExprKind::NamedConst { def_id, args, .. } => self.path_with_args(*def_id, *args),
             thir::ExprKind::ConstParam { param, .. } => param.name.to_string(),
             thir::ExprKind::StaticRef { def_id, .. } => {
                 format!("&{}", self.path(*def_id))
