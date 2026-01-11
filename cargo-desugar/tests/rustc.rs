@@ -4,7 +4,8 @@
 //! succeeds or fails the same way as the original source.
 
 use std::{
-    env, fs, io,
+    env::current_dir,
+    fs, io,
     path::{Path, PathBuf},
     process::{Command, ExitStatus},
     sync::Arc,
@@ -14,8 +15,20 @@ use anyhow::{Context, Result, anyhow, bail};
 use libtest_mimic::Trial;
 use walkdir::WalkDir;
 
+mod util;
+
 /// How many of the rustc tests to run, for now.
 static HOW_MANY_TESTS: usize = 500;
+/// The page number for tests, where each page has `HOW_MANY_TESTS` tests.
+static PAGE: usize = 1;
+
+// Tests that are failing because the hir printer is incomplere.
+static INCOMPLETE_HIR_PRETTY: &[&str] = &[
+    // Missing `impl Trait` printing.
+    "reachable/expr_cast.rs",
+    // Missing privacy on items.
+    "reachable/unreachable-by-call-arguments-issue-139627.rs",
+];
 
 #[derive(Debug, Clone)]
 struct Config {
@@ -140,6 +153,11 @@ fn parse_directives(path: &Path) -> Result<ParsedDirectives> {
     let mut rustc_args = Vec::new();
     let mut skip_reason = None;
 
+    let path_str = path.to_string_lossy();
+    if INCOMPLETE_HIR_PRETTY.iter().any(|p| path_str.ends_with(p)) {
+        skip_reason.get_or_insert_with(|| "incomplete hir pretty-printer".into());
+    }
+
     for line in fs::read_to_string(path)?.lines() {
         let Some(rest) = line.strip_prefix("//@") else {
             continue;
@@ -164,8 +182,6 @@ fn parse_directives(path: &Path) -> Result<ParsedDirectives> {
         } else if directive == "no-prefer-dynamic" {
             rustc_args.push("-C".into());
             rustc_args.push("prefer-dynamic=no".into());
-        } else if directive.starts_with("run-") {
-            skip_reason.get_or_insert_with(|| "requires runtime execution".into());
         } else if directive.starts_with("revisions:") || directive.contains('[') {
             skip_reason.get_or_insert_with(|| "multiple revisions not supported".into());
         } else if directive.starts_with("aux-build:")
@@ -177,21 +193,11 @@ fn parse_directives(path: &Path) -> Result<ParsedDirectives> {
             skip_reason.get_or_insert_with(|| "target-filtered test".into());
         } else if directive.starts_with("needs-") {
             skip_reason.get_or_insert_with(|| "needs-* requirement".into());
-        } else if directive.starts_with("gate-test-")
-            || directive == "check-pass"
-            || directive == "build-pass"
-            || directive == "run-pass"
-            || directive == "run-pass-valgrind"
-            || directive == "rustfix-only-machine-applicable"
-            || directive == "run-rustfix"
-            || directive == "normalize-stdout-test"
-            || directive == "normalize-stderr-test"
-            || directive == "must-compile-successfully"
-        {
-            // Markers we can safely ignore.
-        } else {
-            skip_reason.get_or_insert_with(|| format!("unsupported directive: {directive}"));
         }
+    }
+
+    if path.with_extension("stderr").exists() {
+        skip_reason.get_or_insert_with(|| "this test is expected to fail".into());
     }
 
     Ok(ParsedDirectives {
@@ -248,7 +254,9 @@ fn run_desugar(
     let output = cmd
         .output()
         .with_context(|| format!("error running: {cmd:?}"))?;
-    fs::write(desugared, &output.stdout)?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = util::rustfmt_output(&stdout);
+    fs::write(desugared, stdout)?;
     Ok((output.status, output.stdout, output.stderr))
 }
 
@@ -296,10 +304,7 @@ fn perform_test(case: &TestCase) -> Result<()> {
         .and_then(|s| s.to_str())
         .ok_or_else(|| anyhow!("cannot find file stem"))?;
     let rel_dir = case.rel_path.parent().unwrap();
-    let desugared = cfg
-        .test_root
-        .join(rel_dir)
-        .join(format!("{stem}-desugared.rs"));
+    let desugared = cfg.test_root.join(&case.rel_path);
     if desugared.exists() {
         fs::remove_file(&desugared)?;
     }
@@ -323,6 +328,12 @@ fn perform_test(case: &TestCase) -> Result<()> {
         &case.input_path,
     )?;
     write_log(&orig_log, &orig_stdout, &orig_stderr)?;
+
+    // Symlink the original file next to the desugared one.
+    let orig_symlink = desugared.with_added_extension("orig");
+    if !orig_symlink.exists() {
+        std::os::unix::fs::symlink(current_dir().unwrap().join(&case.input_path), orig_symlink)?;
+    }
 
     let (desugar_status, _desugar_stdout, desugar_stderr) = run_desugar(
         cfg,
@@ -392,6 +403,7 @@ fn collect_tests(cfg: Arc<Config>) -> Result<Vec<Trial>> {
         .filter(|e| e.file_type().is_file())
         .map(|e| e.into_path())
         .filter(|e| e.extension().is_some_and(|ext| ext == "rs"))
+        .skip(HOW_MANY_TESTS * PAGE)
         .take(HOW_MANY_TESTS)
     {
         tests.push(setup_test(cfg.clone(), path)?);

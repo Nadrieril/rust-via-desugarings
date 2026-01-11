@@ -1,11 +1,11 @@
-fn temp() -> (std::string::String, i32) {
+#![feature(fmt_arguments_from_str, print_internals, try_trait_v2)]
+fn temp() -> (String, i32) {
     (
         <std::string::String as std::convert::From<&str>>::from("Hello"),
         1,
-    );
+    )
 }
-
-fn main() -> () {
+fn main() {
     let a = &temp();
     let b = [(&temp())];
     let c = &temp().0;
@@ -18,59 +18,43 @@ fn main() -> () {
         &*<str as std::ops::Index<std::ops::RangeFull>>::index(
             &*<std::string::String as std::ops::Deref>::deref(&temp().0),
             std::ops::RangeFull {},
-        );
+        )
     };
-    let f = if true {
-        &temp();
-    } else {
-        &*{
-            &temp();
-        }
-    };
+    let f = if true { &temp() } else { &*{ &temp() } };
     let g = match true {
         true => &temp(),
         false => &*{
             let _ = 123;
-            &temp();
+            &temp()
         },
     };
     let h = match temp() {
-        owned_non_temporary => &{
-            owned_non_temporary;
-        },
+        owned_non_temporary => &{ owned_non_temporary },
     };
     {
         std::io::_print({
             let args = (&a, &b, &c, &d, &e, &f, &g, &h);
             let args = [
-                core::fmt::rt::Argument::<'_>::new_debug::<'_, &(std::string::String, i32)>(
-                    &*args.0,
-                ),
-                core::fmt::rt::Argument::<'_>::new_debug::<'_, [(&(std::string::String, i32),); 1]>(
+                core::fmt::rt::Argument::<'_>::new_debug::<&(std::string::String, i32)>(&*args.0),
+                core::fmt::rt::Argument::<'_>::new_debug::<[(&(std::string::String, i32),); 1]>(
                     &*args.1,
                 ),
-                core::fmt::rt::Argument::<'_>::new_debug::<'_, &std::string::String>(&*args.2),
-                core::fmt::rt::Argument::<'_>::new_debug::<'_, &str>(&*args.3),
-                core::fmt::rt::Argument::<'_>::new_debug::<'_, &str>(&*args.4),
-                core::fmt::rt::Argument::<'_>::new_debug::<'_, &(std::string::String, i32)>(
-                    &*args.5,
-                ),
-                core::fmt::rt::Argument::<'_>::new_debug::<'_, &(std::string::String, i32)>(
-                    &*args.6,
-                ),
-                core::fmt::rt::Argument::<'_>::new_debug::<'_, &(std::string::String, i32)>(
-                    &*args.7,
-                ),
+                core::fmt::rt::Argument::<'_>::new_debug::<&std::string::String>(&*args.2),
+                core::fmt::rt::Argument::<'_>::new_debug::<&str>(&*args.3),
+                core::fmt::rt::Argument::<'_>::new_debug::<&str>(&*args.4),
+                core::fmt::rt::Argument::<'_>::new_debug::<&(std::string::String, i32)>(&*args.5),
+                core::fmt::rt::Argument::<'_>::new_debug::<&(std::string::String, i32)>(&*args.6),
+                core::fmt::rt::Argument::<'_>::new_debug::<&(std::string::String, i32)>(&*args.7),
             ];
-            {
-                std::fmt::Arguments::<'a>::new::<'_, 25, 8>(
+            unsafe {
+                std::fmt::Arguments::<'_>::new::<25, 8>(
                     &*&[
                         192, 1, 32, 192, 1, 32, 192, 1, 32, 192, 1, 32, 192, 1, 32, 192, 1, 32,
                         192, 1, 32, 192, 1, 10, 0,
                     ],
                     &*&args,
-                );
-            };
+                )
+            }
         });
     };
 }

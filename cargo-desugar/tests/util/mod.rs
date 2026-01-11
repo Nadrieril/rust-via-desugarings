@@ -5,7 +5,11 @@
 #![allow(dead_code)]
 
 use snapbox::{self, filter::Filter};
-use std::path::Path;
+use std::{
+    io::Write,
+    path::Path,
+    process::{Command, Stdio},
+};
 
 #[derive(Clone, Copy)]
 pub enum Action {
@@ -50,5 +54,29 @@ fn expect_file_contents(path: &Path, actual: snapbox::Data) -> snapbox::assert::
         Err(buf.into())
     } else {
         Ok(())
+    }
+}
+
+/// Run rustfmt on captured output to stabilize diffs; falls back to the original output on error.
+pub fn rustfmt_output(output: &str) -> String {
+    let mut child = match Command::new("rustfmt")
+        .arg("--emit")
+        .arg("stdout")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+    {
+        Ok(child) => child,
+        Err(_) => return output.to_owned(),
+    };
+    if let Some(stdin) = child.stdin.as_mut() {
+        let _ = stdin.write_all(output.as_bytes());
+    }
+    match child.wait_with_output() {
+        Ok(result) if result.status.success() => {
+            String::from_utf8(result.stdout).unwrap_or_else(|_| output.to_owned())
+        }
+        _ => output.to_owned(),
     }
 }

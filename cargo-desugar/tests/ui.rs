@@ -13,9 +13,8 @@ use std::{
     error::Error,
     ffi::OsStr,
     fs::read_to_string,
-    io::Write,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::Command,
     sync::LazyLock,
 };
 use walkdir::{DirEntry, WalkDir};
@@ -106,30 +105,6 @@ fn parse_magic_comments(input_path: &std::path::Path) -> anyhow::Result<MagicCom
         }
     }
     Ok(comments)
-}
-
-/// Run rustfmt on captured output to stabilize diffs; falls back to the original output on error.
-fn rustfmt_output(output: &str) -> String {
-    let mut child = match Command::new("rustfmt")
-        .arg("--emit")
-        .arg("stdout")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-    {
-        Ok(child) => child,
-        Err(_) => return output.to_owned(),
-    };
-    if let Some(stdin) = child.stdin.as_mut() {
-        let _ = stdin.write_all(output.as_bytes());
-    }
-    match child.wait_with_output() {
-        Ok(result) if result.status.success() => {
-            String::from_utf8(result.stdout).unwrap_or_else(|_| output.to_owned())
-        }
-        _ => output.to_owned(),
-    }
 }
 
 struct Case {
@@ -267,7 +242,7 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
         }
         TestKind::Skip => unreachable!(),
     };
-    let test_output = rustfmt_output(&test_output);
+    let test_output = util::rustfmt_output(&test_output);
     if test_case.magic_comments.check_output {
         compare_or_overwrite(test_output, &test_case.expected)?;
     } else if test_case.expected.exists() {
