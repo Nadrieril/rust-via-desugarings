@@ -1,11 +1,11 @@
-fn temp() {
+fn temp() -> (std::string::String, i32) {
     (
         <std::string::String as std::convert::From<&str>>::from("Hello"),
         1,
     );
 }
 
-fn main() {
+fn main() -> () {
     let a = &temp();
     let b = [(&temp())];
     let c = &temp().0;

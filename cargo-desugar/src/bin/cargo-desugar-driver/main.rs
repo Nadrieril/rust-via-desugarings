@@ -6,9 +6,8 @@ use std::env;
 
 use anyhow::{Result, bail};
 use rust_via_desugarings::{
-    desugar::{Body, desugar_thir},
     options::{CliOpts, DESUGAR_ARGS_ENV},
-    print::print_thir,
+    print::print_crate,
     util::arg_value,
 };
 use rustc_driver::{Callbacks, Compilation};
@@ -59,23 +58,10 @@ impl Callbacks for DesugarCallbacks {
             .swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
         config.opts.unstable_opts.no_codegen = true;
         config.opts.output_types = OutputTypes::new(&[(OutputType::Metadata, None)]);
-        config.override_queries = Some(|_sess, providers| {
-            providers.thir_body = |tcx, def_id| {
-                let (body, root) =
-                    (rustc_interface::DEFAULT_QUERY_PROVIDERS.thir_body)(tcx, def_id)?;
-                let body = body.steal();
-                let mut body = Body::new(tcx, def_id, body, root);
-                desugar_thir(tcx, &mut body);
-                println!("{}", print_thir(tcx, &body));
-                Ok((tcx.alloc_steal_thir(body.thir), root))
-            };
-        });
     }
 
     fn after_expansion<'tcx>(&mut self, _compiler: &Compiler, tcx: TyCtxt<'tcx>) -> Compilation {
-        for ldid in tcx.hir_body_owners() {
-            let _ = tcx.thir_body(ldid); // ensure all thir bodies are built
-        }
+        print!("{}", print_crate(tcx));
         Compilation::Stop
     }
 }

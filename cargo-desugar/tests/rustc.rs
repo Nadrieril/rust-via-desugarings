@@ -15,7 +15,7 @@ use libtest_mimic::Trial;
 use walkdir::WalkDir;
 
 /// How many of the rustc tests to run, for now.
-static HOW_MANY_TESTS: usize = 200;
+static HOW_MANY_TESTS: usize = 500;
 
 #[derive(Debug, Clone)]
 struct Config {

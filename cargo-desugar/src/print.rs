@@ -1,25 +1,59 @@
 use itertools::Itertools;
-use std::fmt::Write;
-
 use rustc_ast::LitKind;
 use rustc_hir::{self as hir, def_id::DefId};
+use rustc_hir_pretty::{Nested, PpAnn};
 use rustc_middle::{
     mir::{AssignOp, BinOp, BorrowKind, FakeBorrowKind, UnOp},
     thir::{self, Pat, PatKind, Thir},
     ty::{AssocContainer, TyCtxt, TyKind},
 };
+use rustc_span::FileName;
 
-use crate::desugar::Body;
+use crate::desugar::{Body, desugar_thir};
 
-pub fn print_thir<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> String {
-    let mut output = String::new();
-    let mut printer = ThirPrinter { tcx, body };
-    let def_path = printer.path(body.def_id.into());
-    let fn_sig = tcx.fn_sig(body.def_id).instantiate_identity();
-    let ret_ty = fn_sig.output();
-    writeln!(output, "fn {def_path}() -> {ret_ty}").unwrap();
-    writeln!(output, "{}", printer.expr_in_block(body.root_expr, 0)).unwrap();
-    output
+/// Print the whole crate using the builtin HIR pretty-printer, but with bodies
+/// replaced by our THIR-based rendering.
+pub fn print_crate<'tcx>(tcx: TyCtxt<'tcx>) -> String {
+    let ann = DesugaredBodyPrettyPrinter { tcx };
+    rustc_hir_pretty::print_crate(
+        tcx.sess.source_map(),
+        tcx.hir_root_module(),
+        FileName::Custom("desugar".into()),
+        String::new(),
+        &|id| tcx.hir_attrs(id),
+        &ann,
+    )
+}
+
+struct DesugaredBodyPrettyPrinter<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> DesugaredBodyPrettyPrinter<'tcx> {
+    fn print_body(&self, body_id: hir::BodyId) -> Option<String> {
+        let def_id = self.tcx.hir_body_owner_def_id(body_id);
+        let Ok((thir, root)) = self.tcx.thir_body(def_id) else {
+            return None;
+        };
+        let mut body = Body::new(self.tcx, def_id, thir.steal(), root);
+        desugar_thir(self.tcx, &mut body);
+        let mut printer = ThirPrinter::new(self.tcx, &body);
+        Some(printer.expr_in_block(body.root_expr, 0))
+    }
+}
+
+impl<'tcx> PpAnn for DesugaredBodyPrettyPrinter<'tcx> {
+    fn nested(&self, state: &mut rustc_hir_pretty::State<'_>, nested: Nested) {
+        match nested {
+            Nested::Body(body_id) if let Some(text) = self.print_body(body_id) => {
+                state.word(text);
+            }
+            other => {
+                let fallback: &dyn rustc_hir::intravisit::HirTyCtxt<'_> = &self.tcx;
+                fallback.nested(state, other);
+            }
+        }
+    }
 }
 
 struct ThirPrinter<'tcx, 'a> {
@@ -28,20 +62,12 @@ struct ThirPrinter<'tcx, 'a> {
 }
 
 impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
+    fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>) -> Self {
+        Self { tcx, body }
+    }
+
     fn thir(&self) -> &'a Thir<'tcx> {
         &self.body.thir
-    }
-
-    fn indent(&self, level: usize) -> String {
-        "    ".repeat(level)
-    }
-
-    fn path(&self, def_id: DefId) -> String {
-        let mut path = self.tcx.def_path_str(def_id);
-        if def_id.is_local() {
-            path = path.replace("::", "__");
-        }
-        path
     }
 
     fn expr(&mut self, id: thir::ExprId, indent: usize) -> String {
@@ -121,7 +147,7 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                 for arm_id in arms.iter() {
                     s.push_str(&self.arm(*arm_id, indent + 1));
                 }
-                s.push_str(&format!("{}}}", self.indent(indent)));
+                s.push('}');
                 s
             }
             thir::ExprKind::Block { block } => self.block(*block, indent),
@@ -292,16 +318,15 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
 
     fn block(&mut self, id: thir::BlockId, indent: usize) -> String {
         let block = &self.thir().blocks[id];
-        let mut s = format!("{{\n");
+        let mut s = "{\n".to_string();
         for stmt_id in block.stmts.iter() {
             s.push_str(&self.stmt(*stmt_id, indent + 1));
         }
         if let Some(expr) = block.expr {
-            s.push_str(&self.indent(indent + 1));
             s.push_str(&self.expr(expr, indent + 1));
             s.push_str(";\n");
         }
-        s.push_str(&format!("{}}}", self.indent(indent)));
+        s.push('}');
         s
     }
 
@@ -309,7 +334,7 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
         let stmt = &self.thir().stmts[id];
         match &stmt.kind {
             thir::StmtKind::Expr { expr, .. } => {
-                format!("{}{};\n", self.indent(indent), self.expr(*expr, indent))
+                format!("{};\n", self.expr(*expr, indent))
             }
             thir::StmtKind::Let {
                 pattern,
@@ -317,7 +342,7 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                 else_block,
                 ..
             } => {
-                let mut s = format!("{}let {}", self.indent(indent), self.pat(pattern));
+                let mut s = format!("let {}", self.pat(pattern));
                 if let Some(init) = initializer {
                     s.push_str(&format!(" = {}", self.expr(*init, indent)));
                 }
@@ -333,7 +358,7 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
 
     fn arm(&mut self, id: thir::ArmId, indent: usize) -> String {
         let arm = &self.thir().arms[id];
-        let mut s = format!("{}{} ", self.indent(indent), self.pat(&arm.pattern));
+        let mut s = format!("{} ", self.pat(&arm.pattern));
         if let Some(guard) = arm.guard {
             s.push_str(&format!("if {} ", self.expr(guard, indent)));
         }
@@ -495,5 +520,9 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
         } else {
             self.tcx.hir_name(id.0).to_string()
         }
+    }
+
+    fn path(&self, def_id: DefId) -> String {
+        self.tcx.def_path_str(def_id)
     }
 }
