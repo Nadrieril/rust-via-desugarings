@@ -1,0 +1,22 @@
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `bytes`
+  --> tests/ui/packed-struct.desugared.rs:16:51
+   |
+16 |         #[attr = Repr {reprs: [ReprPacked(Align(1 bytes))]}]
+   |                                                  -^^^^^ expected one of `)`, `,`, `.`, `?`, or an operator
+   |                                                  |
+   |                                                  help: missing `,`
+
+error: attribute value must be a literal
+  --> tests/ui/packed-struct.desugared.rs:16:18
+   |
+16 |         #[attr = Repr {reprs: [ReprPacked(Align(1 bytes))]}]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot find attribute `attr` in this scope
+  --> tests/ui/packed-struct.desugared.rs:16:11
+   |
+16 |         #[attr = Repr {reprs: [ReprPacked(Align(1 bytes))]}]
+   |           ^^^^
+
+error: aborting due to 3 previous errors
+

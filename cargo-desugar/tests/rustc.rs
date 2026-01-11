@@ -21,7 +21,7 @@ mod util;
 /// How many of the rustc tests to run, for now.
 static HOW_MANY_TESTS: usize = 500;
 /// The page number for tests, where each page has `HOW_MANY_TESTS` tests.
-static PAGE: usize = 1;
+static PAGE: usize = 0;
 
 // Tests that are failing because the hir printer is incomplere.
 static INCOMPLETE_HIR_PRETTY: &[&str] = &[
@@ -35,7 +35,6 @@ struct Config {
     rustc_src: PathBuf,
     ui_src: PathBuf,
     test_root: PathBuf,
-    results_root: PathBuf,
     logs_root: PathBuf,
     build_root: PathBuf,
     rustc_bin: String,
@@ -82,12 +81,11 @@ fn configure() -> Result<Config> {
     let cargo_desugar_bin = assert_cmd::cargo::cargo_bin!("cargo-desugar").to_path_buf();
     let rustc_commit = rustc_commit(&rustc_bin).context("extracting rustc commit")?;
 
-    let workdir = PathBuf::from("target/rustc-ui-desugar");
+    let workdir = PathBuf::from("target/rustc-test-suite");
     let rustc_src_default = workdir.join(format!("rustc-{rustc_commit}"));
-    let test_root = workdir.join("ui");
-    let results_root = workdir.join("results");
-    let logs_root = results_root.join("logs");
-    let build_root = results_root.join("build");
+    let test_root = workdir.join("desugared");
+    let logs_root = workdir.join("logs");
+    let build_root = workdir.join("build");
 
     let rustc_src = PathBuf::from(env_or_default(
         "RUSTC_SRC",
@@ -100,7 +98,6 @@ fn configure() -> Result<Config> {
         rustc_src,
         ui_src,
         test_root,
-        results_root,
         logs_root,
         build_root,
         rustc_bin,
@@ -205,9 +202,7 @@ fn parse_directives(path: &Path) -> Result<ParsedDirectives> {
 }
 
 fn write_log(path: &Path, stdout: &[u8], stderr: &[u8]) -> io::Result<()> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
+    fs::create_dir_all(path.parent().unwrap())?;
     let mut contents = Vec::new();
     contents.extend_from_slice(stdout);
     if !stdout.is_empty() && !stderr.is_empty() {
@@ -223,6 +218,7 @@ fn run_rustc(
     args: &[String],
     input: &Path,
 ) -> Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+    fs::create_dir_all(out_dir)?;
     let mut cmd = Command::new(&cfg.rustc_bin);
     cmd.arg("--emit=metadata")
         .arg("--out-dir")
@@ -292,28 +288,21 @@ fn perform_test(case: &TestCase) -> Result<()> {
         bail!("skipped: {reason}");
     }
     let cfg = &case.config;
-    let stem = case
-        .input_path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .ok_or_else(|| anyhow!("cannot find file stem"))?;
     let rel_dir = case.rel_path.parent().unwrap();
     let desugared = cfg.test_root.join(&case.rel_path);
+    fs::create_dir_all(desugared.parent().unwrap())?;
     if desugared.exists() {
         fs::remove_file(&desugared)?;
     }
+
     let build_orig = cfg.build_root.join(rel_dir).join("orig");
     let build_desugar = cfg.build_root.join(rel_dir).join("desugar");
     let build_desugared = cfg.build_root.join(rel_dir).join("desugared");
-    let logs_dir = cfg.logs_root.join(rel_dir);
-    let orig_log = logs_dir.join(format!("{stem}.orig.log"));
-    let desugar_log = logs_dir.join(format!("{stem}.desugar.log"));
-    let desugared_log = logs_dir.join(format!("{stem}.desugared.log"));
-    let dir = desugared
-        .parent()
-        .ok_or_else(|| anyhow!("test has no parent directory"))?;
-    fs::create_dir_all(&dir)?;
-    fs::create_dir_all(&build_orig)?;
+
+    let logs_base = cfg.logs_root.join(&case.rel_path);
+    let orig_log = logs_base.with_extension("orig.log");
+    let desugar_log = logs_base.with_extension("desugar.log");
+    let desugared_log = logs_base.with_extension("desugared.log");
 
     let (orig_status, orig_stdout, orig_stderr) = run_rustc(
         cfg,
@@ -326,7 +315,8 @@ fn perform_test(case: &TestCase) -> Result<()> {
     // Symlink the original file next to the desugared one.
     let orig_symlink = desugared.with_added_extension("orig");
     if !orig_symlink.exists() {
-        std::os::unix::fs::symlink(current_dir().unwrap().join(&case.input_path), orig_symlink)?;
+        let input_path_abs = current_dir().unwrap().join(&case.input_path);
+        std::os::unix::fs::symlink(input_path_abs, &orig_symlink)?;
     }
 
     let (desugar_status, _desugar_stdout, desugar_stderr) = run_desugar(
@@ -369,13 +359,13 @@ fn perform_test(case: &TestCase) -> Result<()> {
             original:  {orig_status}\n \
             desugared: {desugared_status}\n\
             files:\n \
-            {}\n \
-            {}\n \
-            {}\n \
-            {}\n \
-            {}\n\n\
+            original:  {}\n \
+            desugared: {}\n \
+            orig build log:      {}\n \
+            desugaring log:      {}\n \
+            desugared build log: {}\n\n\
             {}",
-            case.input_path.display(),
+            orig_symlink.display(),
             desugared.display(),
             orig_log.display(),
             desugar_log.display(),
@@ -388,17 +378,20 @@ fn perform_test(case: &TestCase) -> Result<()> {
 fn collect_tests(cfg: Arc<Config>) -> Result<Vec<Trial>> {
     download_rustc_sources(&cfg)?;
     fs::create_dir_all(&cfg.test_root)?;
-    fs::create_dir_all(&cfg.results_root)?;
     fs::create_dir_all(&cfg.logs_root)?;
+    fs::create_dir_all(&cfg.build_root)?;
     let mut tests = Vec::new();
+    let total_num_of_tests = 20000;
     for path in WalkDir::new(&cfg.ui_src)
         .into_iter()
         .filter_map(|e| e.ok())
         .filter(|e| e.file_type().is_file())
         .map(|e| e.into_path())
         .filter(|e| e.extension().is_some_and(|ext| ext == "rs"))
-        .skip(HOW_MANY_TESTS * PAGE)
-        .take(HOW_MANY_TESTS)
+        .enumerate()
+        // Uniformly sample `HOW_MANY_TESTS` tests across all tests
+        .filter(|(i, _)| (i + PAGE) % (total_num_of_tests / HOW_MANY_TESTS) == 0)
+        .map(|(_, path)| path)
     {
         tests.push(setup_test(cfg.clone(), path)?);
     }

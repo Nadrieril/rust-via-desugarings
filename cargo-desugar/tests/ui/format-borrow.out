@@ -1,0 +1,32 @@
+error[E0603]: module `rt` is private
+  --> tests/ui/format-borrow.desugared.rs:15:40
+   |
+15 |             let args_28 = [<core::fmt::rt::Argument<'_>>::new_display::<i32>(
+   |                                        ^^  -------- struct `Argument` is not publicly re-exported
+   |                                        |
+   |                                        private module
+   |
+note: the module `rt` is defined here
+  --> /nix/store/rx2q4p2asilmyw4qrdx5fi317crrhgpz-rust-default-1.93.0-nightly-2025-11-23/lib/rustlib/src/rust/library/core/src/fmt/mod.rs:21:1
+   |
+21 | mod rt;
+   | ^^^^^^
+
+error[E0597]: `args_28` does not live long enough
+  --> tests/ui/format-borrow.desugared.rs:18:83
+   |
+13 |         std::io::_print({
+   |         --------------- borrow later used by call
+14 |             let args_12 = (&v_2,);
+15 |             let args_28 = [<core::fmt::rt::Argument<'_>>::new_display::<i32>(
+   |                 ------- binding `args_28` declared here
+...
+18 |             unsafe { <std::fmt::Arguments<'_>>::new::<4, 1>(&*&[192, 1, 10, 0], &*&args_28) }
+   |                                                                                   ^^^^^^^^ borrowed value does not live long enough
+19 |         });
+   |         - `args_28` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0597, E0603.
+For more information about an error, try `rustc --explain E0597`.

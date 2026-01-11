@@ -1,0 +1,15 @@
+error[E0425]: cannot find value `self_2` in this scope
+  --> tests/ui/self-arg.desugared.rs:20:50
+   |
+20 |             0: <T as std::clone::Clone>::clone(&*self_2.0),
+   |                                                  ^^^^^^ help: a local variable with a similar name exists: `self`
+
+error[E0425]: cannot find value `self_2` in this scope
+  --> tests/ui/self-arg.desugared.rs:29:52
+   |
+29 |         <Wrapper<T> as std::clone::Clone>::clone(&*self_2)
+   |                                                    ^^^^^^ help: a local variable with a similar name exists: `self`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

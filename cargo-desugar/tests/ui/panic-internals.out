@@ -1,0 +1,12 @@
+error[E0658]: use of unstable library feature `libstd_sys_internals`: used by the panic! macro
+  --> tests/ui/panic-internals.desugared.rs:13:9
+   |
+13 |         std::rt::begin_panic::<&str>("boom");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(libstd_sys_internals)]` to the crate attributes to enable
+   = note: this compiler was built on 2025-11-22; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

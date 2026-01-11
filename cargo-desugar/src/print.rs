@@ -72,10 +72,12 @@ pub fn print_crate<'tcx>(tcx: TyCtxt<'tcx>) -> String {
             allocator_api,
             fmt_arguments_from_str,
             fmt_internals,
+            panic_internals,
             print_internals,
             try_trait_v2,
         )]\n
         #![allow(
+            unused_braces,
             unused_parens,
             internal_features,
         )]\n

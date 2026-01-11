@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: function `check` is not a crate or module
+  --> tests/ui/local-type-path.desugared.rs:15:25
+   |
+15 |         assert_exists::<check::Inner>();
+   |                         ^^^^^ function `check` is not a crate or module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.
