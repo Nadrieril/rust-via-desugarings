@@ -5,7 +5,7 @@ use rustc_ast::LitKind;
 use rustc_hir::{
     self as hir,
     def::Namespace,
-    def_id::{CrateNum, DefId, LOCAL_CRATE},
+    def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId},
     definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData},
     limit::Limit,
 };
@@ -42,6 +42,49 @@ pub fn print_crate<'tcx>(tcx: TyCtxt<'tcx>) -> String {
 
 struct DesugaredBodyPrettyPrinter<'tcx> {
     tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> DesugaredBodyPrettyPrinter<'tcx> {
+    fn print_body(&self, def_id: LocalDefId) -> Option<(String, String)> {
+        let Ok((thir, root)) = self.tcx.thir_body(def_id) else {
+            return None;
+        };
+        let mut body = Body::new(self.tcx, def_id, thir.steal(), root);
+        desugar_thir(self.tcx, &mut body);
+        let mut printer = ThirPrinter::new(self.tcx, &body);
+        let expr = printer.expr_in_block(body.root_expr);
+        let params = body
+            .thir
+            .params
+            .iter()
+            .map(|param| {
+                param
+                    .pat
+                    .as_deref()
+                    .map(|p| printer.pat(p))
+                    .unwrap_or("_".into())
+            })
+            .format(", ")
+            .to_string();
+        Some((params, expr))
+    }
+}
+
+impl<'tcx> PpAnn for DesugaredBodyPrettyPrinter<'tcx> {
+    fn nested(&self, state: &mut rustc_hir_pretty::State<'_>, nested: Nested) {
+        match nested {
+            Nested::Body(body_id)
+                if let def_id = self.tcx.hir_body_owner_def_id(body_id)
+                    && let Some((_, text)) = self.print_body(def_id) =>
+            {
+                state.word(text);
+            }
+            other => {
+                let fallback: &dyn rustc_hir::intravisit::HirTyCtxt<'_> = &self.tcx;
+                fallback.nested(state, other);
+            }
+        }
+    }
 }
 
 struct TypePrinter<'tcx> {
@@ -312,33 +355,6 @@ impl<'tcx> PrettyPrinter<'tcx> for TypePrinter<'tcx> {
     }
 }
 
-impl<'tcx> DesugaredBodyPrettyPrinter<'tcx> {
-    fn print_body(&self, body_id: hir::BodyId) -> Option<String> {
-        let def_id = self.tcx.hir_body_owner_def_id(body_id);
-        let Ok((thir, root)) = self.tcx.thir_body(def_id) else {
-            return None;
-        };
-        let mut body = Body::new(self.tcx, def_id, thir.steal(), root);
-        desugar_thir(self.tcx, &mut body);
-        let mut printer = ThirPrinter::new(self.tcx, &body);
-        Some(printer.expr_in_block(body.root_expr))
-    }
-}
-
-impl<'tcx> PpAnn for DesugaredBodyPrettyPrinter<'tcx> {
-    fn nested(&self, state: &mut rustc_hir_pretty::State<'_>, nested: Nested) {
-        match nested {
-            Nested::Body(body_id) if let Some(text) = self.print_body(body_id) => {
-                state.word(text);
-            }
-            other => {
-                let fallback: &dyn rustc_hir::intravisit::HirTyCtxt<'_> = &self.tcx;
-                fallback.nested(state, other);
-            }
-        }
-    }
-}
-
 struct ThirPrinter<'tcx, 'a> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
@@ -532,8 +548,11 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
             thir::ExprKind::PlaceTypeAscription { source, .. }
             | thir::ExprKind::ValueTypeAscription { source, .. } => self.expr(*source),
             thir::ExprKind::Closure(closure) => {
-                let upvars = closure.upvars.iter().map(|u| self.expr(*u)).format(", ");
-                format!("/* closure upvars: [{upvars}] */ || {{ ... }}")
+                let dbpp = DesugaredBodyPrettyPrinter { tcx: self.tcx };
+                match dbpp.print_body(closure.closure_id) {
+                    Some((params, body)) => format!("|{params}| {body}"),
+                    None => format!("todo!(\"missing body for closure\")"),
+                }
             }
             thir::ExprKind::Literal { lit, neg } => {
                 let lit_str = self.literal(lit);
