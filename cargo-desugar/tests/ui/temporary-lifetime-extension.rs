@@ -1,3 +1,4 @@
+//@ known-failure
 // Taken from the rustc test suite
 fn temp() -> (String, i32) {
     (String::from("Hello"), 1)

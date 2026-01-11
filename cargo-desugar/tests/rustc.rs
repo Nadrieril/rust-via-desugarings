@@ -5,7 +5,8 @@
 
 use std::{
     env::current_dir,
-    fs, io,
+    fs::{self, File},
+    io::{self, BufRead, BufReader},
     path::{Path, PathBuf},
     process::{Command, ExitStatus},
     sync::Arc,
@@ -26,8 +27,6 @@ static PAGE: usize = 1;
 static INCOMPLETE_HIR_PRETTY: &[&str] = &[
     // Missing `impl Trait` printing.
     "reachable/expr_cast.rs",
-    // Missing privacy on items.
-    "reachable/unreachable-by-call-arguments-issue-139627.rs",
 ];
 
 #[derive(Debug, Clone)]
@@ -44,7 +43,7 @@ struct Config {
     rustc_commit: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 struct ParsedDirectives {
     rustc_args: Vec<String>,
     skip_reason: Option<String>,
@@ -150,60 +149,59 @@ fn download_rustc_sources(cfg: &Config) -> Result<()> {
 }
 
 fn parse_directives(path: &Path) -> Result<ParsedDirectives> {
-    let mut rustc_args = Vec::new();
-    let mut skip_reason = None;
+    let mut out = ParsedDirectives::default();
 
     let path_str = path.to_string_lossy();
     if INCOMPLETE_HIR_PRETTY.iter().any(|p| path_str.ends_with(p)) {
-        skip_reason.get_or_insert_with(|| "incomplete hir pretty-printer".into());
-    }
-
-    for line in fs::read_to_string(path)?.lines() {
-        let Some(rest) = line.strip_prefix("//@") else {
-            continue;
-        };
-        let directive = rest.trim();
-        if directive.starts_with("compile-flags:") {
-            let flags = directive.trim_start_matches("compile-flags:").trim();
-            rustc_args.extend(flags.split_whitespace().map(|s| s.to_string()));
-        } else if directive.starts_with("edition:") {
-            let edition = directive.trim_start_matches("edition:").trim();
-            if !edition.is_empty() {
-                rustc_args.push("--edition".into());
-                rustc_args.push(edition.to_string());
-            }
-        } else if directive.starts_with("crate-type:") {
-            let kinds = directive.trim_start_matches("crate-type:").trim();
-            rustc_args.extend(
-                kinds
-                    .split_whitespace()
-                    .map(|k| format!("--crate-type={k}")),
-            );
-        } else if directive == "no-prefer-dynamic" {
-            rustc_args.push("-C".into());
-            rustc_args.push("prefer-dynamic=no".into());
-        } else if directive.starts_with("revisions:") || directive.contains('[') {
-            skip_reason.get_or_insert_with(|| "multiple revisions not supported".into());
-        } else if directive.starts_with("aux-build:")
-            || directive.starts_with("aux-crate:")
-            || directive.contains("auxiliary")
-        {
-            skip_reason.get_or_insert_with(|| "auxiliary crates unsupported".into());
-        } else if directive.starts_with("ignore-") || directive.starts_with("only-") {
-            skip_reason.get_or_insert_with(|| "target-filtered test".into());
-        } else if directive.starts_with("needs-") {
-            skip_reason.get_or_insert_with(|| "needs-* requirement".into());
-        }
+        out.skip_reason = Some("incomplete hir pretty-printer".into());
     }
 
     if path.with_extension("stderr").exists() {
-        skip_reason.get_or_insert_with(|| "this test is expected to fail".into());
+        out.skip_reason = Some("this test is expected to fail".into());
+    }
+    if out.skip_reason.is_none() {
+        for line in BufReader::new(File::open(path)?).lines() {
+            let line = line?;
+            let Some(rest) = line.strip_prefix("//@") else {
+                continue;
+            };
+            let directive = rest.trim();
+            if let Some(flags) = directive.strip_prefix("compile-flags:") {
+                let flags = flags.trim();
+                out.rustc_args
+                    .extend(flags.split_whitespace().map(|s| s.to_string()));
+            } else if let Some(edition) = directive.strip_prefix("edition:") {
+                let edition = edition.trim();
+                if !edition.is_empty() {
+                    out.rustc_args.push("--edition".into());
+                    out.rustc_args.push(edition.to_string());
+                }
+            } else if let Some(kinds) = directive.strip_prefix("crate-type:") {
+                let kinds = kinds.trim();
+                out.rustc_args.extend(
+                    kinds
+                        .split_whitespace()
+                        .map(|k| format!("--crate-type={k}")),
+                );
+            } else if directive == "no-prefer-dynamic" {
+                out.rustc_args.push("-C".into());
+                out.rustc_args.push("prefer-dynamic=no".into());
+            } else if directive.starts_with("revisions:") {
+                out.skip_reason = Some("multiple revisions not supported".into());
+            } else if directive.starts_with("aux-build:")
+                || directive.starts_with("aux-crate:")
+                || directive.contains("auxiliary")
+            {
+                out.skip_reason = Some("auxiliary crates unsupported".into());
+            } else if directive.starts_with("ignore-") || directive.starts_with("only-") {
+                out.skip_reason = Some("target-filtered test".into());
+            } else if directive.starts_with("needs-") {
+                out.skip_reason = Some("needs-* requirement".into());
+            }
+        }
     }
 
-    Ok(ParsedDirectives {
-        rustc_args,
-        skip_reason,
-    })
+    Ok(out)
 }
 
 fn write_log(path: &Path, stdout: &[u8], stderr: &[u8]) -> io::Result<()> {
@@ -266,17 +264,13 @@ fn setup_test(cfg: Arc<Config>, input_path: PathBuf) -> Result<Trial> {
 
     // Skip helper crates and directories compiletest marks as ignored.
     if rel_path.components().any(|c| c.as_os_str() == "auxiliary") {
-        directives
-            .skip_reason
-            .get_or_insert_with(|| "auxiliary crate".into());
+        directives.skip_reason = Some("auxiliary crate".into());
     }
     if rel_path
         .ancestors()
         .any(|dir| dir.join("compiletest-ignore-dir").exists())
     {
-        directives
-            .skip_reason
-            .get_or_insert_with(|| "compiletest-ignore-dir".into());
+        directives.skip_reason = Some("compiletest-ignore-dir".into());
     }
     let name = rel_path.display().to_string();
     let ignore = directives.skip_reason.is_some();

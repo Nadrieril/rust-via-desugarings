@@ -1,28 +1,34 @@
 use itertools::Itertools;
-use std::fmt::{self, Display, Write as _};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    fmt::{self, Write as _},
+    ops::Deref,
+    rc::Rc,
+};
 
 use rustc_ast::LitKind;
 use rustc_hir::{
-    self as hir, ItemId,
-    def::Namespace,
+    self as hir, ItemId, ItemKind,
+    def::{CtorKind, Namespace},
     def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId},
     definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData},
     intravisit::{self, Visitor},
     limit::Limit,
 };
-use rustc_hir_pretty::{Nested, PpAnn};
+use rustc_hir_pretty::{AnnNode, Nested, PpAnn, State};
 use rustc_middle::{
     mir::{AssignOp, BinOp, BorrowKind, FakeBorrowKind, UnOp},
-    thir::{self, BlockSafety, Pat, PatKind, Thir},
+    thir::{self, BlockSafety, PatKind, Thir},
     ty::{
         self, AssocContainer, GenericArg, GenericArgKind, Ty, TyCtxt, TyKind, TypeFoldable,
-        TypeFolder, TypeSuperFoldable,
+        TypeFolder, TypeSuperFoldable, VariantDef,
         print::{FmtPrinter, PrettyPrinter, Print, PrintError, PrintTraitRefExt, Printer},
     },
 };
 use rustc_span::{
     FileName,
-    symbol::{Ident, kw},
+    symbol::{Ident, Symbol, kw},
 };
 use std::marker::PhantomData;
 
@@ -31,7 +37,6 @@ use crate::desugar::{Body, desugar_thir};
 /// Print the whole crate using the builtin HIR pretty-printer, but with bodies
 /// replaced by our THIR-based rendering.
 pub fn print_crate<'tcx>(tcx: TyCtxt<'tcx>) -> String {
-    let ann = DesugaredBodyPrettyPrinter { tcx };
     let mut root_mod = tcx.hir_root_module().clone();
     // Filter out some items.
     root_mod.item_ids = tcx
@@ -49,6 +54,8 @@ pub fn print_crate<'tcx>(tcx: TyCtxt<'tcx>) -> String {
             .any(|attr| attr.name().is_some_and(|s| s.as_str() == "prelude_import"));
         !(is_extern_crate_std || is_prelude_import)
     }));
+
+    let ann = CratePrinter::new(tcx);
     let mut output = rustc_hir_pretty::print_crate(
         tcx.sess.source_map(),
         &root_mod,
@@ -57,27 +64,83 @@ pub fn print_crate<'tcx>(tcx: TyCtxt<'tcx>) -> String {
         &|id| tcx.hir_attrs(id),
         &ann,
     );
+
     // Standard lib macros expand to unstable things.
     output.insert_str(
         0,
-        "#![feature(fmt_arguments_from_str, print_internals, try_trait_v2)]\n",
+        "#![feature(
+            allocator_api,
+            fmt_arguments_from_str,
+            fmt_internals,
+            print_internals,
+            try_trait_v2,
+        )]\n
+        #![allow(
+            unused_parens,
+            internal_features,
+        )]\n
+        ",
     );
+
     output
 }
 
-struct DesugaredBodyPrettyPrinter<'tcx> {
-    tcx: TyCtxt<'tcx>,
+#[derive(Clone)]
+struct PrintedBody {
+    params: Vec<String>,
+    body: String,
 }
 
-impl<'tcx> DesugaredBodyPrettyPrinter<'tcx> {
-    fn print_body(&self, def_id: LocalDefId) -> Option<(String, String)> {
+struct CratePrinter<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    synthetic_local_names: Rc<RefCell<HashMap<hir::HirId, Symbol>>>,
+    printed_bodies: RefCell<HashMap<LocalDefId, PrintedBody>>,
+}
+
+impl<'tcx> CratePrinter<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self {
+            tcx,
+            synthetic_local_names: Default::default(),
+            printed_bodies: Default::default(),
+        }
+    }
+
+    fn nested_fallback(&self, state: &mut State<'_>, nested: Nested) {
+        let fallback: &dyn rustc_hir::intravisit::HirTyCtxt<'_> = &self.tcx;
+        fallback.nested(state, nested);
+    }
+
+    fn print_visibility(&self, state: &mut State<'_>, def_id: LocalDefId) {
+        let vis = self.tcx.visibility(def_id).map_id(|id| id.expect_local());
+        let parent = self.tcx.parent_module_from_def_id(def_id).to_local_def_id();
+        match vis {
+            ty::Visibility::Public => state.word_nbsp("pub"),
+            ty::Visibility::Restricted(module) => {
+                if module != parent {
+                    state.word_nbsp(vis.to_string(def_id, self.tcx))
+                }
+            }
+        }
+    }
+
+    fn printed_body(&self, def_id: LocalDefId) -> Option<PrintedBody> {
+        if let Some(body) = self.printed_bodies.borrow().get(&def_id) {
+            return Some(body.clone());
+        }
+
         let Ok((thir, root)) = self.tcx.thir_body(def_id) else {
             return None;
         };
-        let mut body = Body::new(self.tcx, def_id, thir.steal(), root);
+        let mut body = Body::new(
+            self.tcx,
+            def_id,
+            thir.steal(),
+            root,
+            self.synthetic_local_names.clone(),
+        );
         desugar_thir(self.tcx, &mut body);
-        let mut printer = ThirPrinter::new(self.tcx, &body);
-        let expr = printer.expr_in_block(body.root_expr);
+        let mut printer = ThirPrinter::new(self, &body);
         let params = body
             .thir
             .params
@@ -89,58 +152,145 @@ impl<'tcx> DesugaredBodyPrettyPrinter<'tcx> {
                     .map(|p| printer.pat(p))
                     .unwrap_or("_".into())
             })
-            .format(", ")
-            .to_string();
-        Some((params, expr))
+            .collect::<Vec<_>>();
+        let body = printer.expr_in_block(body.root_expr);
+        let printed = PrintedBody { params, body };
+        self.printed_bodies
+            .borrow_mut()
+            .insert(def_id, printed.clone());
+        Some(printed)
     }
-    fn nested_fallback(&self, state: &mut rustc_hir_pretty::State<'_>, nested: Nested) {
-        let fallback: &dyn rustc_hir::intravisit::HirTyCtxt<'_> = &self.tcx;
-        fallback.nested(state, nested);
+
+    fn print_body(&self, def_id: LocalDefId) -> Option<(String, String)> {
+        self.printed_body(def_id)
+            .map(|body| (body.params.iter().format(", ").to_string(), body.body))
+    }
+
+    fn body_param_pat(&self, body_id: hir::BodyId, index: usize) -> Option<String> {
+        let def_id = self.tcx.hir_body_owner_def_id(body_id);
+        self.printed_body(def_id)
+            .and_then(|body| body.params.get(index).cloned())
+    }
+
+    fn local_name(&self, id: thir::LocalVarId) -> String {
+        let hir_id = id.0;
+        let name = if let Some(name) = self.synthetic_local_names.borrow().get(&hir_id).copied() {
+            name
+        } else {
+            self.tcx.hir_name(hir_id)
+        };
+        // Disambiguate names by their hir id, to avoid hygiene issues.
+        format!("{name}_{}", hir_id.local_id.as_u32())
+    }
+
+    fn ty(&self, ty: Ty<'tcx>) -> String {
+        let mut printer = TypePrinter::new(self);
+        let _ = ty.print(&mut printer);
+        printer.finish()
+    }
+
+    fn generic_args(&self, args: &[GenericArg<'tcx>]) -> String {
+        if args.is_empty() {
+            String::new()
+        } else {
+            let args = args.iter().map(|arg| self.generic_arg(*arg)).format(", ");
+            format!("::<{args}>")
+        }
+    }
+
+    fn generic_arg(&self, arg: GenericArg<'tcx>) -> String {
+        match arg.kind() {
+            GenericArgKind::Type(ty) => self.ty(ty),
+            GenericArgKind::Lifetime(reg) => {
+                let mut printer = TypePrinter::new(self);
+                let _ = reg.print(&mut printer);
+                printer.finish()
+            }
+            GenericArgKind::Const(ct) => {
+                let mut printer = TypePrinter::new(self);
+                let _ = ct.print(&mut printer);
+                printer.finish()
+            }
+        }
+    }
+
+    fn path(&self, def_id: DefId) -> String {
+        self.tcx.value_path_str_with_args(def_id, &[])
+    }
+
+    fn path_with_args(&self, def_id: DefId, args: &'tcx [GenericArg<'tcx>]) -> String {
+        let mut printer = TypePrinter::new(self);
+        match printer.try_print_visible_def_path(def_id) {
+            Ok(true) => format!("{}{}", printer.finish(), self.generic_args(args)),
+            _ => self.tcx.value_path_str_with_args(def_id, args),
+        }
     }
 }
 
-impl<'tcx> PpAnn for DesugaredBodyPrettyPrinter<'tcx> {
+impl<'tcx> PpAnn for CratePrinter<'tcx> {
+    fn pre(&self, state: &mut rustc_hir_pretty::State<'_>, node: AnnNode<'_>) {
+        if let AnnNode::Item(item) = node
+            && matches!(item.kind, ItemKind::Fn { .. })
+        {
+            self.print_visibility(state, item.owner_id.def_id)
+        }
+    }
+
     fn nested(&self, state: &mut rustc_hir_pretty::State<'_>, nested: Nested) {
-        struct NestedItemCollector<'tcx> {
-            found: Vec<Nested>,
-            _marker: PhantomData<&'tcx ()>,
-        }
-
-        impl<'tcx> NestedItemCollector<'tcx> {
-            fn new() -> Self {
-                Self {
-                    found: Vec::new(),
-                    _marker: PhantomData,
-                }
-            }
-        }
-
-        impl<'tcx> Visitor<'tcx> for NestedItemCollector<'tcx> {
-            type NestedFilter = intravisit::nested_filter::None;
-            fn visit_nested_item(&mut self, id: ItemId) {
-                self.found.push(Nested::Item(id));
-            }
-            fn visit_nested_trait_item(&mut self, id: rustc_hir::TraitItemId) -> Self::Result {
-                self.found.push(Nested::TraitItem(id));
-            }
-            fn visit_nested_impl_item(&mut self, id: rustc_hir::ImplItemId) -> Self::Result {
-                self.found.push(Nested::ImplItem(id));
-            }
-            fn visit_nested_foreign_item(&mut self, id: rustc_hir::ForeignItemId) -> Self::Result {
-                self.found.push(Nested::ForeignItem(id));
-            }
-            fn visit_nested_body(&mut self, id: rustc_hir::BodyId) -> Self::Result {
-                self.found.push(Nested::Body(id));
-            }
-        }
-
         match nested {
+            Nested::BodyParamPat(body_id, index)
+                if let Some(param) = self.body_param_pat(body_id, index) =>
+            {
+                state.word(param);
+            }
             Nested::Body(body_id)
                 if let def_id = self.tcx.hir_body_owner_def_id(body_id)
                     && let Some((_, text)) = self.print_body(def_id) =>
             {
+                // TODO: move this to a `print_body_with_inner_items` method
                 let body = self.tcx.hir_body(body_id);
                 let nested_items = {
+                    struct NestedItemCollector<'tcx> {
+                        found: Vec<Nested>,
+                        _marker: PhantomData<&'tcx ()>,
+                    }
+
+                    impl<'tcx> NestedItemCollector<'tcx> {
+                        fn new() -> Self {
+                            Self {
+                                found: Vec::new(),
+                                _marker: PhantomData,
+                            }
+                        }
+                    }
+
+                    impl<'tcx> Visitor<'tcx> for NestedItemCollector<'tcx> {
+                        type NestedFilter = intravisit::nested_filter::None;
+                        fn visit_nested_item(&mut self, id: ItemId) {
+                            self.found.push(Nested::Item(id));
+                        }
+                        fn visit_nested_trait_item(
+                            &mut self,
+                            id: rustc_hir::TraitItemId,
+                        ) -> Self::Result {
+                            self.found.push(Nested::TraitItem(id));
+                        }
+                        fn visit_nested_impl_item(
+                            &mut self,
+                            id: rustc_hir::ImplItemId,
+                        ) -> Self::Result {
+                            self.found.push(Nested::ImplItem(id));
+                        }
+                        fn visit_nested_foreign_item(
+                            &mut self,
+                            id: rustc_hir::ForeignItemId,
+                        ) -> Self::Result {
+                            self.found.push(Nested::ForeignItem(id));
+                        }
+                        fn visit_nested_body(&mut self, id: rustc_hir::BodyId) -> Self::Result {
+                            self.found.push(Nested::Body(id));
+                        }
+                    }
                     let mut collector = NestedItemCollector::new();
                     intravisit::walk_body(&mut collector, body);
                     collector.found
@@ -161,8 +311,9 @@ impl<'tcx> PpAnn for DesugaredBodyPrettyPrinter<'tcx> {
     }
 }
 
-struct TypePrinter<'tcx> {
-    inner: FmtPrinter<'tcx, 'tcx>,
+struct TypePrinter<'a, 'tcx> {
+    inner: FmtPrinter<'a, 'tcx>,
+    crate_printer: &'a CratePrinter<'tcx>,
     tcx: TyCtxt<'tcx>,
     empty_path: bool,
     in_value: bool,
@@ -170,11 +321,20 @@ struct TypePrinter<'tcx> {
     type_length_limit: Limit,
 }
 
-impl<'tcx> TypePrinter<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx> Deref for TypePrinter<'_, 'tcx> {
+    type Target = CratePrinter<'tcx>;
+    fn deref(&self) -> &Self::Target {
+        self.crate_printer
+    }
+}
+
+impl<'a, 'tcx> TypePrinter<'a, 'tcx> {
+    fn new(crate_printer: &'a CratePrinter<'tcx>) -> Self {
+        let tcx = crate_printer.tcx;
         Self {
             inner: FmtPrinter::new(tcx, Namespace::TypeNS),
             tcx,
+            crate_printer,
             empty_path: false,
             in_value: false,
             printed_type_count: 0,
@@ -187,13 +347,13 @@ impl<'tcx> TypePrinter<'tcx> {
     }
 }
 
-impl fmt::Write for TypePrinter<'_> {
+impl fmt::Write for TypePrinter<'_, '_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.inner.write_str(s)
     }
 }
 
-impl<'tcx> Printer<'tcx> for TypePrinter<'tcx> {
+impl<'tcx> Printer<'tcx> for TypePrinter<'_, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -203,19 +363,7 @@ impl<'tcx> Printer<'tcx> for TypePrinter<'tcx> {
         def_id: DefId,
         args: &'tcx [GenericArg<'tcx>],
     ) -> Result<(), PrintError> {
-        if args.is_empty() {
-            if self.inner.try_print_trimmed_def_path(def_id)? {
-                self.empty_path = false;
-                return Ok(());
-            }
-
-            if self.inner.try_print_visible_def_path(def_id)? {
-                self.empty_path = false;
-                return Ok(());
-            }
-        }
-
-        self.default_print_def_path(def_id, args)
+        self.write_str(&self.crate_printer.path_with_args(def_id, args))
     }
 
     fn print_region(&mut self, region: ty::Region<'tcx>) -> Result<(), PrintError> {
@@ -378,7 +526,7 @@ impl<'tcx> Printer<'tcx> for TypePrinter<'tcx> {
     }
 }
 
-impl<'tcx> PrettyPrinter<'tcx> for TypePrinter<'tcx> {
+impl<'tcx> PrettyPrinter<'tcx> for TypePrinter<'_, 'tcx> {
     fn ty_infer_name(&self, id: ty::TyVid) -> Option<rustc_span::Symbol> {
         self.inner.ty_infer_name(id)
     }
@@ -429,64 +577,37 @@ impl<'tcx> PrettyPrinter<'tcx> for TypePrinter<'tcx> {
     }
 }
 
-struct ThirPrinter<'tcx, 'a> {
+struct ThirPrinter<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    crate_printer: &'a CratePrinter<'tcx>,
     body: &'a Body<'tcx>,
 }
 
-impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
-    fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>) -> Self {
-        Self { tcx, body }
+impl<'tcx> Deref for ThirPrinter<'_, 'tcx> {
+    type Target = CratePrinter<'tcx>;
+    fn deref(&self) -> &Self::Target {
+        self.crate_printer
+    }
+}
+
+impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
+    fn new(crate_printer: &'a CratePrinter<'tcx>, body: &'a Body<'tcx>) -> Self {
+        Self {
+            tcx: crate_printer.tcx,
+            crate_printer,
+            body,
+        }
     }
 
     fn thir(&self) -> &'a Thir<'tcx> {
         &self.body.thir
     }
 
-    fn print_ty(&self, ty: Ty<'tcx>) -> String {
-        let mut printer = TypePrinter::new(self.tcx);
-        let _ = ty.print(&mut printer);
-        printer.finish()
-    }
-
-    fn format_generic_args(&self, args: &[GenericArg<'tcx>]) -> impl Display {
-        if args.is_empty() {
-            String::new()
-        } else {
-            let args = args.iter().map(|arg| self.generic_arg(*arg)).format(", ");
-            format!("::<{args}>")
-        }
-    }
-
-    fn generic_arg(&self, arg: GenericArg<'tcx>) -> String {
-        match arg.kind() {
-            GenericArgKind::Type(ty) => self.print_ty(ty),
-            GenericArgKind::Lifetime(reg) => {
-                let mut printer = TypePrinter::new(self.tcx);
-                let _ = reg.print(&mut printer);
-                printer.finish()
-            }
-            GenericArgKind::Const(ct) => {
-                let mut printer = TypePrinter::new(self.tcx);
-                let _ = ct.print(&mut printer);
-                printer.finish()
-            }
-        }
-    }
-
-    fn path_with_args(&self, def_id: DefId, args: &'tcx [GenericArg<'tcx>]) -> String {
-        let mut printer = TypePrinter::new(self.tcx);
-        match printer.try_print_visible_def_path(def_id) {
-            Ok(true) => format!("{}{}", printer.finish(), self.format_generic_args(args)),
-            _ => self.tcx.value_path_str_with_args(def_id, args),
-        }
-    }
-
     fn expr(&mut self, id: thir::ExprId) -> String {
         let expr = &self.thir().exprs[id];
         match &expr.kind {
             thir::ExprKind::Scope { value, .. } => self.expr(*value),
-            thir::ExprKind::Box { value } => format!("box {}", self.expr(*value)),
+            thir::ExprKind::Box { value } => format!("Box::new({})", self.expr(*value)),
             thir::ExprKind::If {
                 cond,
                 then,
@@ -601,7 +722,11 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                 format!("[{}]", items)
             }
             thir::ExprKind::Tuple { fields } => {
-                let items = fields.iter().map(|f| self.expr(*f)).format(", ");
+                let items = fields
+                    .iter()
+                    .map(|f| self.expr(*f))
+                    .map(|x| format!("{x},"))
+                    .format("");
                 format!("({})", items)
             }
             thir::ExprKind::Adt(adt) => {
@@ -636,8 +761,7 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
             thir::ExprKind::PlaceTypeAscription { source, .. }
             | thir::ExprKind::ValueTypeAscription { source, .. } => self.expr(*source),
             thir::ExprKind::Closure(closure) => {
-                let dbpp = DesugaredBodyPrettyPrinter { tcx: self.tcx };
-                match dbpp.print_body(closure.closure_id) {
+                match self.crate_printer.print_body(closure.closure_id) {
                     Some((params, body)) => format!("|{params}| {body}"),
                     None => format!("todo!(\"missing body for closure\")"),
                 }
@@ -655,17 +779,26 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
                         let (container_args, method_args) =
                             args.split_at(method_generics.parent_count);
                         let method_name = assoc.name();
-                        let method_args = self.format_generic_args(method_args);
+                        let method_args = self.generic_args(method_args);
                         let container = match assoc.container {
                             AssocContainer::Trait => {
                                 let [self_ty, trait_args @ ..] = container_args else {
                                     unreachable!()
                                 };
-                                let self_ty = self.print_ty(self_ty.as_type().unwrap());
+                                let self_ty = self.ty(self_ty.as_type().unwrap());
                                 let trait_pred = self.path_with_args(container_def_id, trait_args);
                                 format!("<{self_ty} as {trait_pred}>",)
                             }
-                            AssocContainer::InherentImpl | AssocContainer::TraitImpl(_) => {
+                            AssocContainer::InherentImpl => {
+                                let args_ref =
+                                    self.tcx.mk_args_from_iter(container_args.iter().copied());
+                                let self_ty = self
+                                    .tcx
+                                    .type_of(container_def_id)
+                                    .instantiate(self.tcx, args_ref);
+                                format!("<{}>", self.ty(self_ty))
+                            }
+                            AssocContainer::TraitImpl(_) => {
                                 self.path_with_args(container_def_id, container_args)
                             }
                         };
@@ -766,17 +899,19 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
         s
     }
 
-    fn pat(&self, pat: &Pat<'tcx>) -> String {
+    fn pat(&self, pat: &thir::Pat<'tcx>) -> String {
         match &pat.kind {
-            PatKind::Missing => "_".to_string(),
-            PatKind::Wild => "_".to_string(),
+            PatKind::Missing | PatKind::Wild => "_".to_string(),
             PatKind::AscribeUserType { subpattern, .. } => self.pat(subpattern),
             PatKind::Binding {
-                name, mode, subpattern, ..
+                var,
+                mode,
+                subpattern,
+                ..
             } => {
                 let mut s = String::new();
                 s.push_str(mode.prefix_str());
-                s.push_str(&name.to_string());
+                s.push_str(&self.local_name(*var));
                 if let Some(sub) = subpattern {
                     s.push_str(" @ ");
                     s.push_str(&self.pat(sub));
@@ -785,40 +920,34 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
             }
             PatKind::Variant {
                 adt_def,
+                args,
                 variant_index,
                 subpatterns,
                 ..
             } => {
                 let variant = &adt_def.variant(*variant_index);
-                let mut parts = Vec::new();
-                for fp in subpatterns {
-                    parts.push(format!(
-                        "{}: {}",
-                        fp.field.as_usize(),
-                        self.pat(&fp.pattern)
-                    ));
-                }
-                format!(
-                    "{}::{} {{ {} }}",
-                    self.path(adt_def.did()),
-                    variant.name,
-                    parts.join(", ")
-                )
+                let path = self.path_with_args(adt_def.did(), args);
+                let path = format!("{}::{}", path, variant.name);
+                self.adt_pat(path, variant, subpatterns)
             }
-            PatKind::Leaf { subpatterns } => {
-                // TODO: tuple pats, `..` pats
-                let mut parts = Vec::new();
-                for fp in subpatterns {
-                    parts.push(format!(
-                        "{}: {}",
-                        fp.field.as_usize(),
-                        self.pat(&fp.pattern)
-                    ));
+            PatKind::Leaf { subpatterns } => match pat.ty.kind() {
+                TyKind::Tuple(_) => self.tuple_pat(None, subpatterns),
+                TyKind::Adt(adt_def, args) => {
+                    assert!(!adt_def.is_enum());
+                    let variant = adt_def.non_enum_variant();
+                    let path = self.path_with_args(adt_def.did(), args);
+                    self.adt_pat(path, variant, subpatterns)
                 }
-                format!("{{ {} }}", parts.join(", "))
-            }
-            PatKind::Deref { subpattern } | PatKind::DerefPattern { subpattern, .. } => {
-                format!("*{}", self.pat(subpattern))
+                _ => "_".to_owned(),
+            },
+            PatKind::Deref { subpattern } => format!("&{}", self.pat(subpattern)),
+            PatKind::DerefPattern { subpattern, borrow } => {
+                let prefix = match borrow {
+                    hir::ByRef::Yes(_, hir::Mutability::Mut) => "&mut ",
+                    hir::ByRef::Yes(..) => "&",
+                    hir::ByRef::No => "",
+                };
+                format!("{prefix}{}", self.pat(subpattern))
             }
             PatKind::Constant { value } => format!("{}", value),
             PatKind::ExpandedConstant { subpattern, .. } => self.pat(subpattern),
@@ -844,6 +973,51 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
             PatKind::Or { pats } => pats.iter().map(|p| self.pat(p)).format(" | ").to_string(),
             PatKind::Never => "!".to_string(),
             PatKind::Error(_) => "<pat error>".to_string(),
+        }
+    }
+
+    fn tuple_pat(&self, path: Option<String>, subpatterns: &[thir::FieldPat<'tcx>]) -> String {
+        let mut fields = subpatterns.to_vec();
+        fields.sort_by_key(|fp| fp.field.as_usize());
+        let inner = fields
+            .iter()
+            .map(|ipat| self.pat(&ipat.pattern))
+            .map(|p| format!("{p},"))
+            .format("");
+        match path {
+            Some(p) => format!("{p}({inner})"),
+            None => format!("({inner})"),
+        }
+    }
+
+    fn adt_pat(
+        &self,
+        path: String,
+        variant: &VariantDef,
+        subpatterns: &[thir::FieldPat<'tcx>],
+    ) -> String {
+        match variant.ctor_kind() {
+            Some(CtorKind::Const) => {
+                assert_eq!(subpatterns.len(), 0);
+                path
+            }
+            Some(CtorKind::Fn) | None => {
+                let ellipsis = if subpatterns.len() != variant.fields.len() {
+                    Some("..".to_string())
+                } else {
+                    None
+                };
+                let fields = subpatterns
+                    .iter()
+                    .map(|ipat| {
+                        let field_def = &variant.fields[ipat.field];
+                        let pat = self.pat(&ipat.pattern);
+                        format!("{}: {}", field_def.name, pat)
+                    })
+                    .chain(ellipsis)
+                    .format(", ");
+                format!("{path} {{ {fields} }}")
+            }
         }
     }
 
@@ -913,17 +1087,5 @@ impl<'tcx, 'a> ThirPrinter<'tcx, 'a> {
             UnOp::Neg => "-",
             UnOp::PtrMetadata => "ptr_metadata ",
         }
-    }
-
-    fn local_name(&self, id: thir::LocalVarId) -> String {
-        if let Some(name) = self.body.synthetic_local_name(id.0) {
-            name.to_string()
-        } else {
-            self.tcx.hir_name(id.0).to_string()
-        }
-    }
-
-    fn path(&self, def_id: DefId) -> String {
-        self.tcx.value_path_str_with_args(def_id, &[])
     }
 }

@@ -7,17 +7,19 @@
 use anyhow::{anyhow, bail};
 use assert_cmd::prelude::OutputAssertExt;
 use indoc::indoc as unindent;
+use itertools::Itertools;
 use libtest_mimic::Trial;
 use regex::Regex;
 use std::{
     error::Error,
     ffi::OsStr,
-    fs::read_to_string,
+    fs::{self, File},
+    io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::Command,
     sync::LazyLock,
 };
-use walkdir::{DirEntry, WalkDir};
+use walkdir::WalkDir;
 
 use util::compare_or_overwrite;
 mod util;
@@ -68,7 +70,8 @@ fn parse_magic_comments(input_path: &std::path::Path) -> anyhow::Result<MagicCom
         check_output: true,
         auxiliary_crates: Vec::new(),
     };
-    for line in read_to_string(input_path)?.lines() {
+    for line in BufReader::new(File::open(input_path)?).lines() {
+        let line = line?;
         let Some(line) = line.strip_prefix("//@") else {
             break;
         };
@@ -110,6 +113,7 @@ fn parse_magic_comments(input_path: &std::path::Path) -> anyhow::Result<MagicCom
 struct Case {
     input_path: PathBuf,
     expected: PathBuf,
+    desugared: PathBuf,
     magic_comments: MagicComments,
 }
 
@@ -123,11 +127,13 @@ fn setup_test(input_path: PathBuf) -> anyhow::Result<Trial> {
         .unwrap()
         .to_owned();
     let expected = input_path.with_extension("out");
+    let desugared = input_path.with_extension("desugared.rs");
     let magic_comments = parse_magic_comments(&input_path)?;
     let ignore = matches!(magic_comments.test_kind, TestKind::Skip);
     let case = Case {
         input_path,
         expected,
+        desugared,
         magic_comments,
     };
     let trial = Trial::test(name, move || perform_test(&case).map_err(|err| err.into()))
@@ -142,6 +148,24 @@ fn path_to_crate_name(path: &Path) -> Option<String> {
             .strip_suffix(".rs")?
             .replace(['-'], "_"),
     )
+}
+
+fn compile_desugared(
+    test_case: &Case,
+    deps: &[(String, PathBuf, String)],
+    source_path: &Path,
+) -> anyhow::Result<std::process::Output> {
+    let mut cmd = Command::new("rustc");
+    cmd.arg("-Zno-codegen");
+    cmd.arg("--crate-name=test_crate");
+    cmd.arg("--crate-type=rlib");
+    cmd.arg("--allow=unused");
+    for (crate_name, _, rlib_path) in deps {
+        cmd.arg(format!("--extern={crate_name}={rlib_path}"));
+    }
+    cmd.args(&test_case.magic_comments.rustc_opts);
+    cmd.arg(source_path);
+    cmd.output().map_err(|e| e.into())
 }
 
 fn perform_test(test_case: &Case) -> anyhow::Result<()> {
@@ -187,7 +211,7 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
     cmd.arg("--crate-name=test_crate");
     cmd.arg("--crate-type=rlib");
     cmd.arg("--allow=unused"); // Removes noise
-    for (crate_name, _, rlib_path) in deps {
+    for (crate_name, _, rlib_path) in deps.iter() {
         cmd.arg(format!("--extern={crate_name}={rlib_path}"));
     }
     cmd.args(&test_case.magic_comments.rustc_opts);
@@ -206,8 +230,9 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
     static RE: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"thread 'rustc' \(\d+\) panicked").unwrap());
     let stderr = RE.replace_all(&stderr, "thread 'rustc' panicked");
+    let stderr_owned = stderr.to_string();
 
-    let test_output = match test_case.magic_comments.test_kind {
+    let mut test_output = match test_case.magic_comments.test_kind {
         TestKind::KnownPanic => {
             if output.status.code() != Some(101) {
                 let status = if output.status.success() {
@@ -216,35 +241,69 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
                     "errored"
                 };
                 bail!(
-                    "Command: `{cmd_str}`\nCompilation was expected to panic but instead {status}:\n{stderr}"
+                    "Command: `{cmd_str}`\nCompilation was expected to panic but instead {status}:\n{stderr_owned}"
                 );
             }
-            stderr.into_owned()
+            stderr_owned.clone()
         }
-        TestKind::KnownFailure => {
-            if output.status.success() || output.status.code() == Some(101) {
-                let status = if output.status.success() {
-                    "succeeded"
-                } else {
-                    "panicked"
-                };
-                bail!(
-                    "Command: `{cmd_str}`\nCompilation was expected to fail but instead {status}:\n{stderr}"
-                );
-            }
-            stderr.into_owned()
-        }
-        TestKind::Pass => {
-            if !output.status.success() {
-                bail!("Command: `{cmd_str}`\nCompilation failed:\n{stderr}")
+        TestKind::KnownFailure | TestKind::Pass => {
+            if !output.status.success()
+                && !matches!(test_case.magic_comments.test_kind, TestKind::KnownFailure)
+            {
+                bail!("Command: `{cmd_str}`\nCompilation failed:\n{stderr_owned}")
             }
             stdout
         }
         TestKind::Skip => unreachable!(),
     };
-    let test_output = util::rustfmt_output(&test_output);
+
+    if let Some(parent) = test_case.desugared.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    test_output = util::rustfmt_output(&test_output);
+    compare_or_overwrite(&test_output, &test_case.desugared)?;
+
+    let compile_output = if output.status.success() {
+        Some(compile_desugared(test_case, &deps, &test_case.desugared)?)
+    } else {
+        None
+    };
+
+    match test_case.magic_comments.test_kind {
+        TestKind::Pass => {
+            if let Some(compile) = &compile_output {
+                if !compile.status.success() {
+                    let stderr = String::from_utf8_lossy(&compile.stderr);
+                    bail!("Desugared code failed to compile:\n{stderr}");
+                }
+            } else {
+                bail!("Desugaring failed unexpectedly:\n{stderr_owned}");
+            }
+        }
+        TestKind::KnownFailure => {
+            if output.status.success() {
+                if let Some(compile) = &compile_output {
+                    if compile.status.success() {
+                        bail!(
+                            "Known failure unexpectedly compiled successfully (desugar + rustc)."
+                        );
+                    } else {
+                        test_output = String::from_utf8_lossy(&compile.stderr).into_owned();
+                    }
+                } else {
+                    bail!("Known failure had successful desugaring but no compile output?");
+                }
+            } else if output.status.code() == Some(101) {
+                test_output = stderr_owned.clone();
+            } else {
+                test_output = stderr_owned.clone();
+            }
+        }
+        TestKind::KnownPanic | TestKind::Skip => {}
+    }
+
     if test_case.magic_comments.check_output {
-        compare_or_overwrite(test_output, &test_case.expected)?;
+        compare_or_overwrite(&test_output, &test_case.expected)?;
     } else if test_case.expected.exists() {
         std::fs::remove_file(&test_case.expected)?;
     }
@@ -253,22 +312,16 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let root: PathBuf = TESTS_DIR.into();
-    let file_filter = |e: &DirEntry| e.file_name().to_str().is_some_and(|s| s.ends_with(".rs"));
-    let tests: Vec<_> = WalkDir::new(root)
+    let tests: Vec<_> = WalkDir::new(TESTS_DIR)
         .min_depth(1)
         .into_iter()
-        .filter_map(|entry| match entry {
-            Ok(entry) if !file_filter(&entry) => None,
-            res => Some(res),
-        })
-        .map(|entry| {
-            let entry = entry?;
-            let test = setup_test(entry.into_path())?;
-            anyhow::Result::Ok(test)
-        })
-        .collect::<anyhow::Result<_>>()?;
-
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .map(|e| e.into_path())
+        .filter(|e| e.extension().is_some_and(|ext| ext == "rs"))
+        .filter(|e| !e.to_str().unwrap().ends_with(".desugared.rs"))
+        .map(|path| setup_test(path))
+        .try_collect()?;
     let args = libtest_mimic::Arguments::from_args();
     libtest_mimic::run(&args, tests).exit()
 }

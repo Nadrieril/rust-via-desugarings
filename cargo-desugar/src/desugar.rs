@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use rustc_ast::Mutability;
 use rustc_hir::{self as hir, def_id::LocalDefId};
@@ -13,7 +13,7 @@ pub struct Body<'tcx> {
     pub def_id: LocalDefId,
     pub thir: thir::Thir<'tcx>,
     pub root_expr: ExprId,
-    synthetic_local_names: HashMap<hir::HirId, String>,
+    synthetic_local_names: Rc<RefCell<HashMap<hir::HirId, Symbol>>>,
     next_local_id: hir::ItemLocalId,
 }
 
@@ -23,6 +23,7 @@ impl<'tcx> Body<'tcx> {
         def_id: LocalDefId,
         body: thir::Thir<'tcx>,
         root_expr: ExprId,
+        synthetic_local_names: Rc<RefCell<HashMap<hir::HirId, Symbol>>>,
     ) -> Self {
         let owner_id = hir::OwnerId { def_id };
         let max_id = tcx.hir_owner_nodes(owner_id).nodes.len();
@@ -30,7 +31,7 @@ impl<'tcx> Body<'tcx> {
             def_id,
             thir: body,
             root_expr,
-            synthetic_local_names: Default::default(),
+            synthetic_local_names,
             next_local_id: hir::ItemLocalId::from_usize(max_id),
         }
     }
@@ -41,8 +42,12 @@ impl<'tcx> Body<'tcx> {
         }
     }
 
-    pub fn synthetic_local_name(&self, id: hir::HirId) -> Option<&str> {
-        self.synthetic_local_names.get(&id).map(|x| x.as_str())
+    pub fn synthetic_local_name(&self, id: hir::HirId) -> Option<Symbol> {
+        self.synthetic_local_names.borrow().get(&id).copied()
+    }
+
+    pub fn insert_synthetic_local_name(&self, id: hir::HirId, name: Symbol) {
+        self.synthetic_local_names.borrow_mut().insert(id, name);
     }
 
     fn new_hir_id(&mut self) -> hir::HirId {
@@ -122,10 +127,8 @@ impl<'tcx, 'a> ValueToPlaceDesugarer<'tcx, 'a> {
         arg: thir::ExprId,
     ) {
         let hir_id = self.body.new_hir_id();
-        let tmp_name = format!("tmp{}", hir_id.local_id.as_u32());
-        self.body
-            .synthetic_local_names
-            .insert(hir_id, tmp_name.clone());
+        let tmp_name = Symbol::intern("tmp");
+        self.body.insert_synthetic_local_name(hir_id, tmp_name);
 
         let var_expr_id = self.body.thir.exprs.push(Expr {
             kind: ExprKind::VarRef {
@@ -148,7 +151,7 @@ impl<'tcx, 'a> ValueToPlaceDesugarer<'tcx, 'a> {
             ty: arg_expr.ty,
             span: arg_expr.span,
             kind: PatKind::Binding {
-                name: Symbol::intern(&tmp_name),
+                name: tmp_name,
                 mode: hir::BindingMode(hir::ByRef::No, Mutability::Not),
                 var: thir::LocalVarId(hir_id),
                 ty: arg_expr.ty,

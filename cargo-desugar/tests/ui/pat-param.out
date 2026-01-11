@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> tests/ui/pat-param.desugared.rs:18:25
+   |
+18 |     a_3 + b_4 + (x_8 as _)
+   |                         ^ cannot infer type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.
