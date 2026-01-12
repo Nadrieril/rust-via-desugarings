@@ -14,5 +14,7 @@ pub fn check() {
     struct Inner;
     {
         assert_exists::<check::Inner>();
+        assert_exists::<&check::Inner>();
+        assert_exists::<std::boxed::Box<check::Inner>>();
     }
 }
