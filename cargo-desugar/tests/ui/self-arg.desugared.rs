@@ -2,8 +2,10 @@
     allocator_api,
     fmt_arguments_from_str,
     fmt_internals,
+    libstd_sys_internals,
     panic_internals,
     print_internals,
+    rt,
     try_trait_v2
 )]
 #![allow(unused_braces, unused_parens, internal_features)]
@@ -17,7 +19,7 @@ where
 {
     fn clone(&self) -> Self {
         Wrapper::<T> {
-            0: <T as std::clone::Clone>::clone(&*self_2.0),
+            0: <T as std::clone::Clone>::clone(&*self.0),
         }
     }
 }
@@ -26,6 +28,6 @@ where
     T: Clone,
 {
     fn copy(&self) -> Self {
-        <Wrapper<T> as std::clone::Clone>::clone(&*self_2)
+        <Wrapper<T> as std::clone::Clone>::clone(&*self)
     }
 }

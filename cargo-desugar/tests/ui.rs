@@ -13,7 +13,7 @@ use regex::Regex;
 use std::{
     error::Error,
     ffi::OsStr,
-    fs::{self, File},
+    fs::File,
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::Command,
@@ -156,10 +156,12 @@ fn compile_desugared(
     source_path: &Path,
 ) -> anyhow::Result<std::process::Output> {
     let mut cmd = Command::new("rustc");
-    cmd.arg("-Zno-codegen");
-    cmd.arg("--crate-name=test_crate");
-    cmd.arg("--crate-type=rlib");
-    cmd.arg("--allow=unused");
+    cmd.arg("--out-dir")
+        .arg("target/ui-tests-build")
+        .arg("-Zno-codegen")
+        .arg("--crate-name=test_crate")
+        .arg("--crate-type=rlib")
+        .arg("--allow=unused");
     for (crate_name, _, rlib_path) in deps {
         cmd.arg(format!("--extern={crate_name}={rlib_path}"));
     }
@@ -257,9 +259,6 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
         TestKind::Skip => unreachable!(),
     };
 
-    if let Some(parent) = test_case.desugared.parent() {
-        fs::create_dir_all(parent)?;
-    }
     test_output = util::rustfmt_output(&test_output);
     compare_or_overwrite(&test_output, &test_case.desugared)?;
 

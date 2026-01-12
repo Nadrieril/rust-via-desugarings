@@ -2,10 +2,12 @@
     allocator_api,
     fmt_arguments_from_str,
     fmt_internals,
+    libstd_sys_internals,
     panic_internals,
     print_internals,
+    rt,
     try_trait_v2
 )]
 #![allow(unused_braces, unused_parens, internal_features)]
 
-const LIMIT: i32 = { core::num::<impl i32>::MAX - core::num::<impl i32>::MIN };
+const LIMIT: i32 = { <i32>::MAX / 2 - <i32>::MIN / 2 };

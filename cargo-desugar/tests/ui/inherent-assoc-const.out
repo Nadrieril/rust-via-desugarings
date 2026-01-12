@@ -1,78 +1,13 @@
-error[E0425]: cannot find value `MAX` in module `core::num`
-  --> tests/ui/inherent-assoc-const.desugared.rs:11:45
-   |
-11 | const LIMIT: i32 = { core::num::<impl i32>::MAX - core::num::<impl i32>::MIN };
-   |                                             ^^^ not found in `core::num`
-   |
-help: consider importing one of these constants
-   |
-11 + use std::char::MAX;
-   |
-11 + use std::f32::MAX;
-   |
-11 + use std::f64::MAX;
-   |
-11 + use std::i128::MAX;
-   |
-   = and 11 other candidates
-help: if you import `MAX`, refer to it directly
-   |
-11 - const LIMIT: i32 = { core::num::<impl i32>::MAX - core::num::<impl i32>::MIN };
-11 + const LIMIT: i32 = { MAX - core::num::<impl i32>::MIN };
-   |
+#![feature(
+    allocator_api,
+    fmt_arguments_from_str,
+    fmt_internals,
+    libstd_sys_internals,
+    panic_internals,
+    print_internals,
+    rt,
+    try_trait_v2
+)]
+#![allow(unused_braces, unused_parens, internal_features)]
 
-error[E0404]: expected trait, found builtin type `i32`
-  --> tests/ui/inherent-assoc-const.desugared.rs:11:39
-   |
-11 | const LIMIT: i32 = { core::num::<impl i32>::MAX - core::num::<impl i32>::MIN };
-   |                                       ^^^ not a trait
-
-error[E0425]: cannot find value `MIN` in module `core::num`
-  --> tests/ui/inherent-assoc-const.desugared.rs:11:74
-   |
-11 | const LIMIT: i32 = { core::num::<impl i32>::MAX - core::num::<impl i32>::MIN };
-   |                                                                          ^^^ not found in `core::num`
-   |
-help: consider importing one of these constants
-   |
-11 + use std::f32::MIN;
-   |
-11 + use std::f64::MIN;
-   |
-11 + use std::i128::MIN;
-   |
-11 + use std::i16::MIN;
-   |
-   = and 10 other candidates
-help: if you import `MIN`, refer to it directly
-   |
-11 - const LIMIT: i32 = { core::num::<impl i32>::MAX - core::num::<impl i32>::MIN };
-11 + const LIMIT: i32 = { core::num::<impl i32>::MAX - MIN };
-   |
-
-error[E0404]: expected trait, found builtin type `i32`
-  --> tests/ui/inherent-assoc-const.desugared.rs:11:68
-   |
-11 | const LIMIT: i32 = { core::num::<impl i32>::MAX - core::num::<impl i32>::MIN };
-   |                                                                    ^^^ not a trait
-
-error[E0562]: `impl Trait` is not allowed in paths
-  --> tests/ui/inherent-assoc-const.desugared.rs:11:34
-   |
-11 | const LIMIT: i32 = { core::num::<impl i32>::MAX - core::num::<impl i32>::MIN };
-   |                                  ^^^^^^^^
-   |
-   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
-
-error[E0562]: `impl Trait` is not allowed in paths
-  --> tests/ui/inherent-assoc-const.desugared.rs:11:63
-   |
-11 | const LIMIT: i32 = { core::num::<impl i32>::MAX - core::num::<impl i32>::MIN };
-   |                                                               ^^^^^^^^
-   |
-   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
-
-error: aborting due to 6 previous errors
-
-Some errors have detailed explanations: E0404, E0425, E0562.
-For more information about an error, try `rustc --explain E0404`.
+const LIMIT: i32 = { <i32>::MAX / 2 - <i32>::MIN / 2 };

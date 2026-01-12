@@ -10,7 +10,7 @@ use std::{
 use rustc_ast::LitKind;
 use rustc_hir::{
     self as hir, ItemId, ItemKind,
-    def::{CtorKind, Namespace},
+    def::{CtorKind, DefKind, Namespace},
     def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId},
     definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData},
     intravisit::{self, Visitor},
@@ -72,8 +72,10 @@ pub fn print_crate<'tcx>(tcx: TyCtxt<'tcx>) -> String {
             allocator_api,
             fmt_arguments_from_str,
             fmt_internals,
+            libstd_sys_internals,
             panic_internals,
             print_internals,
+            rt,
             try_trait_v2,
         )]\n
         #![allow(
@@ -182,7 +184,11 @@ impl<'tcx> CratePrinter<'tcx> {
             self.tcx.hir_name(hir_id)
         };
         // Disambiguate names by their hir id, to avoid hygiene issues.
-        format!("{name}_{}", hir_id.local_id.as_u32())
+        if name == kw::SelfLower {
+            name.to_string()
+        } else {
+            format!("{name}_{}", hir_id.local_id.as_u32())
+        }
     }
 
     fn ty(&self, ty: Ty<'tcx>) -> String {
@@ -217,15 +223,86 @@ impl<'tcx> CratePrinter<'tcx> {
     }
 
     fn path(&self, def_id: DefId) -> String {
-        self.tcx.value_path_str_with_args(def_id, &[])
+        if let Some(local_def_id) = def_id.as_local()
+            && self.local_parent_is_body(local_def_id)
+        {
+            self.tcx.item_name(local_def_id).to_string()
+        } else {
+            let mut printer = TypePrinter::new(self);
+            match printer.try_print_visible_def_path(def_id) {
+                Ok(true) => printer.finish(),
+                _ => self.tcx.value_path_str_with_args(def_id, &[]),
+            }
+        }
     }
 
     fn path_with_args(&self, def_id: DefId, args: &'tcx [GenericArg<'tcx>]) -> String {
-        let mut printer = TypePrinter::new(self);
-        match printer.try_print_visible_def_path(def_id) {
-            Ok(true) => format!("{}{}", printer.finish(), self.generic_args(args)),
-            _ => self.tcx.value_path_str_with_args(def_id, args),
+        if let Some(path) = self.associated_item_path(def_id, args) {
+            return path;
         }
+        format!("{}{}", self.path(def_id), self.generic_args(args))
+    }
+
+    fn local_parent_is_body(&self, def_id: LocalDefId) -> bool {
+        let mut current = Some(def_id);
+        while let Some(id) = current {
+            if let Some(parent) = self.tcx.opt_local_parent(id) {
+                if matches!(
+                    self.tcx.def_kind(parent),
+                    DefKind::Fn
+                        | DefKind::AssocFn
+                        | DefKind::Closure
+                        | DefKind::InlineConst
+                        | DefKind::Const
+                        | DefKind::Static { .. }
+                ) {
+                    return true;
+                }
+                current = Some(parent);
+            } else {
+                break;
+            }
+        }
+        false
+    }
+
+    fn associated_item_path(
+        &self,
+        def_id: DefId,
+        args: &'tcx [GenericArg<'tcx>],
+    ) -> Option<String> {
+        let assoc = self.tcx.opt_associated_item(def_id)?;
+        let container_def_id = self.tcx.parent(assoc.def_id);
+        let generics = self.tcx.generics_of(def_id);
+        let (container_args, assoc_args) = args.split_at(generics.parent_count);
+        let assoc_args = self.generic_args(assoc_args);
+        let container_path = match assoc.container {
+            AssocContainer::Trait => {
+                let [self_ty, trait_args @ ..] = container_args else {
+                    unreachable!()
+                };
+                let self_ty = self_ty.as_type().unwrap();
+                let self_ty = self.ty(self_ty);
+                let trait_pred = self.path_with_args(container_def_id, trait_args);
+                format!("<{self_ty} as {trait_pred}>",)
+            }
+            AssocContainer::InherentImpl => {
+                let args_ref = self.tcx.mk_args_from_iter(container_args.iter().copied());
+                let self_ty = self
+                    .tcx
+                    .type_of(container_def_id)
+                    .instantiate(self.tcx, args_ref);
+                match self_ty.kind() {
+                    TyKind::Adt(adt_def, args) => self.path_with_args(adt_def.did(), args),
+                    TyKind::Foreign(def_id) => self.path(*def_id),
+                    _ => format!("<{}>", self.ty(self_ty)),
+                }
+            }
+            AssocContainer::TraitImpl(_) => self.path_with_args(container_def_id, container_args),
+        };
+
+        let assoc_name = assoc.name();
+        Some(format!("{container_path}::{assoc_name}{assoc_args}"))
     }
 }
 
@@ -580,7 +657,6 @@ impl<'tcx> PrettyPrinter<'tcx> for TypePrinter<'_, 'tcx> {
 }
 
 struct ThirPrinter<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
     crate_printer: &'a CratePrinter<'tcx>,
     body: &'a Body<'tcx>,
 }
@@ -595,7 +671,6 @@ impl<'tcx> Deref for ThirPrinter<'_, 'tcx> {
 impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
     fn new(crate_printer: &'a CratePrinter<'tcx>, body: &'a Body<'tcx>) -> Self {
         Self {
-            tcx: crate_printer.tcx,
             crate_printer,
             body,
         }
@@ -647,14 +722,16 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 let op_str = self.un_op(*op);
                 format!("{}{}", op_str, self.expr(*arg))
             }
-            thir::ExprKind::Cast { source } => format!("({} as _)", self.expr(*source)),
+            thir::ExprKind::Cast { source } => {
+                format!("({} as {})", self.expr(*source), self.ty(expr.ty))
+            }
             thir::ExprKind::Use { source }
             | thir::ExprKind::NeverToAny { source }
             | thir::ExprKind::PlaceUnwrapUnsafeBinder { source }
             | thir::ExprKind::ValueUnwrapUnsafeBinder { source }
             | thir::ExprKind::WrapUnsafeBinder { source } => self.expr(*source),
             thir::ExprKind::PointerCoercion { source, .. } => {
-                format!("({} as _)", self.expr(*source))
+                format!("({} as {})", self.expr(*source), self.ty(expr.ty))
             }
             thir::ExprKind::Loop { body } => format!("loop {}", self.expr_in_block(*body)),
             thir::ExprKind::LoopMatch { match_data, .. } => self.expr(match_data.scrutinee),
@@ -775,36 +852,8 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             thir::ExprKind::NonHirLiteral { lit, .. } => format!("{lit}"),
             thir::ExprKind::ZstLiteral { .. } => match expr.ty.kind() {
                 &TyKind::FnDef(def_id, args) => {
-                    if let Some(assoc) = self.tcx.opt_associated_item(def_id) {
-                        let container_def_id = self.tcx.parent(assoc.def_id);
-                        let method_generics = self.tcx.generics_of(def_id);
-                        let (container_args, method_args) =
-                            args.split_at(method_generics.parent_count);
-                        let method_name = assoc.name();
-                        let method_args = self.generic_args(method_args);
-                        let container = match assoc.container {
-                            AssocContainer::Trait => {
-                                let [self_ty, trait_args @ ..] = container_args else {
-                                    unreachable!()
-                                };
-                                let self_ty = self.ty(self_ty.as_type().unwrap());
-                                let trait_pred = self.path_with_args(container_def_id, trait_args);
-                                format!("<{self_ty} as {trait_pred}>",)
-                            }
-                            AssocContainer::InherentImpl => {
-                                let args_ref =
-                                    self.tcx.mk_args_from_iter(container_args.iter().copied());
-                                let self_ty = self
-                                    .tcx
-                                    .type_of(container_def_id)
-                                    .instantiate(self.tcx, args_ref);
-                                format!("<{}>", self.ty(self_ty))
-                            }
-                            AssocContainer::TraitImpl(_) => {
-                                self.path_with_args(container_def_id, container_args)
-                            }
-                        };
-                        format!("{container}::{method_name}{method_args}")
+                    if let Some(path) = self.associated_item_path(def_id, args.as_slice()) {
+                        path
                     } else {
                         self.path_with_args(def_id, args)
                     }

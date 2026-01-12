@@ -1,9 +1,22 @@
-error[E0282]: type annotations needed
-  --> tests/ui/pat-param.desugared.rs:19:25
-   |
-19 |     a_3 + b_4 + (x_8 as _)
-   |                         ^ cannot infer type
+#![feature(
+    allocator_api,
+    fmt_arguments_from_str,
+    fmt_internals,
+    libstd_sys_internals,
+    panic_internals,
+    print_internals,
+    rt,
+    try_trait_v2
+)]
+#![allow(unused_braces, unused_parens, internal_features)]
 
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0282`.
+fn foo(
+    (
+        a_3,
+        b_4,
+        std::result::Result::<bool, bool>::Ok { 0: x_8 }
+        | std::result::Result::<bool, bool>::Err { 0: x_8 },
+    ): (u32, u32, Result<bool, bool>),
+) -> u32 {
+    a_3 + b_4 + (x_8 as u32)
+}

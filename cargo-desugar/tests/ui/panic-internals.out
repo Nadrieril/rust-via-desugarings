@@ -1,12 +1,17 @@
-error[E0658]: use of unstable library feature `libstd_sys_internals`: used by the panic! macro
-  --> tests/ui/panic-internals.desugared.rs:13:9
-   |
-13 |         std::rt::begin_panic::<&str>("boom");
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(libstd_sys_internals)]` to the crate attributes to enable
-   = note: this compiler was built on 2025-11-22; consider upgrading it if it is out of date
+#![feature(
+    allocator_api,
+    fmt_arguments_from_str,
+    fmt_internals,
+    libstd_sys_internals,
+    panic_internals,
+    print_internals,
+    rt,
+    try_trait_v2
+)]
+#![allow(unused_braces, unused_parens, internal_features)]
 
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0658`.
+pub fn explode() {
+    {
+        std::rt::begin_panic::<&str>("boom");
+    };
+}

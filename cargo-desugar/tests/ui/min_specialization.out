@@ -1,10 +1,10 @@
 error[E0520]: `from` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> tests/ui/min_specialization.desugared.rs:20:5
+  --> tests/ui/min_specialization.desugared.rs:22:5
    |
-14 | impl<T> MyFrom<T> for () {
+16 | impl<T> MyFrom<T> for () {
    | ------------------------ parent `impl` is here
 ...
-20 |     fn from(_: ()) -> Self {
+22 |     fn from(_: ()) -> Self {
    |     ^^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `from`
    |
    = note: to specialize, `from` in the parent `impl` must be marked `default`

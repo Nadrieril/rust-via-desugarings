@@ -2,8 +2,10 @@
     allocator_api,
     fmt_arguments_from_str,
     fmt_internals,
+    libstd_sys_internals,
     panic_internals,
     print_internals,
+    rt,
     try_trait_v2
 )]
 #![allow(unused_braces, unused_parens, internal_features)]
@@ -44,27 +46,27 @@ fn main() {
         std::io::_print({
             let args_119 = (&a_8, &b_17, &c_25, &d_36, &e_54, &f_71, &g_96, &h_110);
             let args_212 = [
-                <core::fmt::rt::Argument<'_>>::new_debug::<&(std::string::String, i32)>(
+                core::fmt::rt::Argument::<'_>::new_debug::<&(std::string::String, i32)>(
                     &*args_119.0,
                 ),
-                <core::fmt::rt::Argument<'_>>::new_debug::<[(&(std::string::String, i32),); 1]>(
+                core::fmt::rt::Argument::<'_>::new_debug::<[(&(std::string::String, i32),); 1]>(
                     &*args_119.1,
                 ),
-                <core::fmt::rt::Argument<'_>>::new_debug::<&std::string::String>(&*args_119.2),
-                <core::fmt::rt::Argument<'_>>::new_debug::<&str>(&*args_119.3),
-                <core::fmt::rt::Argument<'_>>::new_debug::<&str>(&*args_119.4),
-                <core::fmt::rt::Argument<'_>>::new_debug::<&(std::string::String, i32)>(
+                core::fmt::rt::Argument::<'_>::new_debug::<&std::string::String>(&*args_119.2),
+                core::fmt::rt::Argument::<'_>::new_debug::<&str>(&*args_119.3),
+                core::fmt::rt::Argument::<'_>::new_debug::<&str>(&*args_119.4),
+                core::fmt::rt::Argument::<'_>::new_debug::<&(std::string::String, i32)>(
                     &*args_119.5,
                 ),
-                <core::fmt::rt::Argument<'_>>::new_debug::<&(std::string::String, i32)>(
+                core::fmt::rt::Argument::<'_>::new_debug::<&(std::string::String, i32)>(
                     &*args_119.6,
                 ),
-                <core::fmt::rt::Argument<'_>>::new_debug::<&(std::string::String, i32)>(
+                core::fmt::rt::Argument::<'_>::new_debug::<&(std::string::String, i32)>(
                     &*args_119.7,
                 ),
             ];
             unsafe {
-                <std::fmt::Arguments<'_>>::new::<25, 8>(
+                std::fmt::Arguments::<'_>::new::<25, 8>(
                     &*&[
                         192, 1, 32, 192, 1, 32, 192, 1, 32, 192, 1, 32, 192, 1, 32, 192, 1, 32,
                         192, 1, 32, 192, 1, 10, 0,
