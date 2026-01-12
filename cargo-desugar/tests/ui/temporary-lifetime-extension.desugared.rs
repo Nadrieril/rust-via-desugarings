@@ -29,7 +29,7 @@ fn main() {
         )
     };
     let f_71 = if true { &temp() } else { &*{ &temp() } };
-    let g_96 = match true {
+    let g_96 = match (true) {
         true => &temp(),
         false => {
             &*{
@@ -38,7 +38,7 @@ fn main() {
             }
         }
     };
-    let h_110 = match temp() {
+    let h_110 = match (temp()) {
         owned_non_temporary_102 => &{ owned_non_temporary_102 },
     };
     {

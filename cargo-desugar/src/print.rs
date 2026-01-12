@@ -744,7 +744,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             thir::ExprKind::Match {
                 scrutinee, arms, ..
             } => {
-                let mut s = format!("match {} {{\n", self.expr(*scrutinee));
+                let mut s = format!("match ({}) {{\n", self.expr(*scrutinee));
                 for arm_id in arms.iter() {
                     s.push_str(&self.arm(*arm_id));
                 }

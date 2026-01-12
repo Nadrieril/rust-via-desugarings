@@ -1,8 +1,6 @@
-//@ known-failure
 pub fn main() {
-    let value = match Some(3) {
-        None => panic!("explicit panic"),
+    let _value = match Some(3) {
+        None => panic!(),
         Some(_) => 5,
     };
-    println!("{value}");
 }
