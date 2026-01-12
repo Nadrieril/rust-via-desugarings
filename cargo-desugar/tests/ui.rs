@@ -259,7 +259,6 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
         TestKind::Skip => unreachable!(),
     };
 
-    test_output = util::rustfmt_output(&test_output);
     compare_or_overwrite(&test_output, &test_case.desugared)?;
 
     let compile_output = if output.status.success() {

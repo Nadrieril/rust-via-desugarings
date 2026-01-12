@@ -1,12 +1,12 @@
 error: items in `extern` blocks without an `unsafe` qualifier cannot have safety qualifiers
-  --> tests/ui/extern-safety.desugared.rs:14:5
+  --> tests/ui/extern-safety.desugared.rs:13:5
    |
-14 |     unsafe fn ffi();
+13 |     unsafe fn ffi();
    |     ^^^^^^^^^^^^^^^^
    |
 help: add `unsafe` to this `extern` block
    |
-13 | unsafe extern "C" {
+12 | unsafe extern "C" {
    | ++++++
 
 error: aborting due to 1 previous error

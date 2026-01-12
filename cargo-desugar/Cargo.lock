@@ -103,12 +103,14 @@ dependencies = [
  "indoc",
  "itertools",
  "libtest-mimic",
+ "prettyplease",
  "regex",
  "rustc_version",
  "serde",
  "serde_json",
  "snapbox",
  "strip-ansi-escapes",
+ "syn",
  "walkdir",
 ]
 
@@ -273,6 +275,16 @@ checksum = "72dd2d6d381dfb73a193c7fca536518d7caee39fc8503f74e7dc0be0531b425c"
 dependencies = [
  "predicates-core",
  "termtree",
+]
+
+[[package]]
+name = "prettyplease"
+version = "0.2.37"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "479ca8adacdd7ce8f1fb39ce9ecccbfe93a3f1344b3d0d97f20bc0196208f62b"
+dependencies = [
+ "proc-macro2",
+ "syn",
 ]
 
 [[package]]

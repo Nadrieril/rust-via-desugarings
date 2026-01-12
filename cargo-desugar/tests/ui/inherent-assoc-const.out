@@ -6,8 +6,7 @@
     panic_internals,
     print_internals,
     rt,
-    try_trait_v2
+    try_trait_v2,
 )]
 #![allow(unused_braces, unused_parens, internal_features)]
-
 const LIMIT: i32 = { <i32>::MAX / 2 - <i32>::MIN / 2 };

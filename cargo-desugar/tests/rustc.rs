@@ -248,9 +248,7 @@ fn run_desugar(
     let output = cmd
         .output()
         .with_context(|| format!("error running: {cmd:?}"))?;
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stdout = util::rustfmt_output(&stdout);
-    fs::write(desugared, stdout)?;
+    fs::write(desugared, &output.stdout)?;
     Ok((output.status, output.stdout, output.stderr))
 }
 

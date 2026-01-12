@@ -1,7 +1,7 @@
 error[E0603]: module `rt` is private
-  --> tests/ui/temporary-lifetime-extension.desugared.rs:49:28
+  --> tests/ui/temporary-lifetime-extension.desugared.rs:48:28
    |
-49 |                 core::fmt::rt::Argument::<'_>::new_debug::<&(std::string::String, i32)>(
+48 |                 core::fmt::rt::Argument::<
    |                            ^^  -------- struct `Argument` is not publicly re-exported
    |                            |
    |                            private module
@@ -13,9 +13,9 @@ note: the module `rt` is defined here
    | ^^^^^^
 
 error[E0603]: module `rt` is private
-  --> tests/ui/temporary-lifetime-extension.desugared.rs:52:28
+  --> tests/ui/temporary-lifetime-extension.desugared.rs:51:28
    |
-52 |                 core::fmt::rt::Argument::<'_>::new_debug::<[(&(std::string::String, i32),); 1]>(
+51 |                 core::fmt::rt::Argument::<
    |                            ^^  -------- struct `Argument` is not publicly re-exported
    |                            |
    |                            private module
@@ -27,23 +27,9 @@ note: the module `rt` is defined here
    | ^^^^^^
 
 error[E0603]: module `rt` is private
-  --> tests/ui/temporary-lifetime-extension.desugared.rs:55:28
+  --> tests/ui/temporary-lifetime-extension.desugared.rs:54:28
    |
-55 |                 core::fmt::rt::Argument::<'_>::new_debug::<&std::string::String>(&*args_119.2),
-   |                            ^^  -------- struct `Argument` is not publicly re-exported
-   |                            |
-   |                            private module
-   |
-note: the module `rt` is defined here
-  --> /nix/store/rx2q4p2asilmyw4qrdx5fi317crrhgpz-rust-default-1.93.0-nightly-2025-11-23/lib/rustlib/src/rust/library/core/src/fmt/mod.rs:21:1
-   |
-21 | mod rt;
-   | ^^^^^^
-
-error[E0603]: module `rt` is private
-  --> tests/ui/temporary-lifetime-extension.desugared.rs:56:28
-   |
-56 |                 core::fmt::rt::Argument::<'_>::new_debug::<&str>(&*args_119.3),
+54 |                 core::fmt::rt::Argument::<
    |                            ^^  -------- struct `Argument` is not publicly re-exported
    |                            |
    |                            private module
@@ -57,7 +43,7 @@ note: the module `rt` is defined here
 error[E0603]: module `rt` is private
   --> tests/ui/temporary-lifetime-extension.desugared.rs:57:28
    |
-57 |                 core::fmt::rt::Argument::<'_>::new_debug::<&str>(&*args_119.4),
+57 |                 core::fmt::rt::Argument::<'_>::new_debug::<&str>(&*args_119.3),
    |                            ^^  -------- struct `Argument` is not publicly re-exported
    |                            |
    |                            private module
@@ -71,7 +57,7 @@ note: the module `rt` is defined here
 error[E0603]: module `rt` is private
   --> tests/ui/temporary-lifetime-extension.desugared.rs:58:28
    |
-58 |                 core::fmt::rt::Argument::<'_>::new_debug::<&(std::string::String, i32)>(
+58 |                 core::fmt::rt::Argument::<'_>::new_debug::<&str>(&*args_119.4),
    |                            ^^  -------- struct `Argument` is not publicly re-exported
    |                            |
    |                            private module
@@ -83,9 +69,9 @@ note: the module `rt` is defined here
    | ^^^^^^
 
 error[E0603]: module `rt` is private
-  --> tests/ui/temporary-lifetime-extension.desugared.rs:61:28
+  --> tests/ui/temporary-lifetime-extension.desugared.rs:59:28
    |
-61 |                 core::fmt::rt::Argument::<'_>::new_debug::<&(std::string::String, i32)>(
+59 |                 core::fmt::rt::Argument::<
    |                            ^^  -------- struct `Argument` is not publicly re-exported
    |                            |
    |                            private module
@@ -97,9 +83,23 @@ note: the module `rt` is defined here
    | ^^^^^^
 
 error[E0603]: module `rt` is private
-  --> tests/ui/temporary-lifetime-extension.desugared.rs:64:28
+  --> tests/ui/temporary-lifetime-extension.desugared.rs:62:28
    |
-64 |                 core::fmt::rt::Argument::<'_>::new_debug::<&(std::string::String, i32)>(
+62 |                 core::fmt::rt::Argument::<
+   |                            ^^  -------- struct `Argument` is not publicly re-exported
+   |                            |
+   |                            private module
+   |
+note: the module `rt` is defined here
+  --> /nix/store/rx2q4p2asilmyw4qrdx5fi317crrhgpz-rust-default-1.93.0-nightly-2025-11-23/lib/rustlib/src/rust/library/core/src/fmt/mod.rs:21:1
+   |
+21 | mod rt;
+   | ^^^^^^
+
+error[E0603]: module `rt` is private
+  --> tests/ui/temporary-lifetime-extension.desugared.rs:65:28
+   |
+65 |                 core::fmt::rt::Argument::<
    |                            ^^  -------- struct `Argument` is not publicly re-exported
    |                            |
    |                            private module
@@ -111,42 +111,42 @@ note: the module `rt` is defined here
    | ^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
-  --> tests/ui/temporary-lifetime-extension.desugared.rs:24:10
+  --> tests/ui/temporary-lifetime-extension.desugared.rs:21:16
    |
-24 |         &temp().0,
-   |          ^^^^^^ creates a temporary value which is freed while still in use
-25 |         std::ops::RangeFull {},
-26 |     );
-   |      - temporary value is freed at the end of this statement
+21 |     >>::index(&temp().0, std::ops::RangeFull {});
+   |                ^^^^^^                           - temporary value is freed at the end of this statement
+   |                |
+   |                creates a temporary value which is freed while still in use
 ...
-47 |             let args_119 = (&a_8, &b_17, &c_25, &d_36, &e_54, &f_71, &g_96, &h_110);
+46 |             let args_119 = (&a_8, &b_17, &c_25, &d_36, &e_54, &f_71, &g_96, &h_110);
    |                                                 ----- borrow later used here
    |
 help: consider using a `let` binding to create a longer lived value
    |
-23 ~     let binding = temp();
-24 ~     let d_36 = &*<std::string::String as std::ops::Index<std::ops::RangeFull>>::index(
-25 ~         &binding.0,
+19 ~     let binding = temp();
+20 ~     let d_36 = &*<std::string::String as std::ops::Index<
+21 |         std::ops::RangeFull,
+22 ~     >>::index(&binding.0, std::ops::RangeFull {});
    |
 
 error[E0716]: temporary value dropped while borrowed
-  --> tests/ui/temporary-lifetime-extension.desugared.rs:30:64
+  --> tests/ui/temporary-lifetime-extension.desugared.rs:27:64
    |
-30 |             &*<std::string::String as std::ops::Deref>::deref(&temp().0),
+27 |             &*<std::string::String as std::ops::Deref>::deref(&temp().0),
    |                                                                ^^^^^^ creates a temporary value which is freed while still in use
 ...
-33 |     };
+30 |     };
    |      - temporary value is freed at the end of this statement
 ...
-47 |             let args_119 = (&a_8, &b_17, &c_25, &d_36, &e_54, &f_71, &g_96, &h_110);
+46 |             let args_119 = (&a_8, &b_17, &c_25, &d_36, &e_54, &f_71, &g_96, &h_110);
    |                                                        ----- borrow later used here
    |
    = note: consider using a `let` binding to create a longer lived value
 
 error[E0716]: temporary value dropped while borrowed
-  --> tests/ui/temporary-lifetime-extension.desugared.rs:34:48
+  --> tests/ui/temporary-lifetime-extension.desugared.rs:31:48
    |
-34 |     let f_71 = if true { &temp() } else { &*{ &temp() } };
+31 |     let f_71 = if true { &temp() } else { &*{ &temp() } };
    |         ----                                   ^^^^^^   - temporary value is freed at the end of this statement
    |         |                                      |
    |         borrow later stored here               creates a temporary value which is freed while still in use
@@ -154,31 +154,32 @@ error[E0716]: temporary value dropped while borrowed
    = note: consider using a `let` binding to create a longer lived value
 
 error[E0716]: temporary value dropped while borrowed
-  --> tests/ui/temporary-lifetime-extension.desugared.rs:39:14
+  --> tests/ui/temporary-lifetime-extension.desugared.rs:37:18
    |
-35 |     let g_96 = match true {
+32 |     let g_96 = match true {
    |         ---- borrow later stored here
 ...
-39 |             &temp()
-   |              ^^^^^^ creates a temporary value which is freed while still in use
-40 |         },
+37 |                 &temp()
+   |                  ^^^^^^ creates a temporary value which is freed while still in use
+38 |             }
+39 |         }
    |         - temporary value is freed at the end of this statement
    |
    = note: consider using a `let` binding to create a longer lived value
 
 error[E0597]: `args_212` does not live long enough
-  --> tests/ui/temporary-lifetime-extension.desugared.rs:74:23
+  --> tests/ui/temporary-lifetime-extension.desugared.rs:80:23
    |
-46 |         std::io::_print({
+45 |         std::io::_print({
    |         --------------- borrow later used by call
-47 |             let args_119 = (&a_8, &b_17, &c_25, &d_36, &e_54, &f_71, &g_96, &h_110);
-48 |             let args_212 = [
+46 |             let args_119 = (&a_8, &b_17, &c_25, &d_36, &e_54, &f_71, &g_96, &h_110);
+47 |             let args_212 = [
    |                 -------- binding `args_212` declared here
 ...
-74 |                     &*&args_212,
+80 |                     &*&args_212,
    |                       ^^^^^^^^^ borrowed value does not live long enough
 ...
-77 |         });
+83 |         });
    |         - `args_212` dropped here while still borrowed
 
 error: aborting due to 13 previous errors

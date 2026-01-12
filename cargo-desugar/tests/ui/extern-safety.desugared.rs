@@ -6,10 +6,9 @@
     panic_internals,
     print_internals,
     rt,
-    try_trait_v2
+    try_trait_v2,
 )]
 #![allow(unused_braces, unused_parens, internal_features)]
-
 extern "C" {
     unsafe fn ffi();
 }

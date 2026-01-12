@@ -86,7 +86,10 @@ pub fn print_crate<'tcx>(tcx: TyCtxt<'tcx>) -> String {
         ",
     );
 
-    output
+    match syn::parse_file(&output) {
+        Ok(file) => prettyplease::unparse(&file),
+        Err(_) => output,
+    }
 }
 
 #[derive(Clone)]
