@@ -78,24 +78,62 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
     }
 
     fn expr(&mut self, id: thir::ExprId) -> String {
+        /// Macro to pattern-match on expressions.
+        macro_rules! e {
+            (if #$cond:ident { #$then:ident } else { #$else:ident }) => {
+                thir::ExprKind::If {
+                    cond: $cond,
+                    then: $then,
+                    else_opt: Some($else),
+                    ..
+                }
+            };
+            (if #$cond:ident { #$then:ident }) => {
+                thir::ExprKind::If {
+                    cond: $cond,
+                    then: $then,
+                    else_opt: None,
+                    ..
+                }
+            };
+            (#$fun:ident ( #$args:ident.. )) => {
+                thir::ExprKind::Call {
+                    fun: $fun,
+                    args: $args,
+                    ..
+                }
+            };
+            (#$lhs:ident && #$rhs:ident) => {
+                thir::ExprKind::LogicalOp {
+                    op: thir::LogicalOp::And,
+                    lhs: $lhs,
+                    rhs: $rhs,
+                }
+            };
+            (#$lhs:ident || #$rhs:ident) => {
+                thir::ExprKind::LogicalOp {
+                    op: thir::LogicalOp::Or,
+                    lhs: $lhs,
+                    rhs: $rhs,
+                }
+            };
+        }
         let expr = &self.thir().exprs[id];
         match &expr.kind {
             thir::ExprKind::Scope { value, .. } => self.expr(*value),
             thir::ExprKind::Box { value } => format!("Box::new({})", self.expr(*value)),
-            thir::ExprKind::If {
-                cond,
-                then,
-                else_opt,
-                ..
-            } => {
-                let mut s = format!("if {} {}", self.expr(*cond), self.expr_in_block(*then));
-                if let Some(e) = else_opt {
-                    s.push_str(" else ");
-                    s.push_str(&self.expr_in_block(*e));
-                }
-                s
+            e!(if #cond { #then } else { #els }) => {
+                format!(
+                    "if {} {} else {}",
+                    self.expr(*cond),
+                    self.expr_in_block(*then),
+                    self.expr_in_block(*els)
+                )
             }
-            thir::ExprKind::Call { fun, args, .. } => {
+            e!(if #cond { #then }) => {
+                format!("if {} {}", self.expr(*cond), self.expr_in_block(*then))
+            }
+            e!(#fun( #args.. )) => {
                 let fun = self.expr(*fun);
                 let args = args.iter().map(|arg| self.expr(*arg)).format(", ");
                 format!("{}({})", fun, args)
@@ -108,12 +146,11 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 let op_str = self.bin_op(*op);
                 format!("{} {} {}", self.expr(*lhs), op_str, self.expr(*rhs))
             }
-            thir::ExprKind::LogicalOp { op, lhs, rhs } => {
-                let op_str = match op {
-                    thir::LogicalOp::And => "&&",
-                    thir::LogicalOp::Or => "||",
-                };
-                format!("{} {} {}", self.expr(*lhs), op_str, self.expr(*rhs))
+            e!(#lhs && #rhs) => {
+                format!("{} && {}", self.expr(*lhs), self.expr(*rhs))
+            }
+            e!(#lhs || #rhs) => {
+                format!("{} || {}", self.expr(*lhs), self.expr(*rhs))
             }
             thir::ExprKind::Unary { op, arg } => {
                 let op_str = self.un_op(*op);
