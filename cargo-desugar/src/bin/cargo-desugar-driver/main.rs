@@ -5,15 +5,19 @@ use core::fmt;
 use std::env;
 
 use anyhow::{Result, bail};
-use rust_via_desugarings::{
-    options::{CliOpts, DESUGAR_ARGS_ENV},
-    print::print_crate,
-    util::arg_value,
-};
+use rust_via_desugarings::print::print_crate;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{Config, interface::Compiler};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OutputType, OutputTypes};
+
+use options::{CliOpts, DESUGAR_ARGS_ENV};
+use util::arg_value;
+
+#[path = "../../options.rs"]
+mod options;
+#[path = "../../util.rs"]
+mod util;
 
 extern crate rustc_driver;
 extern crate rustc_hir;

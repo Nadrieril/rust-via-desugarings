@@ -103,14 +103,13 @@ dependencies = [
  "indoc",
  "itertools",
  "libtest-mimic",
- "prettyplease",
  "regex",
+ "rust-via-desugarings",
  "rustc_version",
  "serde",
  "serde_json",
  "snapbox",
  "strip-ansi-escapes",
- "syn",
  "walkdir",
 ]
 
@@ -333,6 +332,15 @@ name = "regex-syntax"
 version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
+
+[[package]]
+name = "rust-via-desugarings"
+version = "0.1.0"
+dependencies = [
+ "itertools",
+ "prettyplease",
+ "syn",
+]
 
 [[package]]
 name = "rustc_version"

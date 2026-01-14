@@ -1,5 +1,5 @@
 serve:
-    cd book && mdbook serve
+    cd src && mdbook serve
 
 build:
     cd cargo-desugar && cargo build

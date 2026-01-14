@@ -3,10 +3,10 @@ title = "Rust via Desugarings"
 description = "A book that explains the meaning of a Rust program via successive desugarings"
 authors = ["Nadrieril"]
 language = "en"
-src = "src"
+src = "book"
 
 [build]
-build-dir = "build"
+build-dir = ".book-build"
 
 [output.html]
 git-repository-url = "https://github.com/Nadrieril/rust-via-desugarings"

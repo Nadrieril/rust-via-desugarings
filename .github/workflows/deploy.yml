@@ -34,12 +34,12 @@ jobs:
           rev: 2fb722cd5df25a0d7d5d250910dd0bbc428e61e5
 
       - name: Build book
-        run: cd book && mdbook build
+        run: cd src && mdbook build
 
       - name: Upload built book
         uses: actions/upload-pages-artifact@v3
         with:
-          path: book/build/html
+          path: src/.book-build/html
 
   deploy:
     needs: build

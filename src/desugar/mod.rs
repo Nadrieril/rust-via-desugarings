@@ -7,8 +7,8 @@ use rustc_middle::{
 };
 use rustc_span::Symbol;
 
-#[path = "../../../book/src/pipeline/value-to-place.md.rs"]
-mod temporaries;
+#[path = "../book/pipeline/value-to-place.md.rs"]
+pub mod temporaries;
 
 pub struct Body<'tcx> {
     pub def_id: LocalDefId,
@@ -50,7 +50,7 @@ impl<'tcx> Body<'tcx> {
         self.synthetic_local_names.insert(id, name);
     }
 
-    fn new_hir_id(&mut self) -> hir::HirId {
+    pub fn new_hir_id(&mut self) -> hir::HirId {
         let local_id = self.next_local_id;
         self.next_local_id = hir::ItemLocalId::from_u32(self.next_local_id.as_u32() + 1);
         hir::HirId {
