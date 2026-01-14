@@ -1,21 +1,20 @@
-error[E0433]: failed to resolve: function `check` is not a crate or module
-  --> tests/ui/local-type-path.desugared.rs:16:25
-   |
-16 |         assert_exists::<check::Inner>();
-   |                         ^^^^^ function `check` is not a crate or module
-
-error[E0433]: failed to resolve: function `check` is not a crate or module
-  --> tests/ui/local-type-path.desugared.rs:17:26
-   |
-17 |         assert_exists::<&check::Inner>();
-   |                          ^^^^^ function `check` is not a crate or module
-
-error[E0433]: failed to resolve: function `check` is not a crate or module
-  --> tests/ui/local-type-path.desugared.rs:18:41
-   |
-18 |         assert_exists::<std::boxed::Box<check::Inner>>();
-   |                                         ^^^^^ function `check` is not a crate or module
-
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0433`.
+#![feature(
+    allocator_api,
+    fmt_arguments_from_str,
+    fmt_internals,
+    libstd_sys_internals,
+    panic_internals,
+    print_internals,
+    rt,
+    try_trait_v2,
+)]
+#![allow(unused_braces, unused_parens, internal_features)]
+fn assert_exists<T>() {}
+pub fn check() {
+    struct Inner;
+    {
+        assert_exists::<Inner>();
+        assert_exists::<&Inner>();
+        assert_exists::<std::boxed::Box<Inner>>();
+    }
+}
