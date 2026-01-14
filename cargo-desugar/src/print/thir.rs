@@ -117,10 +117,10 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             }
             thir::ExprKind::Unary { op, arg } => {
                 let op_str = self.un_op(*op);
-                format!("{}{}", op_str, self.expr(*arg))
+                format!("{}({})", op_str, self.expr(*arg))
             }
             thir::ExprKind::Cast { source } => {
-                format!("({} as {})", self.expr(*source), self.ty(expr.ty))
+                format!("(({}) as {})", self.expr(*source), self.ty(expr.ty))
             }
             thir::ExprKind::Use { source }
             | thir::ExprKind::NeverToAny { source }
@@ -475,11 +475,18 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             LitKind::ByteStr(ref bytes, _) => format!("&{:?}", bytes),
             LitKind::CStr(_, _) => "c\"...\"".to_string(),
             LitKind::Byte(b) => format!("{b}u8"),
-            LitKind::Char(c) => format!("{:?}", c),
-            LitKind::Int(n, _) => format!("{n}"),
+            LitKind::Char(c) => format!("{c:?}"),
+            LitKind::Int(n, ty) => {
+                let ty = match ty {
+                    rustc_ast::LitIntType::Signed(int_ty) => int_ty.name_str(),
+                    rustc_ast::LitIntType::Unsigned(uint_ty) => uint_ty.name_str(),
+                    rustc_ast::LitIntType::Unsuffixed => "",
+                };
+                format!("{n}{ty}")
+            }
             LitKind::Float(sym, _) => sym.to_string(),
             LitKind::Bool(b) => b.to_string(),
-            LitKind::Err(_) => "<lit error>".to_string(),
+            LitKind::Err(_) => "'<lit error>'".to_string(),
         }
     }
 
