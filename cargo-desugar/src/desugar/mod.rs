@@ -7,6 +7,7 @@ use rustc_middle::{
 };
 use rustc_span::Symbol;
 
+#[path = "../../../book/src/pipeline/value-to-place.md.rs"]
 mod temporaries;
 
 pub struct Body<'tcx> {

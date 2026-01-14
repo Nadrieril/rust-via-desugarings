@@ -23,3 +23,7 @@ warning-policy = "error"
 
 [preprocessor.backlinks]
 optional = true
+
+[preprocessor.literate-rust]
+before = [ "links" ]
+command = "python3 ./preprocessors/literate_rust.py"

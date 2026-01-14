@@ -17,7 +17,7 @@
       <!-- TODO: Index/IndexMut works the same as this -->
     - [Match Ergonomics](pipeline/match-ergonomics.md)
   - [Expression Unnesting](pipeline/expr-unnesting.md)
-    - [Temporaries and Lifetime Extension](pipeline/value-to-place.md)
+    - [Temporaries and Lifetime Extension](pipeline/value-to-place.md.rs)
     - [Intermediate Subexpression Elimination](pipeline/subexpr-elim.md)
     - [Bound Checks](pipeline/bound-checks.md)
     - [Overflow Checks](pipeline/overflow-checks.md)
