@@ -111,7 +111,7 @@
 //@
 //@ ## Implementation
 //@
-//@ This is a PoC implementation of a pass over the AST.
+//@ This is a completely fake PoC implementation, as a placeholder to try out my test harness.
 //! Entirely silly PoC desugaring pass.
 use crate::Body; //#
 use rustc_ast::Mutability; //#
@@ -119,7 +119,7 @@ use rustc_hir::{self as hir}; //#
 use rustc_middle::middle::region::{self, ScopeData}; //#
 use rustc_middle::thir::{self, Expr, ExprKind, Pat, PatKind, Stmt, StmtKind}; //#
 use rustc_span::Symbol; //#
-                        //#
+
 pub struct ValueToPlaceDesugarer<'tcx, 'a> {
     body: &'a mut Body<'tcx>,
 }
