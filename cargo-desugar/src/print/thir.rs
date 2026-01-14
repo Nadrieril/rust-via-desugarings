@@ -1,11 +1,12 @@
 use itertools::Itertools;
+use rustc_span::kw;
 use std::ops::Deref;
 
 use rustc_ast::LitKind;
 use rustc_hir::{self as hir, def::CtorKind};
 use rustc_middle::{
     mir::{AssignOp, BinOp, BorrowKind, FakeBorrowKind, UnOp},
-    thir::{self, BlockSafety, PatKind, Thir},
+    thir::{self, BlockSafety, LocalVarId, PatKind, Thir},
     ty::{TyKind, VariantDef},
 };
 
@@ -59,6 +60,21 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             .collect::<Vec<_>>();
         let body = self.expr_in_block(self.body.root_expr);
         Some(PrintedBody { params, body })
+    }
+
+    fn local_name(&self, id: LocalVarId) -> String {
+        let hir_id = id.0;
+        let name = if let Some(name) = self.body.synthetic_local_names.get(&hir_id).copied() {
+            name
+        } else {
+            self.tcx.hir_name(hir_id)
+        };
+        // Disambiguate names by their hir id, to avoid hygiene issues.
+        if name == kw::SelfLower {
+            name.to_string()
+        } else {
+            format!("{name}_{}", hir_id.local_id.as_u32())
+        }
     }
 
     fn expr(&mut self, id: thir::ExprId) -> String {

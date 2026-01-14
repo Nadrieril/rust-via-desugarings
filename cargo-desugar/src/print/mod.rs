@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap};
 
 use rustc_hir::{
     self as hir, ItemId, ItemKind,
@@ -8,17 +8,11 @@ use rustc_hir::{
     intravisit::{self, Visitor},
 };
 use rustc_hir_pretty::{AnnNode, Nested, PpAnn, State};
-use rustc_middle::{
-    thir::LocalVarId,
-    ty::{
-        self, AssocContainer, GenericArg, GenericArgKind, Ty, TyCtxt, TyKind,
-        print::{PrettyPrinter, Print},
-    },
+use rustc_middle::ty::{
+    self, AssocContainer, GenericArg, GenericArgKind, Ty, TyCtxt, TyKind,
+    print::{PrettyPrinter, Print},
 };
-use rustc_span::{
-    FileName,
-    symbol::{Symbol, kw},
-};
+use rustc_span::FileName;
 use std::marker::PhantomData;
 
 use crate::desugar::{Body, desugar_thir};
@@ -88,7 +82,6 @@ pub fn print_crate<'tcx>(tcx: TyCtxt<'tcx>) -> String {
 
 pub(crate) struct CratePrinter<'tcx> {
     tcx: TyCtxt<'tcx>,
-    synthetic_local_names: Rc<RefCell<HashMap<hir::HirId, Symbol>>>,
     printed_bodies: RefCell<HashMap<LocalDefId, PrintedBody>>,
 }
 
@@ -96,7 +89,6 @@ impl<'tcx> CratePrinter<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> Self {
         Self {
             tcx,
-            synthetic_local_names: Default::default(),
             printed_bodies: Default::default(),
         }
     }
@@ -127,13 +119,7 @@ impl<'tcx> CratePrinter<'tcx> {
         let Ok((thir, root)) = self.tcx.thir_body(def_id) else {
             return None;
         };
-        let mut body = Body::new(
-            self.tcx,
-            def_id,
-            thir.steal(),
-            root,
-            self.synthetic_local_names.clone(),
-        );
+        let mut body = Body::new(self.tcx, def_id, thir.steal(), root);
         desugar_thir(self.tcx, &mut body);
         let printed = ThirPrinter::new(self, &body).into_printed_body()?;
         self.printed_bodies
@@ -151,21 +137,6 @@ impl<'tcx> CratePrinter<'tcx> {
         let def_id = self.tcx.hir_body_owner_def_id(body_id);
         self.printed_body(def_id)
             .and_then(|body| body.params.get(index).cloned())
-    }
-
-    fn local_name(&self, id: LocalVarId) -> String {
-        let hir_id = id.0;
-        let name = if let Some(name) = self.synthetic_local_names.borrow().get(&hir_id).copied() {
-            name
-        } else {
-            self.tcx.hir_name(hir_id)
-        };
-        // Disambiguate names by their hir id, to avoid hygiene issues.
-        if name == kw::SelfLower {
-            name.to_string()
-        } else {
-            format!("{name}_{}", hir_id.local_id.as_u32())
-        }
     }
 
     fn ty(&self, ty: Ty<'tcx>) -> String {
