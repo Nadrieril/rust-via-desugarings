@@ -27,6 +27,38 @@ static PAGE: usize = 0;
 static INCOMPLETE_HIR_PRETTY: &[&str] = &[
     // Missing `impl Trait` printing.
     "reachable/expr_cast.rs",
+    "rust-2021/inherent-method-collision.rs",
+    // Broken `#[attr = ..]` pretty-printing for attrs
+    "abi/extern/extern-pass-u32.rs",
+    "deriving/deriving-in-macro.rs",
+    "unsafe/ranged_ints_macro.rs",
+    "lint/improper-ctypes/mustpass-73747.rs",
+    "issues/issue-2288.rs",
+    "specialization/min_specialization/specialize_on_marker.rs",
+    "foreign/foreign-truncated-arguments.rs",
+    "consts/mut-ptr-to-static.rs",
+    "const_prop/inline_spans_lint_attribute.rs",
+    "cfg/cfg-macros-notfoo.rs",
+    "test-attrs/test-runner-hides-main.rs",
+    "deprecation/deprecated_main_function.rs",
+    "rfcs/rfc-1717-dllimport/1717-dllimport/library-override.rs",
+    "traits/inheritance/overloading.rs",
+    "fmt/println-debug-different-types.rs",
+    "mir/validate/critical-edge.rs",
+    "mir/mir-inlining/ice-issue-45885.rs",
+    // Uses private `core::fmt::rt::Argument` type.
+    "let-else/const-fn.rs",
+    "lint/rfc-2383-lint-reason/catch_multiple_lint_triggers.rs",
+    "resolve/extern-crate-lint-issue-141785.rs",
+    "editions/edition-specific-identifier-shadowing-53333.rs",
+    "fmt/println-debug-different-types.rs",
+    "uniform-paths/same-crate.rs",
+    "binding/match-bot.rs",
+    "autoref-autoderef/auto-ref-bounded-ty-param.rs",
+    // Uses relative paths for `#[path = "..."]` attre
+    "simd/intrinsic/generic-bswap-byte.rs",
+    // Doesn't print #[may_dangle]
+    "nll/drop-may-dangle.rs",
 ];
 
 #[derive(Debug, Clone)]

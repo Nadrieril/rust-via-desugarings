@@ -17,5 +17,5 @@ fn foo(
         | std::result::Result::<bool, bool>::Err { 0: x_8 },
     ): (u32, u32, Result<bool, bool>),
 ) -> u32 {
-    a_3 + b_4 + (x_8 as u32)
+    a_3 + b_4 + ((x_8) as u32)
 }

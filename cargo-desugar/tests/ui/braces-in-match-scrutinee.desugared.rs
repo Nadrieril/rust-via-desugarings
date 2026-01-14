@@ -14,7 +14,7 @@ pub fn main() {
         0: 3,
     }) {
         std::option::Option::<i32>::None => {
-            std::rt::begin_panic::<&str>("explicit panic")
+            ((std::rt::begin_panic::<&str>("explicit panic")) as i32)
         }
         std::option::Option::<i32>::Some { 0: _ } => 5,
     };

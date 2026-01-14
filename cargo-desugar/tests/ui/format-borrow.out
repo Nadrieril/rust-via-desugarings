@@ -1,7 +1,7 @@
 error[E0603]: module `rt` is private
   --> tests/ui/format-borrow.desugared.rs:17:28
    |
-17 |                 core::fmt::rt::Argument::<'_>::new_display::<i32>(&*args_12.0),
+17 |                 core::fmt::rt::Argument::<'_>::new_display::<i32>(&(*(args_12).0)),
    |                            ^^  -------- struct `Argument` is not publicly re-exported
    |                            |
    |                            private module
@@ -13,18 +13,18 @@ note: the module `rt` is defined here
    | ^^^^^^
 
 error[E0597]: `args_28` does not live long enough
-  --> tests/ui/format-borrow.desugared.rs:20:78
+  --> tests/ui/format-borrow.desugared.rs:22:57
    |
 14 |         std::io::_print({
    |         --------------- borrow later used by call
-15 |             let args_12 = (&v_2,);
+15 |             let args_12 = (&(v_2),);
 16 |             let args_28 = [
    |                 ------- binding `args_28` declared here
 ...
-20 |                 std::fmt::Arguments::<'_>::new::<4, 1>(&*&[192, 1, 10, 0], &*&args_28)
-   |                                                                              ^^^^^^^^ borrowed value does not live long enough
-21 |             }
-22 |         });
+22 |                 >::new::<4, 1>(&(*&[192, 1, 10, 0]), &(*&(args_28)))
+   |                                                         ^^^^^^^^^^ borrowed value does not live long enough
+23 |             }
+24 |         });
    |         - `args_28` dropped here while still borrowed
 
 error: aborting due to 2 previous errors

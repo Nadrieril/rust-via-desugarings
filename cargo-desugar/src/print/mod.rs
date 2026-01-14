@@ -4,7 +4,7 @@ use std::{cell::RefCell, collections::HashMap};
 use rustc_hir::{
     self as hir, ItemId, ItemKind,
     def::DefKind,
-    def_id::{DefId, LocalDefId},
+    def_id::{DefId, LOCAL_CRATE, LocalDefId},
     intravisit::{self, Visitor},
 };
 use rustc_hir_pretty::{AnnNode, Nested, PpAnn, State};
@@ -12,7 +12,6 @@ use rustc_middle::ty::{
     self, AssocContainer, GenericArg, GenericArgKind, Ty, TyCtxt, TyKind,
     print::{PrettyPrinter, Print},
 };
-use rustc_span::FileName;
 use std::marker::PhantomData;
 
 use crate::desugar::{Body, desugar_thir};
@@ -44,10 +43,12 @@ pub fn print_crate<'tcx>(tcx: TyCtxt<'tcx>) -> String {
     }));
 
     let ann = CratePrinter::new(tcx);
+    let root_span = tcx.def_span(LOCAL_CRATE.as_def_id());
+    let sm = tcx.sess.source_map();
     let mut output = rustc_hir_pretty::print_crate(
-        tcx.sess.source_map(),
+        sm,
         &root_mod,
-        FileName::Custom("desugar".into()),
+        sm.span_to_filename(root_span),
         String::new(),
         &|id| tcx.hir_attrs(id),
         &ann,

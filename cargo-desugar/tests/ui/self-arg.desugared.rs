@@ -20,7 +20,7 @@ where
 {
     fn clone(&self) -> Self {
         Wrapper::<T> {
-            0: <T as std::clone::Clone>::clone(&*self.0),
+            0: <T as std::clone::Clone>::clone(&((*self).0)),
         }
     }
 }
@@ -29,6 +29,6 @@ where
     T: Clone,
 {
     fn copy(&self) -> Self {
-        <Wrapper<T> as std::clone::Clone>::clone(&*self)
+        <Wrapper<T> as std::clone::Clone>::clone(&(*self))
     }
 }

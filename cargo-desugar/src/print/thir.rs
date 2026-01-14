@@ -7,7 +7,7 @@ use rustc_hir::{self as hir, def::CtorKind};
 use rustc_middle::{
     mir::{AssignOp, BinOp, BorrowKind, FakeBorrowKind, UnOp},
     thir::{self, BlockSafety, LocalVarId, PatKind, Thir},
-    ty::{TyKind, VariantDef},
+    ty::{self, TyKind, VariantDef},
 };
 
 use super::CratePrinter;
@@ -119,17 +119,19 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 let op_str = self.un_op(*op);
                 format!("{}({})", op_str, self.expr(*arg))
             }
-            thir::ExprKind::Cast { source } => {
+            thir::ExprKind::Cast { source }
+            | thir::ExprKind::NeverToAny { source }
+            | thir::ExprKind::PlaceTypeAscription { source, .. }
+            | thir::ExprKind::ValueTypeAscription { source, .. }
+            | thir::ExprKind::PointerCoercion { source, .. } => {
                 format!("(({}) as {})", self.expr(*source), self.ty(expr.ty))
             }
-            thir::ExprKind::Use { source }
-            | thir::ExprKind::NeverToAny { source }
-            | thir::ExprKind::PlaceUnwrapUnsafeBinder { source }
+            thir::ExprKind::Use { source } => {
+                format!("{{ {} }}", self.expr(*source))
+            }
+            thir::ExprKind::PlaceUnwrapUnsafeBinder { source }
             | thir::ExprKind::ValueUnwrapUnsafeBinder { source }
             | thir::ExprKind::WrapUnsafeBinder { source } => self.expr(*source),
-            thir::ExprKind::PointerCoercion { source, .. } => {
-                format!("({} as {})", self.expr(*source), self.ty(expr.ty))
-            }
             thir::ExprKind::Loop { body } => format!("loop {}", self.expr_in_block(*body)),
             thir::ExprKind::LoopMatch { match_data, .. } => self.expr(match_data.scrutinee),
             thir::ExprKind::Let { expr, pat } => {
@@ -153,9 +155,17 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 let op_str = self.assign_op(*op);
                 format!("{} {}= {}", self.expr(*lhs), op_str, self.expr(*rhs))
             }
-            thir::ExprKind::Field { lhs, name, .. } => {
-                format!("{}.{}", self.expr(*lhs), name.as_usize())
-            }
+            thir::ExprKind::Field {
+                lhs,
+                name,
+                variant_index,
+            } => match self.thir().exprs[*lhs].ty.kind() {
+                ty::Adt(def, _) => {
+                    let field_name = def.variant(*variant_index).fields[*name].name;
+                    format!("({}).{field_name}", self.expr(*lhs))
+                }
+                _ => format!("({}).{}", self.expr(*lhs), name.as_usize()),
+            },
             thir::ExprKind::Index { lhs, index } => {
                 format!("{}[{}]", self.expr(*lhs), self.expr(*index))
             }
@@ -167,14 +177,14 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                     | BorrowKind::Fake(FakeBorrowKind::Shallow | FakeBorrowKind::Deep) => "&",
                     BorrowKind::Mut { .. } => "&mut ",
                 };
-                format!("{}{}", prefix, self.expr(*arg))
+                format!("{}({})", prefix, self.expr(*arg))
             }
             thir::ExprKind::RawBorrow { mutability, arg } => {
                 let prefix = match mutability {
                     hir::Mutability::Mut => "raw mut",
                     hir::Mutability::Not => "raw const",
                 };
-                format!("&{} {}", prefix, self.expr(*arg))
+                format!("&{} ({})", prefix, self.expr(*arg))
             }
             thir::ExprKind::Break { value, .. } => match value {
                 Some(v) => format!("break {}", self.expr(*v)),
@@ -234,8 +244,6 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 };
                 format!("{adt_name}{variant_name}{fields}")
             }
-            thir::ExprKind::PlaceTypeAscription { source, .. }
-            | thir::ExprKind::ValueTypeAscription { source, .. } => self.expr(*source),
             thir::ExprKind::Closure(closure) => {
                 match self.crate_printer.print_body(closure.closure_id) {
                     Some((params, body)) => format!("|{params}| {body}"),

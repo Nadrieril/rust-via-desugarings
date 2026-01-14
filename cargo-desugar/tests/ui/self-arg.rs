@@ -1,4 +1,3 @@
-//@ known-failure
 pub struct Wrapper<T: Clone>(T);
 
 impl<T: Clone> Clone for Wrapper<T> {
