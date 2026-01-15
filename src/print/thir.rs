@@ -7,7 +7,7 @@ use rustc_hir::{self as hir, def::CtorKind};
 use rustc_middle::{
     mir::{AssignOp, BinOp, BorrowKind, FakeBorrowKind, UnOp},
     thir::{self, BlockSafety, LocalVarId, PatKind, Thir},
-    ty::{self, TyKind, VariantDef},
+    ty::{self, Ty, TyKind, VariantDef},
 };
 
 use super::CratePrinter;
@@ -134,7 +134,12 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 format!("if {} {}", self.expr(*cond), self.expr_in_block(*then))
             }
             e!(#fun( #args.. )) => {
-                let fun = self.expr(*fun);
+                let fun_needs_parens =
+                    !matches!(self.thir()[*fun].kind, thir::ExprKind::ZstLiteral { .. });
+                let mut fun = self.expr(*fun);
+                if fun_needs_parens {
+                    fun = format!("({fun})")
+                }
                 let args = args.iter().map(|arg| self.expr(*arg)).format(", ");
                 format!("{}({})", fun, args)
             }
@@ -204,7 +209,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 _ => format!("({}).{}", self.expr(*lhs), name.as_usize()),
             },
             thir::ExprKind::Index { lhs, index } => {
-                format!("{}[{}]", self.expr(*lhs), self.expr(*index))
+                format!("({})[{}]", self.expr(*lhs), self.expr(*index))
             }
             thir::ExprKind::VarRef { id } => self.local_name(*id),
             thir::ExprKind::UpvarRef { var_hir_id, .. } => self.local_name(*var_hir_id),
@@ -279,7 +284,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                         .format(", ");
                     format!("{{ {} }}", parts)
                 };
-                format!("{adt_name}{variant_name}{fields}")
+                format!("({adt_name}{variant_name}{fields})")
             }
             thir::ExprKind::Closure(closure) => {
                 match self.crate_printer.print_body(closure.closure_id) {
@@ -288,7 +293,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 }
             }
             thir::ExprKind::Literal { lit, neg } => {
-                let lit_str = self.literal(lit);
+                let lit_str = self.literal(lit, expr.ty);
                 if *neg { format!("-{lit_str}") } else { lit_str }
             }
             thir::ExprKind::NonHirLiteral { lit, .. } => format!("{lit}"),
@@ -405,7 +410,9 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 let mut s = String::new();
                 s.push_str(mode.prefix_str());
                 s.push_str(&self.local_name(*var));
-                if let Some(sub) = subpattern {
+                if let Some(sub) = subpattern
+                    && !matches!(sub.kind, PatKind::Wild)
+                {
                     s.push_str(" @ ");
                     s.push_str(&self.pat(sub));
                 }
@@ -424,7 +431,16 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.adt_pat(path, variant, subpatterns)
             }
             PatKind::Leaf { subpatterns } => match pat.ty.kind() {
-                TyKind::Tuple(_) => self.tuple_pat(None, subpatterns),
+                TyKind::Tuple(tys) => {
+                    let inner = subpatterns
+                        .iter()
+                        .sorted_by_key(|ipat| ipat.field.as_usize())
+                        .map(|ipat| self.pat(&ipat.pattern))
+                        .map(|p| format!("{p},"))
+                        .chain((tys.len() != subpatterns.len()).then_some("..".to_string()))
+                        .format("");
+                    format!("({inner})")
+                }
                 TyKind::Adt(adt_def, args) => {
                     assert!(!adt_def.is_enum());
                     let variant = adt_def.non_enum_variant();
@@ -444,7 +460,27 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             }
             PatKind::Constant { value } => format!("{}", value),
             PatKind::ExpandedConstant { subpattern, .. } => self.pat(subpattern),
-            PatKind::Range(range) => format!("{:?}..{:?}", range.lo, range.hi),
+            PatKind::Range(range) => {
+                let lo = match range.lo {
+                    thir::PatRangeBoundary::Finite(valtree) => {
+                        let c = ty::Const::new_value(self.tcx, valtree, pat.ty);
+                        c.to_string()
+                    }
+                    thir::PatRangeBoundary::NegInfinity | thir::PatRangeBoundary::PosInfinity => {
+                        String::new()
+                    }
+                };
+                let hi = match range.hi {
+                    thir::PatRangeBoundary::Finite(valtree) => {
+                        let c = ty::Const::new_value(self.tcx, valtree, pat.ty);
+                        c.to_string()
+                    }
+                    thir::PatRangeBoundary::NegInfinity | thir::PatRangeBoundary::PosInfinity => {
+                        String::new()
+                    }
+                };
+                format!("{}..={}", lo, hi)
+            }
             PatKind::Slice {
                 prefix,
                 slice,
@@ -458,28 +494,19 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 let mut parts = Vec::new();
                 parts.extend(prefix.iter().map(|p| self.pat(p)));
                 if let Some(mid) = slice {
-                    parts.push(format!("..{}", self.pat(mid)));
+                    let mid = self.pat(mid);
+                    parts.push(if mid.trim() == "_" {
+                        format!("..")
+                    } else {
+                        format!("{mid} @ ..")
+                    })
                 }
                 parts.extend(suffix.iter().map(|p| self.pat(p)));
                 format!("[{}]", parts.join(", "))
             }
-            PatKind::Or { pats } => pats.iter().map(|p| self.pat(p)).format(" | ").to_string(),
+            PatKind::Or { pats } => format!("({})", pats.iter().map(|p| self.pat(p)).format(" | ")),
             PatKind::Never => "!".to_string(),
             PatKind::Error(_) => "<pat error>".to_string(),
-        }
-    }
-
-    fn tuple_pat(&self, path: Option<String>, subpatterns: &[thir::FieldPat<'tcx>]) -> String {
-        let mut fields = subpatterns.to_vec();
-        fields.sort_by_key(|fp| fp.field.as_usize());
-        let inner = fields
-            .iter()
-            .map(|ipat| self.pat(&ipat.pattern))
-            .map(|p| format!("{p},"))
-            .format("");
-        match path {
-            Some(p) => format!("{p}({inner})"),
-            None => format!("({inner})"),
         }
     }
 
@@ -514,18 +541,18 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         }
     }
 
-    fn literal(&self, lit: &hir::Lit) -> String {
+    fn literal(&self, lit: &hir::Lit, ty: Ty<'tcx>) -> String {
         match lit.node {
             LitKind::Str(sym, _) => format!("{:?}", sym.as_str()),
             LitKind::ByteStr(ref bytes, _) => format!("&{:?}", bytes),
             LitKind::CStr(_, _) => "c\"...\"".to_string(),
             LitKind::Byte(b) => format!("{b}u8"),
             LitKind::Char(c) => format!("{c:?}"),
-            LitKind::Int(n, ty) => {
-                let ty = match ty {
-                    rustc_ast::LitIntType::Signed(int_ty) => int_ty.name_str(),
-                    rustc_ast::LitIntType::Unsigned(uint_ty) => uint_ty.name_str(),
-                    rustc_ast::LitIntType::Unsuffixed => "",
+            LitKind::Int(n, _ty) => {
+                let ty = match ty.kind() {
+                    ty::Int(ty) => ty.name_str(),
+                    ty::Uint(ty) => ty.name_str(),
+                    _ => panic!("unexpected type for int literal: {ty}"),
                 };
                 format!("{n}{ty}")
             }

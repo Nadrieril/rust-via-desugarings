@@ -3,7 +3,6 @@
 use std::fmt::{self, Write as _};
 
 use rustc_hir::{
-    self as hir,
     def::Namespace,
     def_id::{CrateNum, DefId, LOCAL_CRATE},
     definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData},
@@ -155,33 +154,20 @@ impl<'tcx> Printer<'tcx> for TypePrinter<'_, 'tcx> {
                 if with_reduced_queries() {
                     self.print_def_path(*def_id, args)
                 } else {
-                    let mut sig = self.tcx.fn_sig(*def_id).instantiate(self.tcx, args);
-                    if self.tcx.codegen_fn_attrs(*def_id).safe_target_features {
-                        write!(self, "#[target_features] ")?;
-                        sig = sig.map_bound(|mut sig| {
-                            sig.safety = hir::Safety::Safe;
-                            sig
-                        });
-                    }
-                    sig.print(self)?;
-                    write!(self, " {{")?;
-                    self.print_def_path(*def_id, args)?;
-                    write!(self, "}}")?;
+                    write!(self, "_")?;
                     Ok(())
                 }
             }
             TyKind::Dynamic(data, region) => {
                 let print_r = self.should_print_optional_region(*region);
-                if print_r {
-                    write!(self, "(")?;
-                }
+                write!(self, "(")?;
                 write!(self, "dyn ")?;
                 data.print(self)?;
                 if print_r {
                     write!(self, " + ")?;
                     region.print(self)?;
-                    write!(self, ")")?;
                 }
+                write!(self, ")")?;
                 Ok(())
             }
             TyKind::Alias(_, data) => data.print(self),
@@ -359,5 +345,13 @@ impl<'tcx> PrettyPrinter<'tcx> for TypePrinter<'_, 'tcx> {
             Ok(())
         };
         self.typed_value(print, |this| this.print_type(ty), ": ")
+    }
+
+    fn pretty_print_in_binder<T>(&mut self, value: &ty::Binder<'tcx, T>) -> Result<(), PrintError>
+    where
+        T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
+    {
+        // TODO: print bound variables correctly
+        value.as_ref().skip_binder().print(self)
     }
 }

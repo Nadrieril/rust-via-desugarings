@@ -19,46 +19,65 @@ use walkdir::WalkDir;
 mod util;
 
 /// How many of the rustc tests to run, for now.
-static HOW_MANY_TESTS: usize = 500;
+static HOW_MANY_TESTS: usize = 1000;
 /// The page number for tests, where each page has `HOW_MANY_TESTS` tests.
-static PAGE: usize = 0;
+static PAGE: usize = 2;
 
-// Tests that are failing because the hir printer is incomplere.
+/// Tests that are failing because the hir printer is incomplere.
 static INCOMPLETE_HIR_PRETTY: &[&str] = &[
     // Missing `impl Trait` printing.
     "reachable/expr_cast.rs",
     "rust-2021/inherent-method-collision.rs",
-    // Broken `#[attr = ..]` pretty-printing for attrs
-    "abi/extern/extern-pass-u32.rs",
-    "deriving/deriving-in-macro.rs",
-    "unsafe/ranged_ints_macro.rs",
-    "lint/improper-ctypes/mustpass-73747.rs",
-    "issues/issue-2288.rs",
-    "specialization/min_specialization/specialize_on_marker.rs",
-    "foreign/foreign-truncated-arguments.rs",
-    "consts/mut-ptr-to-static.rs",
-    "const_prop/inline_spans_lint_attribute.rs",
-    "cfg/cfg-macros-notfoo.rs",
-    "test-attrs/test-runner-hides-main.rs",
-    "deprecation/deprecated_main_function.rs",
-    "rfcs/rfc-1717-dllimport/1717-dllimport/library-override.rs",
-    "traits/inheritance/overloading.rs",
-    "fmt/println-debug-different-types.rs",
-    "mir/validate/critical-edge.rs",
-    "mir/mir-inlining/ice-issue-45885.rs",
-    // Uses private `core::fmt::rt::Argument` type.
-    "let-else/const-fn.rs",
-    "lint/rfc-2383-lint-reason/catch_multiple_lint_triggers.rs",
-    "resolve/extern-crate-lint-issue-141785.rs",
-    "editions/edition-specific-identifier-shadowing-53333.rs",
-    "fmt/println-debug-different-types.rs",
-    "uniform-paths/same-crate.rs",
-    "binding/match-bot.rs",
-    "autoref-autoderef/auto-ref-bounded-ty-param.rs",
+    "traits/next-solver/alias-relate/tait-eq-tait.rs",
+    "generic-associated-types/issue-80433-reduced.rs",
     // Uses relative paths for `#[path = "..."]` attre
     "simd/intrinsic/generic-bswap-byte.rs",
     // Doesn't print #[may_dangle]
     "nll/drop-may-dangle.rs",
+    // Depends on non-public paths
+    "try-trait/",
+    // Bad attr printing
+    "cfg/conditional-compile-arch.rs",
+    // Bad region `+` printing
+    "regions/regions-bound-lists-feature-gate-2.rs",
+    // Bad dyn parenthisation
+    "traits/mut-trait-in-struct-8249.rs",
+    // Bad handling of empty clause lists
+    "traits/alias/empty.rs",
+];
+
+/// Tests that are failing for nontrivial-to-fix reasons.
+static UNSUPPORTED_HARD: &[&str] = &[
+    // Printing short paths can cause shadowing and visibility issues.
+    "self/self-impl-2.rs",
+    "symbol-names/issue-53912.rs",
+    "higher-ranked/trait-bounds/normalize-under-binder/issue-56556.rs",
+    "imports/export-glob-imports-target.rs",
+    // Two-phase mut
+    "borrowck/two-phase-bin-ops.rs",
+    // Print higher-kinded bound variables
+    "implied-bounds/implied-bounds-on-nested-references-plus-variance-2.rs",
+    "const_prop/dont-propagate-generic-instance.rs",
+    "associated-types/associated-types-normalize-in-bounds.rs",
+    "binding/underscore-prefixed-function-argument.rs",
+    // Const-to-pat exposes private fields
+    "consts/tuple-struct-constructors.rs",
+];
+
+/// Tests that we won't fix.
+static WONTFIX: &[&str] = &[
+    // Lints against unnecessarily precise paths.
+    "lint/unused-qualifications-global-paths.rs",
+    // Unused parens lint
+    "lint/unused/no-unused-parens-return-block.rs",
+    // Delegation feature results in weird-ass types
+    "delegation/",
+    // Loop match feature
+    "loop-match/",
+    // Labeled break, try blocks
+    "let-else/issue-100103.rs",
+    // Hygiene shenanigans
+    "hygiene/",
 ];
 
 #[derive(Debug, Clone)]
@@ -197,11 +216,6 @@ fn download_rustc_sources(cfg: &Config) -> Result<()> {
 fn parse_directives(path: &Path) -> Result<ParsedDirectives> {
     let mut out = ParsedDirectives::default();
 
-    let path_str = path.to_string_lossy();
-    if INCOMPLETE_HIR_PRETTY.iter().any(|p| path_str.ends_with(p)) {
-        out.skip_reason = Some("incomplete hir pretty-printer".into());
-    }
-
     if path.with_extension("stderr").exists() {
         out.skip_reason = Some("this test is expected to fail".into());
     }
@@ -303,18 +317,44 @@ fn run_desugar(
 
 fn setup_test(cfg: Arc<Config>, input_path: PathBuf) -> Result<Trial> {
     let rel_path = input_path.strip_prefix(&cfg.ui_src).unwrap().to_path_buf();
-    let mut directives = parse_directives(&input_path)?;
 
-    // Skip helper crates and directories compiletest marks as ignored.
-    if rel_path.components().any(|c| c.as_os_str() == "auxiliary") {
-        directives.skip_reason = Some("auxiliary crate".into());
-    }
-    if rel_path
+    let path_str = rel_path.to_string_lossy();
+    let skip_reason = if INCOMPLETE_HIR_PRETTY
+        .iter()
+        .copied()
+        .chain(UNSUPPORTED_HARD.iter().copied())
+        .chain(WONTFIX.iter().copied())
+        // Broken `#[attr = ..]` pretty-printing for attrs
+        .chain(include_str!("./failing-due-to-attrs").lines())
+        // Uses private `core::fmt::rt::Argument` type.
+        .chain(include_str!("./failing-due-to-fmt-internals").lines())
+        // Missing `impl Trait` printing.
+        .chain(include_str!("./failing-due-to-impl-trait").lines())
+        .any(|p| path_str.starts_with(p))
+    {
+        Some("incomplete hir pretty-printer")
+    } else if rel_path.components().any(|c| c.as_os_str() == "auxiliary") {
+        Some("auxiliary crate")
+    } else if rel_path
         .ancestors()
         .any(|dir| dir.join("compiletest-ignore-dir").exists())
     {
-        directives.skip_reason = Some("compiletest-ignore-dir".into());
-    }
+        Some("compiletest-ignore-dir")
+    } else {
+        None
+    };
+
+    let directives = if skip_reason.is_some() {
+        // Don't bother reading the file
+        ParsedDirectives {
+            skip_reason: skip_reason.map(String::from),
+            ..Default::default()
+        }
+    } else {
+        parse_directives(&input_path)?
+    };
+
+    // Skip helper crates and directories compiletest marks as ignored.
     let name = rel_path.display().to_string();
     let ignore = directives.skip_reason.is_some();
 

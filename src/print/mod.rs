@@ -1,8 +1,8 @@
 use itertools::Itertools;
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, panic::catch_unwind};
 
 use rustc_hir::{
-    self as hir, ItemId, ItemKind,
+    self as hir, ItemId, ItemKind, Safety,
     def::DefKind,
     def_id::{DefId, LOCAL_CRATE, LocalDefId},
     intravisit::{self, Visitor},
@@ -12,6 +12,7 @@ use rustc_middle::ty::{
     self, AssocContainer, GenericArg, GenericArgKind, Ty, TyCtxt, TyKind,
     print::{PrettyPrinter, Print},
 };
+use rustc_span::Symbol;
 use std::marker::PhantomData;
 
 use crate::desugar::{Body, desugar_thir};
@@ -54,29 +55,46 @@ pub fn print_crate<'tcx>(tcx: TyCtxt<'tcx>) -> String {
         &ann,
     );
 
+    let features_to_enable = &[
+        "allocator_api",
+        "fmt_arguments_from_str",
+        "fmt_internals",
+        "fn_traits",
+        "libstd_sys_internals",
+        "never_type",
+        "panic_internals",
+        "print_internals",
+        "rt",
+        "try_trait_v2",
+        "try_trait_v2_residual",
+        "yeet_desugar_details",
+        "hint_must_use",
+        "temporary_niche_types",
+    ];
+    let features_to_enable = features_to_enable
+        .iter()
+        .map(|f| Symbol::intern(f))
+        .filter(|f| !tcx.features().enabled_features().contains(f))
+        .format(",");
     // Standard lib macros expand to unstable things.
     output.insert_str(
         0,
-        "#![feature(
-            allocator_api,
-            fmt_arguments_from_str,
-            fmt_internals,
-            libstd_sys_internals,
-            panic_internals,
-            print_internals,
-            rt,
-            try_trait_v2,
-        )]\n
-        #![allow(
-            unused_braces,
-            unused_parens,
-            internal_features,
-        )]\n
-        ",
+        &format!(
+            "
+            #![feature({features_to_enable})]\n
+            #![allow(
+                unused_braces,
+                unused_parens,
+                internal_features,
+            )]\n"
+        ),
     );
 
     match syn::parse_file(&output) {
-        Ok(file) => prettyplease::unparse(&file),
+        Ok(file) => match catch_unwind(|| prettyplease::unparse(&file)) {
+            Ok(output) => output,
+            Err(_) => output,
+        },
         Err(_) => output,
     }
 }
@@ -257,10 +275,45 @@ impl<'tcx> CratePrinter<'tcx> {
 
 impl<'tcx> PpAnn for CratePrinter<'tcx> {
     fn pre(&self, state: &mut rustc_hir_pretty::State<'_>, node: AnnNode<'_>) {
-        if let AnnNode::Item(item) = node
-            && matches!(item.kind, ItemKind::Fn { .. })
-        {
+        let item = match node {
+            AnnNode::Item(item) => item,
+            AnnNode::SubItem(id) => match self.tcx.hir_node(id) {
+                hir::Node::Item(item) => item,
+                hir::Node::ImplItem(item) => {
+                    if let hir::ImplItemImplKind::Trait { defaultness, .. } = item.impl_kind
+                        && defaultness.is_default()
+                    {
+                        state.word_nbsp("default");
+                    }
+                    return;
+                }
+                _ => return,
+            },
+            _ => return,
+        };
+        if matches!(
+            item.kind,
+            ItemKind::Fn { .. }
+                | ItemKind::Mod { .. }
+                | ItemKind::Use { .. }
+                | ItemKind::Trait { .. }
+        ) {
             self.print_visibility(state, item.owner_id.def_id)
+        }
+        if let ItemKind::ForeignMod { items, .. } = item.kind {
+            if items
+                .iter()
+                .map(|id| self.tcx.hir_node(id.hir_id()))
+                .map(|node| node.expect_foreign_item())
+                .any(|item| {
+                    matches!(
+                        item.kind,
+                        hir::ForeignItemKind::Static(_, _, Safety::Unsafe)
+                    )
+                })
+            {
+                state.word_nbsp("unsafe");
+            }
         }
     }
 
