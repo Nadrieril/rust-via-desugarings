@@ -4,10 +4,10 @@
 //! succeeds or fails the same way as the original source.
 
 use std::{
-    env::current_dir,
+    env::{self, current_dir},
     fs::{self, File},
     io::{self, BufRead, BufReader},
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
     process::{Command, ExitStatus},
     sync::Arc,
 };
@@ -109,11 +109,28 @@ fn rustc_commit(rustc_bin: &str) -> Result<String> {
 }
 
 fn configure() -> Result<Config> {
+    // Find a parent folder that contains a `Cargo.lock`, otherwise the current folder.
+    let cargo_target_dir = {
+        let mut root_path = PathBuf::new();
+        let mut found = false;
+        for path in env::current_dir()?.ancestors() {
+            if path.join("Cargo.lock").exists() {
+                found = true;
+                break;
+            }
+            root_path = root_path.join(Component::ParentDir);
+        }
+        if !found {
+            root_path = PathBuf::new();
+        }
+        root_path.join("target")
+    };
+
     let rustc_bin = "rustc".to_string();
     let cargo_desugar_bin = assert_cmd::cargo::cargo_bin!("cargo-desugar").to_path_buf();
     let rustc_commit = rustc_commit(&rustc_bin).context("extracting rustc commit")?;
 
-    let workdir = PathBuf::from("target/rustc-test-suite");
+    let workdir = cargo_target_dir.join("rustc-test-suite");
     let rustc_src_default = workdir.join(format!("rustc-{rustc_commit}"));
     let test_root = workdir.join("desugared");
     let logs_root = workdir.join("logs");

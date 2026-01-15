@@ -2,7 +2,10 @@ serve:
     cd src && mdbook serve
 
 build:
-    cd cargo-desugar && cargo build
+    cargo build -p cargo-desugar
 
-test: build
-    ./scripts/run_rustc_tests.sh
+test-ui:
+    cargo test -p cargo-desugar --test ui
+
+test-rustc:
+    cargo test -p cargo-desugar --test rustc -- -q
