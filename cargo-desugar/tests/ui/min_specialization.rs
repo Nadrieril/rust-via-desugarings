@@ -1,4 +1,3 @@
-//@ known-failure
 #![feature(min_specialization)]
 trait MyFrom<T> {
     fn from(_: T) -> Self;

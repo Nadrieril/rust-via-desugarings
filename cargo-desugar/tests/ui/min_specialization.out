@@ -1,14 +1,31 @@
-error[E0520]: `from` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> tests/ui/min_specialization.desugared.rs:22:5
-   |
-16 | impl<T> MyFrom<T> for () {
-   | ------------------------ parent `impl` is here
-...
-22 |     fn from(_: ()) -> Self {
-   |     ^^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `from`
-   |
-   = note: to specialize, `from` in the parent `impl` must be marked `default`
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0520`.
+#![feature(
+    allocator_api,
+    fmt_arguments_from_str,
+    fmt_internals,
+    fn_traits,
+    libstd_sys_internals,
+    never_type,
+    panic_internals,
+    print_internals,
+    rt,
+    try_trait_v2,
+    try_trait_v2_residual,
+    yeet_desugar_details,
+    hint_must_use,
+    temporary_niche_types
+)]
+#![allow(unused_braces, unused_parens, internal_features)]
+#![feature(min_specialization)]
+trait MyFrom<T> {
+    fn from(_: T) -> Self;
+}
+impl<T> MyFrom<T> for () {
+    default fn from(_: T) -> Self {
+        ()
+    }
+}
+impl MyFrom<()> for () {
+    fn from(_: ()) -> Self {
+        ()
+    }
+}

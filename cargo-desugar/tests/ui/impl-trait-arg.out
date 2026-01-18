@@ -1,14 +1,14 @@
 error: expected identifier, found keyword `impl`
-  --> tests/ui/impl-trait-arg.desugared.rs:18:22
-   |
-18 |         pub fn takes<impl Iterator<Item = u32>>(_: impl Iterator<Item = u32>) where
-   |                      ^^^^ expected identifier, found keyword
+ --> tests/ui/impl-trait-arg.desugared.rs:9:14
+  |
+9 | pub fn takes<impl Iterator<Item = u32>>(_: impl Iterator<Item = u32>) where
+  |              ^^^^ expected identifier, found keyword
 
 error: expected one of `,`, `:`, `=`, or `>`, found `Iterator`
-  --> tests/ui/impl-trait-arg.desugared.rs:18:27
-   |
-18 |         pub fn takes<impl Iterator<Item = u32>>(_: impl Iterator<Item = u32>) where
-   |                           ^^^^^^^^ expected one of `,`, `:`, `=`, or `>`
+ --> tests/ui/impl-trait-arg.desugared.rs:9:19
+  |
+9 | pub fn takes<impl Iterator<Item = u32>>(_: impl Iterator<Item = u32>) where
+  |                   ^^^^^^^^ expected one of `,`, `:`, `=`, or `>`
 
 error: aborting due to 2 previous errors
 
