@@ -111,7 +111,8 @@
 //@
 //@ ## Implementation
 //@
-//@ This is a completely fake PoC implementation, as a placeholder to try out my test harness.
+//@ This is a completely silly implementation, as a placeholder to try out my test harness and
+//@ literate Rust renderer.
 //! Entirely silly PoC desugaring pass.
 use crate::Body; //#
 use rustc_ast::Mutability; //#
@@ -173,7 +174,7 @@ impl<'tcx, 'a> ValueToPlaceDesugarer<'tcx, 'a> {
         }
     }
 
-    //@ Some markdown explanation:
+    //@ Some markdown explanation
     fn introduce_temp(
         &mut self,
         expr_id: thir::ExprId,
