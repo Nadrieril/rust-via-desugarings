@@ -51,6 +51,8 @@ So the macro above would expand to `#[edition = "2021"] if let ...` or `#[editio
 
 ## Discussion
 
+Prior art: [this MCP](https://github.com/rust-lang/compiler-team/issues/692).
+
 I do not know if there are other hygiene considerations that can affect program semantics. If so
 we'll need to add similar attributes.
 
