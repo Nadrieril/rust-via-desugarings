@@ -13,9 +13,12 @@ I'm writing this book in the context of two projects that are working towards fo
   things, the trait and type system of Rust (including borrow-checking).
 
 Both of these share the limitation of working only with function bodies in a very simplified+precise
-form ([MIR](https://rustc-dev-guide.rust-lang.org/mir/index.html)). I'm writing this book as
-a complement to those two, filling the gap of how to get from real Rust code to this
-simplified+precise form[^1].
+form (roughly, [MIR](https://rustc-dev-guide.rust-lang.org/mir/index.html)).
+To get a complete story, we also need a description of how to get from real Rust code to this
+simplified+precise form.
+New Rust features are commonly described as desugarings into existing features;
+in this book I take this idea to its extreme, by describing the whole language
+using desugarings[^1].
 
 ## Goals
 
@@ -31,7 +34,7 @@ I have three goals in writing this, in order of importance:
    what really happens.
 
 3. Implementablory: I want this to be close enough to the reality of the compiler that we could make
-   a rustc-based tool that outputs the outcome of some of these desugaring steps. As we've learned
+   a tool that outputs the outcome of some of these desugaring steps. As we've learned
    many times, the best teaching tool is one you can interact with.
 
 ## Non-Goals
@@ -43,7 +46,8 @@ use of.
 
 This book does not aim to be an actual specification document[^2] :
 duplicating the contents of the Reference would be a waste of effort;
-I see this book more as a guide for how to read the Reference.
+I see this book more as a guide for how to read the Reference,
+and a vision for how a formal & legible & executable spec could be structured.
 
 ## Caveats
 
@@ -55,7 +59,7 @@ This also mostly doesn't include `async`, in large parts because I'm not very fa
 details of how it's implemented.
 
 While I do my best to be precise and correct, this is just a fun project I'm doing with my current
-knowledge of Rust. This book will contain mistakes, imprecisions and omissions; please [open an
+knowledge of Rust. This book will contain mistakes, imprecisions and omissions; feel free to [open an
 issue](https://github.com/Nadrieril/rust-via-desugarings/issues) or PR if you notice any!
 
 [^1]: The majority of the info in this book is present in one way or another in the [Rust
