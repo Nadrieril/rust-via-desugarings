@@ -14,7 +14,9 @@ By way of example:
 - `let Struct { a: $pa, b: $pb } = $x` => `let $pa = $x.a && let $pa = $x.b`;
 - `let Enum::Variant { a: $pa, b: $pb } = $x` => `$x.enum#discriminant == discriminant_of!(Enum, Variant) &&
   let $pa = $x.Variant.a && let $pb = $x.Variant.b`;
-- `let [$pa, .., $pz] = $x` => `let len = core::slice::len(&raw const $x) && len >= 2 && let $pa = $x[0] && let $pz = $x[len - 1]`.
+- `let [$pa, .., $pz] = $x` => `let len = core::slice::len(&raw const $x) && len >= 2 && let $pa = $x[0] && let $pz = $x[len - 1]`;
+- `let "string_literal" = $x` => `"string_literal" == $x`;
+- `let CONSTANT = $x` => `CONSTANT == $x`.
 
 Note that we use [Enum Projections](../features/enum-projections.md) and [Enum Discriminant
 Access](../features/enum-discriminant.md) for enums. Note also that we don't deal with or-patterns
