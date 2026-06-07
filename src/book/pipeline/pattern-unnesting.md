@@ -66,6 +66,11 @@ impl<T> MyOption<T> {
 I don't know if this sufficient motivation, nor exactly the extent of optimizations we'd lose if we
 set this in stone.
 
+A reasonable alternative would be to add non-determinism: for the tuple, struct,
+enum variant and slice cases above, we non-deterministically shuffle the list of `let $subpattern
+= ...` expressions in the output.
+This would allow compilation to choose the order it wants for maximal runtime performance.
+
 ### Precise semantics
 
 There are tiny discrepancies between this proposed desugaring and what the lang team has decided to
