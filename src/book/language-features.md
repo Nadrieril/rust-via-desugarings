@@ -1,6 +1,6 @@
 # Extra Language Features
 
-To make the desugarings possible/easier, this book takes the liberty to assume a few extra Rust
+To make the desugarings possible/easier, this book takes the liberty to assume a number of extra Rust
 features available; this section describes them.
 
 These are overwhelmingly not my ideas!

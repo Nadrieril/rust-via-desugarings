@@ -5,17 +5,22 @@ into a simpler subset of Rust.
 At the end of this process we reach a subset simple enough that it can hopefully be described
 formally.
 
-I'm writing this book in the context of two projects that are working towards formalizing Rust:
+I'm writing this book in the context of three projects that are working towards formalizing Rust:
 - [MiniRust](https://github.com/minirust/minirust) aims to specify the operational semantics of
   Rust, i.e. what it means to execute Rust, including a precise delineation of what is and isn't
   [Undefined Behavior](https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#undefined-behavior);
 - [a-mir-formality](https://github.com/rust-lang/a-mir-formality) aims to describe, among other
-  things, the trait and type system of Rust (including borrow-checking).
+  things, the trait and type system of Rust (including borrow-checking);
+- the
+  [dictionary-passing-style](https://rust-lang.github.io/rust-project-goals/2026/dictionary-passing-style-experiment.html)
+  experiment proposes a model for thinking about what trait solving does and how to reason about its
+  soundness.
 
-Both of these share the limitation of working only with function bodies in a very simplified+precise
+The first two share the limitation of working only with function bodies in a very simplified+precise
 form (roughly, [MIR](https://rustc-dev-guide.rust-lang.org/mir/index.html)).
-To get a complete story, we also need a description of how to get from real Rust code to this
-simplified+precise form.
+The third speaks only of traits and types.
+To get a complete story, we need to tie all of these together and relate them
+with source-level Rust code.
 New Rust features are commonly described as desugarings into existing features;
 in this book I take this idea to its extreme, by describing the whole language
 using desugarings[^1].
@@ -40,7 +45,7 @@ I have three goals in writing this, in order of importance:
 ## Non-Goals
 
 This book focuses on the meaning of function bodies: statements, expressions, control-flow. It does
-not explain e.g. how typechecking works, anything about traits, type layouts, constant evaluation,
+not explain e.g. how typechecking works, how to solve traits, type layouts, constant evaluation,
 linking crates, etc. In fact it heavily relies on types and trait data being known-facts we can make
 use of.
 
@@ -52,7 +57,7 @@ and a vision for how a formal & legible & executable spec could be structured.
 ## Caveats
 
 In order for each step to produce valid and understandable Rust code, I took the liberty to assume
-the existence of a number of language features that don't exist in real Rust.
+the existence of a whole bunch of language features that don't exist in real Rust.
 See the [Extra Language Features](language-features.md) chapter for details.
 
 This also mostly doesn't include `async`, in large parts because I'm not very familiar with the
