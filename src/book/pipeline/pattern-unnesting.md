@@ -63,13 +63,20 @@ impl<T> MyOption<T> {
 }
 ```
 
-I don't know if this sufficient motivation, nor exactly the extent of optimizations we'd lose if we
-set this in stone.
+I learned very recently that this is in fact [suggested by the
+Reference](https://doc.rust-lang.org/1.96.0/reference/items/unions.html#r-items.union.pattern.subpattern),
+hence basically guaranteed by the language.
 
+Beyond this however, the language doesn't currently guarantee any order.
 A reasonable alternative would be to add non-determinism: for the tuple, struct,
-enum variant and slice cases above, we non-deterministically shuffle the list of `let $subpattern
+enum variant and slice cases above,
+if the pattern doesn't contain a union subpattern,
+we non-deterministically shuffle the list of `let $subpattern
 = ...` expressions in the output.
 This would allow compilation to choose the order it wants for maximal runtime performance.
+
+I don't know exactly the extent of optimization wins we could get with this.
+
 
 ### Precise semantics
 
