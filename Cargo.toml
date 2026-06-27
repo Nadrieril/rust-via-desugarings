@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["cargo-desugar"]
+members = []
 
 [package]
 name = "rust-via-desugarings"
