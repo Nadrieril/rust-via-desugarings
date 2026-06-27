@@ -1,0 +1,88 @@
+use libtest_mimic::{Failed, Trial};
+use std::{error::Error, fs, path::Path};
+use walkdir::WalkDir;
+
+const TESTS_DIR: &str = "tests/ui";
+const DESUGARED_SUFFIX: &str = "desugared.rs";
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut tests = Vec::new();
+    for entry in WalkDir::new(TESTS_DIR).sort_by_file_name() {
+        let path = entry?.into_path();
+        let is_input_file = path.extension().is_some_and(|extension| extension == "rs")
+            && path
+                .file_name()
+                .is_some_and(|name| !name.to_string_lossy().ends_with(DESUGARED_SUFFIX));
+        if is_input_file {
+            let name = path
+                .strip_prefix(TESTS_DIR)
+                .expect("ui test path should be under the tests/ui directory")
+                .display()
+                .to_string();
+            tests.push(Trial::test(name, move || run_case(&path)));
+        }
+    }
+
+    let args = libtest_mimic::Arguments::from_args();
+    libtest_mimic::run(&args, tests).exit();
+}
+
+struct Directives {
+    known_failure: bool,
+    source_start: usize,
+}
+
+fn parse_directives(input: &str) -> Directives {
+    let mut directives = Directives {
+        known_failure: false,
+        source_start: 0,
+    };
+
+    for line in input.lines() {
+        let Some(directive) = line.strip_prefix("//@") else {
+            break;
+        };
+        if directive.trim() == "known-failure" {
+            directives.known_failure = true;
+        }
+        directives.source_start += line.len();
+    }
+
+    directives
+}
+
+fn run_case(input_path: &Path) -> Result<(), Failed> {
+    let input = fs::read_to_string(input_path)
+        .map_err(|error| format!("failed to read input file: {error}"))?;
+    let directives = parse_directives(&input);
+    // Hack because the parser doesn't strip comments yet
+    let source = &input[directives.source_start..];
+    let desugared_path = input_path.with_extension(DESUGARED_SUFFIX);
+    let stderr_path = input_path.with_extension("stderr");
+
+    let result = rust_via_desugarings::parser::parse_program(source)
+        .map(|program| rust_via_desugarings::print_program(&program));
+
+    let _ = fs::remove_file(&desugared_path);
+    let _ = fs::remove_file(&stderr_path);
+    match result {
+        Ok(output) => {
+            write_output(&desugared_path, output)?;
+            if directives.known_failure {
+                Err("expected failure, but parsing and printing succeeded".to_owned())?
+            }
+        }
+        Err(error) => {
+            write_output(&stderr_path, format!("{error}\n"))?;
+            if !directives.known_failure {
+                Err(format!("expected success, got parse error:\n{error}"))?
+            }
+        }
+    }
+    Ok(())
+}
+
+fn write_output(path: &Path, output: impl AsRef<str>) -> Result<(), String> {
+    fs::write(path, output.as_ref())
+        .map_err(|error| format!("failed to write output file {}: {error}", path.display()))
+}

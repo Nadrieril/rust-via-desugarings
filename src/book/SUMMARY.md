@@ -1,6 +1,12 @@
 # Summary
 
 - [Introduction](introduction.md)
+- [The Language](language/overview.md.rs)
+  - [Items](language/items.md)
+    - [Functions](language/functions.md.rs)
+  - [Types](language/types.md.rs)
+  - [Expressions](language/expressions.md.rs)
+  - [Printing](language/print.md.rs)
 - [Desugaring Steps](pipeline/overview.md)
   - [Name Resolution & Macro Expansion](pipeline/name-resolution-macro-expansion.md)
   - [Control-flow Desugarings](pipeline/control-flow.md)
