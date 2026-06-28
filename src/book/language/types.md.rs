@@ -8,5 +8,6 @@
 //@
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Type {
+    Unit,
     Bool,
 }

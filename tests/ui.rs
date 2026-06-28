@@ -60,8 +60,7 @@ fn run_case(input_path: &Path) -> Result<(), Failed> {
     let desugared_path = input_path.with_extension(DESUGARED_SUFFIX);
     let stderr_path = input_path.with_extension("stderr");
 
-    let result = rust_via_desugarings::parser::parse_program(source)
-        .map(|program| rust_via_desugarings::print_program(&program));
+    let result = rust_via_desugarings::parse_desugar_and_print_program(source);
 
     let _ = fs::remove_file(&desugared_path);
     let _ = fs::remove_file(&stderr_path);

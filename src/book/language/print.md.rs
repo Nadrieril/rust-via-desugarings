@@ -166,6 +166,7 @@ impl Display for FunctionParamType {
 impl Display for Type {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            Type::Unit => write!(f, "()"),
             Type::Bool => write!(f, "bool"),
         }
     }
@@ -174,6 +175,7 @@ impl Display for Type {
 impl Display for BlockExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            BlockExpression::Empty => write!(f, "{{}}"),
             BlockExpression::BoolLiteral(value) => write!(f, "{{ {} }}", value),
         }
     }

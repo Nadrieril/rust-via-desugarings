@@ -9,6 +9,10 @@
 pub mod language;
 pub use language::{Program, print_program};
 
+#[path = "book/pipeline/mod.rs"]
+pub mod desugarings;
+pub use desugarings::overview::desugar;
+
 pub mod parser {
     // Note: lalrpop is unfortunately not that close to the kind of grammar the Reference has.
     // Idea: make custom grammar syntax that maps onto rustemo (GLR parser) + custom disambiguators
@@ -22,4 +26,10 @@ pub mod parser {
     pub fn parse_program(input: &str) -> Result<Program, ParseError<'_>> {
         ProgramParser::new().parse(input)
     }
+}
+
+pub fn parse_desugar_and_print_program(input: &str) -> Result<String, parser::ParseError<'_>> {
+    let mut program = parser::parse_program(input)?;
+    desugar(&mut program);
+    Ok(print_program(&program))
 }
