@@ -14,21 +14,51 @@ pub mod desugarings;
 pub use desugarings::overview::desugar;
 
 pub mod parser {
-    // Note: lalrpop is unfortunately not that close to the kind of grammar the Reference has.
-    // Idea: make custom grammar syntax that maps onto rustemo (GLR parser) + custom disambiguators
-    // to get as close as possible to the Reference kind of shape. With a lalrpop flavor of
-    // giving names + the rust action probably.
+    use crate::language::{Program, Token};
+    use logos::Logos;
+    use std::{
+        error::Error,
+        fmt::{self, Debug},
+    };
+
     include!(concat!(env!("OUT_DIR"), "/parser.rs"));
 
-    pub type ParseError<'input> =
-        lalrpop_util::ParseError<usize, lalrpop_util::lexer::Token<'input>, &'static str>;
+    #[derive(Debug)]
+    pub struct ParseProgramError(String);
 
-    pub fn parse_program(input: &str) -> Result<Program, ParseError<'_>> {
-        ProgramParser::new().parse(input)
+    impl Error for ParseProgramError {}
+    impl fmt::Display for ParseProgramError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}", self.0)
+        }
+    }
+    impl From<ParseError> for ParseProgramError {
+        fn from(value: ParseError) -> Self {
+            ParseProgramError(format!("{value:?}"))
+        }
+    }
+
+    pub fn parse_program(input: &str) -> Result<Program, ParseProgramError> {
+        let mut lexer = Token::lexer(input);
+        let mut context = ProgramContext::with_default_userdata();
+        for token in lexer.by_ref() {
+            match token {
+                Ok(token) => context.feed(token)?,
+                Err(()) => {
+                    let offset = lexer.span().start;
+                    let ch = lexer.slice().chars().next().unwrap_or('\0');
+                    return Err(ParseProgramError(format!(
+                        "unexpected character {ch:?} at byte {offset}"
+                    )));
+                }
+            }
+        }
+        let (program, _data) = context.accept()?;
+        Ok(program)
     }
 }
 
-pub fn parse_desugar_and_print_program(input: &str) -> Result<String, parser::ParseError<'_>> {
+pub fn parse_desugar_and_print_program(input: &str) -> Result<String, parser::ParseProgramError> {
     let mut program = parser::parse_program(input)?;
     desugar(&mut program);
     Ok(print_program(&program))

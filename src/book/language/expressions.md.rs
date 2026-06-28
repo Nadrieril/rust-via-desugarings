@@ -2,16 +2,17 @@
 //@
 //@ > This section is a work-in-progress experiment about making the book executable.
 //@
-//@ ```lalrpop
-//@ BlockExpression: BlockExpression = {
-//@     "{" <value:BooleanLiteral> "}" => BlockExpression::BoolLiteral(value),
-//@     "{" "}" => BlockExpression::Empty,
-//@ };
+//@ ```rustylr
+//@ BlockExpression(BlockExpression)
+//@     : lbrace! value=BooleanLiteral? rbrace! {
+//@         value.map(BlockExpression::BoolLiteral).unwrap_or(BlockExpression::Empty)
+//@     }
+//@     ;
 //@
-//@ BooleanLiteral: bool = {
-//@     "true" => true,
-//@     "false" => false,
-//@ };
+//@ BooleanLiteral(bool)
+//@     : true_! { true }
+//@     | false_! { false }
+//@     ;
 //@ ```
 //@
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -76,66 +76,15 @@ impl Display for ExternAbi {
 
 impl Display for FunctionParameters {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if let Some(self_param) = &self.self_param {
-            write!(f, "{self_param},")?
-        }
-        write!(f, "{}", self.params.iter().format(", "))
-    }
-}
-
-impl Display for SelfParam {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{} ", self.attrs.iter().format(" "))?;
-        write!(f, "{}", self.kind)
-    }
-}
-
-impl Display for SelfParamKind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            SelfParamKind::Shorthand(shorthand) => Display::fmt(shorthand, f),
-            SelfParamKind::Typed(typed) => Display::fmt(typed, f),
-        }
-    }
-}
-
-impl Display for ShorthandSelf {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{} ", self.receiver)?;
-        if self.is_mut {
-            f.write_str("mut ")?;
-        }
-        f.write_str("self")
-    }
-}
-
-impl Display for SelfReceiver {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            SelfReceiver::Value => {}
-            SelfReceiver::Reference { lifetime } => {
-                f.write_str("&")?;
-                if let Some(lifetime) = lifetime {
-                    write!(f, "{lifetime}")?
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-impl Display for TypedSelf {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if self.is_mut {
-            f.write_str("mut ")?;
-        }
-        write!(f, "self: {}", self.ty)
+        write!(f, "{}", self.args.iter().format(", "))
     }
 }
 
 impl Display for FunctionParam {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{} ", self.attrs.iter().format(" "))?;
+        if !self.attrs.is_empty() {
+            write!(f, "{} ", self.attrs.iter().format(" "))?;
+        }
         write!(f, "{}", self.kind)
     }
 }
@@ -143,16 +92,33 @@ impl Display for FunctionParam {
 impl Display for FunctionParamKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            FunctionParamKind::Pattern(pattern) => write!(f, "{pattern}"),
-            FunctionParamKind::Variadic => f.write_str("..."),
-            FunctionParamKind::Type(ty) => write!(f, "{ty}"),
+            FunctionParamKind::Regular { pattern, ty } => {
+                if let Some(pattern) = pattern {
+                    write!(f, "{pattern}: ")?;
+                }
+                write!(f, "{ty}")
+            }
+            FunctionParamKind::RefSelfShorthand { lifetime, is_mut } => {
+                write!(f, "&")?;
+                if let Some(lifetime) = lifetime {
+                    write!(f, "{lifetime} ")?;
+                }
+                if *is_mut {
+                    f.write_str("mut ")?;
+                }
+                f.write_str("self")
+            }
+            FunctionParamKind::SelfParam { is_mut, ty } => {
+                if *is_mut {
+                    f.write_str("mut ")?;
+                }
+                f.write_str("self")?;
+                if let Some(ty) = ty {
+                    write!(f, ": {ty}")?;
+                }
+                Ok(())
+            }
         }
-    }
-}
-
-impl Display for FunctionParamPattern {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.pattern, self.ty)
     }
 }
 

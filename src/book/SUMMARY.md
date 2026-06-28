@@ -2,6 +2,7 @@
 
 - [Introduction](introduction.md)
 - [The Language](language/overview.md.rs)
+  - [Lexical Structure](language/lexing.md.rs)
   - [Items](language/items.md)
     - [Functions](language/functions.md.rs)
   - [Types](language/types.md.rs)

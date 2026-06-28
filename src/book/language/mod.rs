@@ -2,6 +2,8 @@
 pub mod expressions;
 #[path = "functions.md.rs"]
 pub mod functions;
+#[path = "lexing.md.rs"]
+pub mod lexing;
 #[path = "overview.md.rs"]
 pub mod overview;
 #[path = "print.md.rs"]
@@ -11,6 +13,7 @@ pub mod types;
 
 pub use expressions::*;
 pub use functions::*;
+pub use lexing::*;
 pub use overview::*;
 pub use print::*;
 pub use types::*;
