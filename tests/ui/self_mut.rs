@@ -1,0 +1,1 @@
+fn method(mut self) {}

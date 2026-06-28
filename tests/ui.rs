@@ -60,12 +60,23 @@ fn run_case(input_path: &Path) -> Result<(), Failed> {
     let desugared_path = input_path.with_extension(DESUGARED_SUFFIX);
     let stderr_path = input_path.with_extension("stderr");
 
-    let result = rust_via_desugarings::parse_desugar_and_print_program(source);
+    let result = rust_via_desugarings::parser::parse_program(source);
 
     let _ = fs::remove_file(&desugared_path);
     let _ = fs::remove_file(&stderr_path);
     match result {
-        Ok(output) => {
+        Ok(mut program) => {
+            let roundtrip = rust_via_desugarings::print_program(&program);
+            let reparsed = rust_via_desugarings::parser::parse_program(&roundtrip)
+                .map_err(|error| format!("failed to re-parse printed source:\n{error}"))?;
+            if reparsed != program {
+                Err(format!(
+                    "printed source did not round-trip:\nprinted source:\n{roundtrip}\noriginal AST:\n{program:#?}\nreparsed AST:\n{reparsed:#?}"
+                ))?
+            }
+
+            rust_via_desugarings::desugar(&mut program);
+            let output = rust_via_desugarings::print_program(&program);
             write_output(&desugared_path, output)?;
             if directives.known_failure {
                 Err("expected failure, but parsing and printing succeeded".to_owned())?
