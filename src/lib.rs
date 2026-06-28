@@ -14,31 +14,21 @@ pub mod desugarings;
 pub use desugarings::overview::desugar;
 
 pub mod parser {
-    use crate::language::{Program, Token};
-    use logos::Logos;
-    use std::{
-        error::Error,
-        fmt::{self, Debug},
+    use crate::{
+        CompilationError,
+        language::{Program, Token},
     };
+    use logos::Logos;
 
     include!(concat!(env!("OUT_DIR"), "/parser.rs"));
 
-    #[derive(Debug)]
-    pub struct ParseProgramError(String);
-
-    impl Error for ParseProgramError {}
-    impl fmt::Display for ParseProgramError {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "{}", self.0)
-        }
-    }
-    impl From<ParseError> for ParseProgramError {
+    impl From<ParseError> for CompilationError {
         fn from(value: ParseError) -> Self {
-            ParseProgramError(format!("{value:?}"))
+            CompilationError::Parse(format!("{value:?}"))
         }
     }
 
-    pub fn parse_program(input: &str) -> Result<Program, ParseProgramError> {
+    pub fn parse_program(input: &str) -> Result<Program, CompilationError> {
         let mut lexer = Token::lexer(input);
         let mut context = ProgramContext::with_default_userdata();
         for token in lexer.by_ref() {
@@ -47,7 +37,7 @@ pub mod parser {
                 Err(()) => {
                     let offset = lexer.span().start;
                     let ch = lexer.slice().chars().next().unwrap_or('\0');
-                    return Err(ParseProgramError(format!(
+                    return Err(CompilationError::Parse(format!(
                         "unexpected character {ch:?} at byte {offset}"
                     )));
                 }
@@ -56,8 +46,8 @@ pub mod parser {
         let parses: Vec<_> = context.accept_all()?.collect();
         match parses.as_slice() {
             [(program, _data)] => Ok(program.clone()),
-            [] => Err(ParseProgramError("no valid parse".to_owned())),
-            parses => Err(ParseProgramError(format!(
+            [] => Err(CompilationError::Parse("no valid parse".to_owned())),
+            parses => Err(CompilationError::Parse(format!(
                 "ambiguous parse: found {} valid parses, such as:\nparse 1:\n{}\n\nparse 2:\n{}",
                 parses.len(),
                 parses[0].0,
@@ -67,8 +57,22 @@ pub mod parser {
     }
 }
 
-pub fn parse_desugar_and_print_program(input: &str) -> Result<String, parser::ParseProgramError> {
-    let mut program = parser::parse_program(input)?;
-    desugar(&mut program);
+#[derive(Debug)]
+pub enum CompilationError {
+    Parse(String),
+    Desugaring(String),
+}
+
+impl std::error::Error for CompilationError {}
+impl std::fmt::Display for CompilationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (CompilationError::Parse(msg) | CompilationError::Desugaring(msg)) = self;
+        write!(f, "{msg}")
+    }
+}
+
+pub fn parse_desugar_and_print_program(input: &str) -> Result<String, CompilationError> {
+    let program = parser::parse_program(input)?;
+    let program = desugar(program)?;
     Ok(print_program(&program))
 }

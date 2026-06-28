@@ -18,7 +18,16 @@
 //@ At the end of all that, we get a program in a very limited and precise subset of Rust.
 //@ See [The Final Language](final-language.md) for details and discussion.
 use crate::language::*;
+use crate::*;
 
-pub fn desugar(program: &mut Program) {
-    super::funsig::desugar_fun_sigs(program)
+macro_rules! desugaring_error {
+    ($msg:expr) => {{
+        return Err(crate::CompilationError::Desugaring($msg.to_string()));
+    }};
+}
+pub(crate) use desugaring_error;
+
+pub fn desugar(mut program: Program) -> Result<Program, CompilationError> {
+    super::funsig::desugar_fun_sigs(&mut program)?;
+    Ok(program)
 }
