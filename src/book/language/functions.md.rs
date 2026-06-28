@@ -161,11 +161,8 @@ pub struct FunctionParam {
 //@             ty,
 //@         }
 //@     }
-//@     | pattern=PatternNoTopAlt colon! ty=FunctionParamType {
-//@         FunctionParamKind::Regular { pattern: Some(pattern), ty }
-//@     }
-//@     | ty=FunctionParamType {
-//@         FunctionParamKind::Regular { pattern: None, ty }
+//@     | pattern=(PatternNoTopAlt colon!)? ty=FunctionParamType {
+//@         FunctionParamKind::Regular { pattern, ty }
 //@     }
 //@     ;
 //@ ```

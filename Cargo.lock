@@ -310,8 +310,7 @@ checksum = "94300abf3f1ae2e2b8ffb7b58043de3d399c73fa6f4b73826402a5c457614dbe"
 [[package]]
 name = "rusty_lr"
 version = "4.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dabc4a9fba625674bf1cffc21144fb2cf9954b377b694ffdce1abfd0325196d"
+source = "git+https://github.com/Nadrieril/RustyLR#fe9359eb57d19d5f0e65e114b75464efdd0a89e7"
 dependencies = [
  "rusty_lr_buildscript",
  "rusty_lr_core",
@@ -321,8 +320,7 @@ dependencies = [
 [[package]]
 name = "rusty_lr_buildscript"
 version = "0.69.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed9ecfd0e69e64f66244f17f66fa8a11f382637a8322c694ae9201b4f6cf1cbb"
+source = "git+https://github.com/Nadrieril/RustyLR#fe9359eb57d19d5f0e65e114b75464efdd0a89e7"
 dependencies = [
  "codespan-reporting",
  "proc-macro2",
@@ -334,8 +332,7 @@ dependencies = [
 [[package]]
 name = "rusty_lr_core"
 version = "4.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a78c9c0a965a05c4387660a6dd6c0a1ae89093ddaeb9c6220cc338a9bbe3921"
+source = "git+https://github.com/Nadrieril/RustyLR#fe9359eb57d19d5f0e65e114b75464efdd0a89e7"
 dependencies = [
  "arrayvec",
  "rustc-hash",
@@ -344,8 +341,7 @@ dependencies = [
 [[package]]
 name = "rusty_lr_derive"
 version = "2.50.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0316fc962b10f7daff3d7bf89687e42a0cf94a0d24afb2fea809fd8ef167e85e"
+source = "git+https://github.com/Nadrieril/RustyLR#fe9359eb57d19d5f0e65e114b75464efdd0a89e7"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -355,8 +351,7 @@ dependencies = [
 [[package]]
 name = "rusty_lr_parser"
 version = "4.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc07439da819ad7d2bb2740d79fd1f67aa58d9cefb9077106b71f5cc6b9fa6cd"
+source = "git+https://github.com/Nadrieril/RustyLR#fe9359eb57d19d5f0e65e114b75464efdd0a89e7"
 dependencies = [
  "proc-macro2",
  "quote",
