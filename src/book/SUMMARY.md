@@ -71,6 +71,7 @@
       <!-- - derefer -->
       <!--   -> could keep `let place p = *$place` in the final language. would help with FP. -->
   - [The Final Language](pipeline/final-language.md)
+  - [MiniRust Translation](pipeline/minirust.md.rs)
 - [Extra Language Features](language-features.md)
   - [Automatic Drop](features/auto-drop.md)
   - [Cleanup On Unwinding](features/on-unwind.md)

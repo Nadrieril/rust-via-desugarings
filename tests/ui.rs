@@ -29,12 +29,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 struct Directives {
     known_failure: bool,
+    run: bool,
     source_start: usize,
 }
 
 fn parse_directives(input: &str) -> Directives {
     let mut directives = Directives {
         known_failure: false,
+        run: false,
         source_start: 0,
     };
 
@@ -42,8 +44,10 @@ fn parse_directives(input: &str) -> Directives {
         let Some(directive) = line.strip_prefix("//@") else {
             break;
         };
-        if directive.trim() == "known-failure" {
-            directives.known_failure = true;
+        match directive.trim() {
+            "known-failure" => directives.known_failure = true,
+            "run" => directives.run = true,
+            _ => {}
         }
         directives.source_start += line.len();
     }
@@ -58,6 +62,7 @@ fn run_case(input_path: &Path) -> Result<(), Failed> {
     // Hack because the parser doesn't strip comments yet
     let source = &input[directives.source_start..];
     let desugared_path = input_path.with_extension(DESUGARED_SUFFIX);
+    let stdout_path = input_path.with_extension("out");
     let stderr_path = input_path.with_extension("stderr");
 
     let result = rust_via_desugarings::parser::parse_program(source);
@@ -76,11 +81,26 @@ fn run_case(input_path: &Path) -> Result<(), Failed> {
     let result = result.and_then(rust_via_desugarings::desugar);
 
     let _ = fs::remove_file(&desugared_path);
+    let _ = fs::remove_file(&stdout_path);
     let _ = fs::remove_file(&stderr_path);
     match result {
         Ok(program) => {
             let output = rust_via_desugarings::print_program(&program);
             write_output(&desugared_path, output)?;
+            if directives.run {
+                match rust_via_desugarings::run_in_minirust(&program) {
+                    Ok(stdout) => write_output(&stdout_path, stdout)?,
+                    Err(error) => {
+                        write_output(&stderr_path, format!("{error}\n"))?;
+                        if !directives.known_failure {
+                            Err(format!(
+                                "expected run success, got MiniRust error:\n{error}"
+                            ))?
+                        }
+                        return Ok(());
+                    }
+                }
+            }
             if directives.known_failure {
                 Err("expected failure, but parsing and printing succeeded".to_owned())?
             }

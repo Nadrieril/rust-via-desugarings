@@ -11,6 +11,7 @@ pub use language::{Program, print_program};
 
 #[path = "book/pipeline/mod.rs"]
 pub mod desugarings;
+pub use desugarings::minirust::{run_in_minirust, translate_to_minirust};
 pub use desugarings::overview::desugar;
 
 pub mod parser {
@@ -61,12 +62,15 @@ pub mod parser {
 pub enum CompilationError {
     Parse(String),
     Desugaring(String),
+    MiniRust(String),
 }
 
 impl std::error::Error for CompilationError {}
 impl std::fmt::Display for CompilationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (CompilationError::Parse(msg) | CompilationError::Desugaring(msg)) = self;
+        let (CompilationError::Parse(msg)
+        | CompilationError::Desugaring(msg)
+        | CompilationError::MiniRust(msg)) = self;
         write!(f, "{msg}")
     }
 }
@@ -75,4 +79,10 @@ pub fn parse_desugar_and_print_program(input: &str) -> Result<String, Compilatio
     let program = parser::parse_program(input)?;
     let program = desugar(program)?;
     Ok(print_program(&program))
+}
+
+pub fn parse_desugar_and_run_program(input: &str) -> Result<String, CompilationError> {
+    let program = parser::parse_program(input)?;
+    let program = desugar(program)?;
+    run_in_minirust(&program)
 }
