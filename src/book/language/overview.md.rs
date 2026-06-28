@@ -1,5 +1,7 @@
 //@ # The Language
 //@
+//@ > This section is a work-in-progress experiment about making the book executable.
+//@
 //@ In this section we define the syntactic components of the Rust language,
 //@ along with their grammar.
 //@ For now this describes only a very small subset of the full language.
