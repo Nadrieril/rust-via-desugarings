@@ -1,3 +1,4 @@
 # Rust via Desugarings
 
-A book that explains the meaning of a Rust program via successive desugarings.
+This book explains the meaning of a Rust program via successive desugarings.
+See [the book](https://nadrieril.github.io/rust-via-desugarings/introduction.html).

@@ -67,8 +67,19 @@ While I do my best to be precise and correct, this is just a fun project I'm doi
 knowledge of Rust. This book will contain mistakes, imprecisions and omissions; feel free to [open an
 issue](https://github.com/Nadrieril/rust-via-desugarings/issues) or PR if you notice any!
 
+## LLM Disclaimer
+
+The tooling used in this repo (`./tools`) is heavily LLM-assisted. While this book is an experiment,
+I won't deeply inspect that code as long as it looks reasonable.
+
+The contents of the book itself are carefully handcrafted. LLMs can be used for routine tasks like
+reflecting tooling changes or generating tests, but shall not be trusted[^3].
+This book aims for utmost precision; even an "obvious" tweak can turn out to be load-bearingly
+incorrect; hence careful human scrutiny is demanded.
+
 [^1]: The majority of the info in this book is present in one way or another in the [Rust
 Reference](https://doc.rust-lang.org/reference/introduction.html). The point of this book is in part
 to know where to start and which Reference sections are relevant to a given piece of Rust code. Also
 the Reference isn't executable even in theory, unlike this book.
 [^2]: I do wonder if it would make sense for the Reference to be structured in that way.
+[^3]: Especially not for changes that move code around, as it's easy to overlook subtle changes there.
