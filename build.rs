@@ -22,8 +22,8 @@ fn main() {
 fn collect_grammar() -> String {
     println!("cargo:rerun-if-changed={LANGUAGE_DIR}");
 
-    let mut declarations = String::new();
-    let mut productions = String::new();
+    let mut grammar = grammar::Grammar::default();
+    let mut lexer = grammar::rustylr::LexerSpec::default();
     for entry in WalkDir::new(LANGUAGE_DIR).sort_by_file_name() {
         let path = entry.unwrap().into_path();
         if !(path.is_file() && path.to_string_lossy().ends_with(".md.rs")) {
@@ -31,28 +31,23 @@ fn collect_grammar() -> String {
         }
         println!("cargo:rerun-if-changed={}", path.display());
         let content = fs::read_to_string(&path).unwrap();
-        let mut within_rustylr_fences = None;
-        for markdown in content.lines().filter_map(|line| line.strip_prefix("//@")) {
-            let markdown = markdown.strip_prefix(' ').unwrap_or(markdown);
-            let markdown = markdown.trim();
-
-            if within_rustylr_fences.is_none() && markdown.starts_with("```rustylr") {
-                within_rustylr_fences = Some(if markdown.contains("declarations") {
-                    &mut declarations
-                } else {
-                    &mut productions
-                });
-                continue;
-            } else if within_rustylr_fences.is_some() && markdown == "```" {
-                within_rustylr_fences = None;
-            }
-
-            if let Some(output) = within_rustylr_fences.as_deref_mut() {
-                output.push_str(markdown);
-                output.push('\n');
-            }
-        }
+        let markdown = literate_markdown(&content);
+        let relative_path = path.strip_prefix("src/book").unwrap().to_owned();
+        grammar::rustylr::parse_lexer_blocks(&markdown, &mut lexer, &relative_path).unwrap();
+        grammar::parse_grammar_blocks(&markdown, &mut grammar, "syntax", relative_path).unwrap();
     }
 
+    let declarations = lexer.rustylr_declarations().unwrap();
+    let productions = grammar::rustylr::render_rustylr(&grammar, &lexer).unwrap();
     format!("use crate::language::*;\n\n%%\n\n{declarations}\n{productions}")
+}
+
+fn literate_markdown(content: &str) -> String {
+    let mut markdown = String::new();
+    for line in content.lines().filter_map(|line| line.strip_prefix("//@")) {
+        let line = line.strip_prefix(' ').unwrap_or(line);
+        markdown.push_str(line);
+        markdown.push('\n');
+    }
+    markdown
 }

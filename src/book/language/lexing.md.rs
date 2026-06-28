@@ -68,40 +68,40 @@ fn string_literal(lex: &mut logos::Lexer<'_, Token>) -> String {
     slice[1..slice.len() - 1].to_owned()
 }
 
-//@ ```rustylr declarations
+//@ ```lexer
 //@ %tokentype Token;
 //@ %start Program;
 //@
-//@ %token fn_ Token::Fn;
-//@ %token const_ Token::Const;
-//@ %token async_ Token::Async;
-//@ %token safe Token::Safe;
-//@ %token unsafe_ Token::Unsafe;
-//@ %token extern_ Token::Extern;
-//@ %token mut_ Token::Mut;
-//@ %token self_ Token::Self_;
-//@ %token trait_self Token::TraitSelf;
-//@ %token bool_ Token::Bool;
-//@ %token true_ Token::True;
-//@ %token false_ Token::False;
-//@ %token arrow Token::Arrow;
-//@ %token amp Token::Amp;
-//@ %token colon Token::Colon;
-//@ %token comma Token::Comma;
-//@ %token lparen Token::LParen;
-//@ %token rparen Token::RParen;
-//@ %token lbrace Token::LBrace;
-//@ %token rbrace Token::RBrace;
-//@ %token semicolon Token::Semicolon;
-//@ %token ellipsis Token::Ellipsis;
-//@ %token underscore Token::Underscore;
-//@ %token identifier Token::Identifier(_);
-//@ %token string_literal Token::StringLiteral(_);
-//@ %token lifetime Token::Lifetime(_);
-//@ %token unsupported Token::Unsupported;
+//@ `fn` Fn;
+//@ `const` Const;
+//@ `async` Async;
+//@ `safe` Safe;
+//@ `unsafe` Unsafe;
+//@ `extern` Extern;
+//@ `mut` Mut;
+//@ `self` Self_;
+//@ `Self` TraitSelf;
+//@ `bool` Bool;
+//@ `true` True;
+//@ `false` False;
+//@ `->` Arrow;
+//@ `&` Amp;
+//@ `:` Colon;
+//@ `,` Comma;
+//@ `(` LParen;
+//@ `)` RParen;
+//@ `{` LBrace;
+//@ `}` RBrace;
+//@ `;` Semicolon;
+//@ `...` Ellipsis;
+//@ `_` Underscore;
+//@ IDENTIFIER Identifier(String);
+//@ STRING_LITERAL StringLiteral(String);
+//@ LIFETIME Lifetime(String);
+//@ UNSUPPORTED Unsupported;
 //@
-//@ %precedence self_;
-//@ %precedence colon;
+//@ %precedence `self`;
+//@ %precedence `:`;
 //@
 //@ %allow unit_production_eliminated(Identifier);
 //@ %allow unit_production_eliminated(GenericParams);

@@ -12,6 +12,8 @@ build-dir = ".book-build"
 git-repository-url = "https://github.com/Nadrieril/rust-via-desugarings"
 edit-url-template = "https://github.com/Nadrieril/rust-via-desugarings/edit/main/{path}"
 site-url = "/rust-via-desugarings/"
+additional-css = ["book/theme/grammar.css"]
+additional-js = ["book/theme/grammar.js"]
 
 [output.html.fold]
 enable = true
@@ -27,3 +29,8 @@ optional = true
 [preprocessor.literate-rust]
 before = [ "links" ]
 command = "python3 ../tools/literate_rust.py"
+
+[preprocessor.grammar]
+after = [ "literate-rust" ]
+before = [ "links" ]
+command = "cargo run --quiet --manifest-path ../tools/grammar/Cargo.toml --bin mdbook-grammar"

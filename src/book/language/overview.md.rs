@@ -10,12 +10,10 @@ use crate::language::*; //#
 //@
 //@ A program consists in a list of items.
 //@
-//@ ```rustylr
-//@ Program(Program)
-//@     : functions=Function* {
-//@         Program { functions }
-//@     }
-//@     ;
+//@ ```grammar
+//@ Program:
+//@     functions=Function*
+//@     => Program { functions }
 //@ ```
 //@
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -27,25 +25,24 @@ pub struct Program {
 //@
 //@ Some syntactic elements we haven't fleshed out yet.
 //@
-//@ ```rustylr
-//@ Identifier(Identifier)
-//@     : identifier {
-//@         let Token::Identifier(identifier) = identifier else {
-//@             unreachable!("expected identifier token")
-//@         };
-//@         identifier
-//@     }
-//@     ;
+//@ ```grammar
+//@ Identifier: IDENTIFIER
+//@     => IDENTIFIER
 //@ ```
 //@
 pub type Identifier = String;
 
-//@ ```rustylr
-//@ Mutability(Mutability)
-//@     : is_mut=mut_? {
-//@         if is_mut.is_some() { Mutability::Mutable } else { Mutability::Immutable }
-//@     }
-//@     ;
+//@ ```grammar
+//@ Abi: STRING_LITERAL
+//@     => STRING_LITERAL
+//@ ```
+//@
+pub type Abi = String;
+
+//@ ```grammar
+//@ Mutability:
+//@     is_mut=`mut`?
+//@     => if is_mut.is_some() { Mutability::Mutable } else { Mutability::Immutable }
 //@ ```
 //@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,54 +51,43 @@ pub enum Mutability {
     Immutable,
 }
 
-//@ ```rustylr
-//@ GenericParams(GenericParams)
-//@     : unsupported! { GenericParams }
-//@     ;
+//@ ```grammar
+//@ GenericParams: UNSUPPORTED
+//@     => GenericParams {}
 //@ ```
 //@
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct GenericParams;
+pub struct GenericParams {}
 
-//@ ```rustylr
-//@ WhereClause(WhereClause)
-//@     : unsupported! { WhereClause }
-//@     ;
+//@ ```grammar
+//@ WhereClause: UNSUPPORTED
+//@     => WhereClause {}
 //@ ```
 //@
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WhereClause;
+pub struct WhereClause {}
 
-//@ ```rustylr
-//@ OuterAttribute(OuterAttribute)
-//@     : unsupported! { OuterAttribute }
-//@     ;
+//@ ```grammar
+//@ OuterAttribute: UNSUPPORTED
+//@     => OuterAttribute {}
 //@ ```
 //@
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OuterAttribute;
+pub struct OuterAttribute {}
 
-//@ ```rustylr
-//@ Lifetime(Lifetime)
-//@     : lifetime! {
-//@         Lifetime
-//@     }
-//@     ;
+//@ ```grammar
+//@ Lifetime: LIFETIME
+//@     => Lifetime {}
 //@ ```
 //@
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Lifetime;
+pub struct Lifetime {}
 
-//@ ```rustylr
-//@ PatternNoTopAlt(PatternNoTopAlt)
-//@     : identifier! {
-//@         PatternNoTopAlt
-//@     }
-//@     | underscore! {
-//@         PatternNoTopAlt
-//@     }
-//@     ;
+//@ ```grammar
+//@ PatternNoTopAlt:
+//@     | IDENTIFIER => PatternNoTopAlt {}
+//@     | `_` => PatternNoTopAlt {}
 //@ ```
 //@
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PatternNoTopAlt;
+pub struct PatternNoTopAlt {}

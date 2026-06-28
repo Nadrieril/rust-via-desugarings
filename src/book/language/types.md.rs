@@ -2,13 +2,12 @@
 //@
 //@ > This section is a work-in-progress experiment about making the book executable.
 //@
-//@ ```rustylr
-//@ Type(Type)
-//@     : bool_! { Type::Bool }
-//@     | lparen! rparen! { Type::Unit }
-//@     | trait_self! { Type::TraitSelf }
-//@     | amp! lifetime=Lifetime? m=Mutability ty=Type { Type::Ref(lifetime, m, Box::new(ty)) }
-//@     ;
+//@ ```grammar
+//@ Type:
+//@     | `bool` => Type::Bool
+//@     | `(` `)` => Type::Unit
+//@     | `Self` => Type::TraitSelf
+//@     | `&` lifetime=Lifetime? m=Mutability ty=Type => Type::Ref(lifetime, m, Box::new(ty))
 //@ ```
 //@
 use crate::language::*; //#

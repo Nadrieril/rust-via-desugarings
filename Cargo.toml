@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
-members = []
+members = [
+    "tools/*"
+]
 
 [package]
 name = "rust-via-desugarings"
@@ -24,6 +26,7 @@ rusty_lr = { git = "https://github.com/Nadrieril/RustyLR" }
 syn = { version = "2", features = ["parsing"] }
 
 [build-dependencies]
+grammar = { path = "tools/grammar" }
 rusty_lr = { git = "https://github.com/Nadrieril/RustyLR", features = ["build"] }
 walkdir = "2.5.0"
 
