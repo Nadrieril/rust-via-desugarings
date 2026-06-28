@@ -23,7 +23,7 @@ fn implicit_return(f: &mut Function) {
 //@ A `self` parameter is sugar for `self: Self`, and a `&self` parameter is sugar for `self:
 //@ &Self`.
 fn shorthand_self(f: &mut Function) {
-    if let Some(p) = f.parameters.args.first_mut() {
+    if let Some(p) = f.parameters.first_mut() {
         match &p.kind {
             FunctionParamKind::SelfParam {
                 mutability,

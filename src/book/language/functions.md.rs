@@ -7,34 +7,20 @@ use crate::language::*; //#
 //@ parameters, and an output type. Other than a name, all these are optional.
 //@
 //@ ```grammar
-//@ Function ->
-//@     qualifiers:FunctionQualifiers `fn` name:IDENTIFIER generics:GenericParams?
-//@         `(` params:FunctionParameters? `)`
-//@         ( `->` return_type:Type )? where_clause:WhereClause?
-//@         body:FunctionBody
-//@
-//@ FunctionQualifiers -> `const`? `async`? ItemSafety? (`extern` Abi?)?
-//@
-//@ ItemSafety -> `safe` | `unsafe`
-//@
-//@ Abi -> STRING_LITERAL | RAW_STRING_LITERAL
-//@
-//@ FunctionParameters ->
-//@     FunctionParam (`,` FunctionParam)* `,`?
-//@
-//@ FunctionParam -> OuterAttribute* FunctionParamKind
-//@
-//@ FunctionParamKind -> SelfParam | RefSelfShorthand | RegularFunctionParam
-//@
-//@ SelfParam -> `mut`? `self` (`:` Type)?
-//@
-//@ RefSelfShorthand -> `&` Lifetime? `mut`? `self`
-//@
-//@ RegularFunctionParam -> ( PatternNoTopAlt `:` )? FunctionParamType
-//@
-//@ FunctionParamType -> Type | `...`
-//@
-//@ FunctionBody -> BlockExpression | `;`
+//@ Function:
+//@     FunctionQualifiers `fn` IDENTIFIER GenericParams?
+//@         `(` FunctionParameters? `)`
+//@         ( `->` Type )? WhereClause?
+//@         FunctionBody
+//@     => Function {
+//@         qualifiers: FunctionQualifiers,
+//@         name: IDENTIFIER,
+//@         generic_params: GenericParams.unwrap_or_default(),
+//@         parameters: FunctionParameters.unwrap_or_default(),
+//@         return_type: Type,
+//@         where_clause: WhereClause,
+//@         body: FunctionBody,
+//@     }
 //@ ```
 //@
 //@ ```rustylr
@@ -61,12 +47,22 @@ pub struct Function {
     pub qualifiers: FunctionQualifiers,
     pub name: Identifier,
     pub generic_params: GenericParams,
-    pub parameters: FunctionParameters,
+    pub parameters: Vec<FunctionParam>,
     pub return_type: Option<Type>,
     pub where_clause: Option<WhereClause>,
     pub body: FunctionBody,
 }
 
+//@ ```grammar
+//@ FunctionQualifiers:
+//@     is_const=`const`? is_async=`async`? ItemSafety? ExternAbi?
+//@     => FunctionQualifiers {
+//@         is_const: is_const.is_some(),
+//@         is_async: is_async.is_some(),
+//@         safety: ItemSafety,
+//@         extern_abi: ExternAbi,
+//@     }
+//@ ```
 //@ ```rustylr
 //@ FunctionQualifiers(FunctionQualifiers)
 //@     : is_const=const_? is_async=async_? safety=ItemSafety?
@@ -89,6 +85,11 @@ pub struct FunctionQualifiers {
     pub extern_abi: Option<ExternAbi>,
 }
 
+//@ ```grammar
+//@ ItemSafety:
+//@     | `safe` => ItemSafety::Safe,
+//@     | `unsafe` => ItemSafety::Unsafe,
+//@ ```
 //@ ```rustylr
 //@ ItemSafety(ItemSafety)
 //@     : safe! { ItemSafety::Safe }
@@ -102,6 +103,10 @@ pub enum ItemSafety {
     Unsafe,
 }
 
+//@ ```grammar
+//@ ExternAbi: `extern` Abi?
+//@     => ExternAbi { abi: Abi }
+//@ ```
 //@ ```rustylr
 //@ ExternAbi(ExternAbi)
 //@     : extern_! literal=string_literal? {
@@ -122,20 +127,21 @@ pub struct ExternAbi {
     pub abi: Option<String>,
 }
 
+//@ ```grammar
+//@ FunctionParameters:
+//@     first_arg=FunctionParam args=(`,` FunctionParam)* `,`?
+//@     => [first_arg].into_iter().chain(args).collect()
+//@
+//@ FunctionParam: attrs=OuterAttribute* kind=FunctionParamKind
+//@     => FunctionParam { attrs, kind }
+//@ ```
 //@ ```rustylr
-//@ FunctionParameters(FunctionParameters)
-//@     : args=$sep(FunctionParam, comma, +) comma? {
-//@         FunctionParameters { args }
+//@ FunctionParameters(Vec<FunctionParam>)
+//@     : first_arg=FunctionParam args=(comma FunctionParam)* comma? {
+//@         [first_arg].into_iter().chain(args.into_iter().map(|(_, a)| a)).collect()
 //@     }
 //@     ;
-//@ ```
 //@
-#[derive(Clone, Debug, PartialEq, Eq, Default)] //#
-pub struct FunctionParameters {
-    pub args: Vec<FunctionParam>,
-}
-
-//@ ```rustylr
 //@ FunctionParam(FunctionParam)
 //@     : attrs=OuterAttribute* kind=FunctionParamKind { FunctionParam { attrs, kind } }
 //@     ;
@@ -147,6 +153,12 @@ pub struct FunctionParam {
     pub kind: FunctionParamKind,
 }
 
+//@ ```grammar
+//@ FunctionParamKind:
+//@     | `&` Lifetime? Mutability `self` => FunctionParamKind::RefSelfShorthand { lifetime: Lifetime, mutability: Mutability },
+//@     | Mutability `self` (`:` Type)? => FunctionParamKind::SelfParam { mutability: Mutability, ty: Type },
+//@     | pattern=( PatternNoTopAlt `:` )? ty=FunctionParamType => FunctionParamKind::Regular { pattern, ty }
+//@ ```
 //@ ```rustylr
 //@ FunctionParamKind(FunctionParamKind)
 //@     : amp! lifetime=Lifetime? mutability=Mutability self_! {
@@ -183,14 +195,15 @@ pub enum FunctionParamKind {
     },
 }
 
+//@ ```grammar
+//@ FunctionParamType:
+//@     | Type => FunctionParamType::Type(Type),
+//@     | `...` => FunctionParamType::Variadic,
+//@ ```
 //@ ```rustylr
 //@ FunctionParamType(FunctionParamType)
-//@     : ty=Type {
-//@         FunctionParamType::Type(ty)
-//@     }
-//@     | ellipsis! {
-//@         FunctionParamType::Variadic
-//@     }
+//@     : ty=Type { FunctionParamType::Type(ty) }
+//@     | ellipsis! { FunctionParamType::Variadic }
 //@     ;
 //@ ```
 //@
@@ -200,6 +213,11 @@ pub enum FunctionParamType {
     Variadic,
 }
 
+//@ ```grammar
+//@ FunctionBody:
+//@     | BlockExpression => FunctionBody::Block(BlockExpression)
+//@     | `;` => FunctionBody::Missing
+//@ ```
 //@ ```rustylr
 //@ FunctionBody(FunctionBody)
 //@     : block=BlockExpression { FunctionBody::Block(block) }

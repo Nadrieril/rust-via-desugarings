@@ -23,8 +23,11 @@ impl Display for Function {
         write!(
             f,
             "fn {}{}({})",
-            self.name, self.generic_params, self.parameters
+            self.name,
+            self.generic_params,
+            self.parameters.iter().format(", ")
         )?;
+
         if let Some(return_type) = &self.return_type {
             write!(f, " -> {return_type}")?;
         }
@@ -80,12 +83,6 @@ impl Display for ExternAbi {
             Some(abi) => write!(f, "extern \"{abi}\""),
             None => f.write_str("extern"),
         }
-    }
-}
-
-impl Display for FunctionParameters {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.args.iter().format(", "))
     }
 }
 
