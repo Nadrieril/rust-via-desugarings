@@ -136,6 +136,14 @@ impl Display for Type {
         match self {
             Type::Unit => write!(f, "()"),
             Type::Bool => write!(f, "bool"),
+            Type::TraitSelf => write!(f, "Self"),
+            Type::Ref(lifetime, ty) => {
+                f.write_str("&")?;
+                if let Some(lifetime) = lifetime {
+                    write!(f, "{lifetime} ")?;
+                }
+                write!(f, "{ty}")
+            }
         }
     }
 }

@@ -12,6 +12,10 @@ fn main() {
     let parser_path = out_dir.join("parser.rs");
     rusty_lr::build::Builder::new()
         .file(grammar_path.to_str().unwrap())
+        .glr(true)
+        .note_conflicts(false)
+        .note_conflicts_resolving(false)
+        .note_optimization(false)
         .build(parser_path.to_str().unwrap());
 }
 

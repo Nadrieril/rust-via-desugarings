@@ -23,6 +23,8 @@ pub enum Token {
     Mut,
     #[token("self")]
     Self_,
+    #[token("Self")]
+    TraitSelf,
     #[token("bool")]
     Bool,
     #[token("true")]
@@ -78,6 +80,7 @@ fn string_literal(lex: &mut logos::Lexer<'_, Token>) -> String {
 //@ %token extern_ Token::Extern;
 //@ %token mut_ Token::Mut;
 //@ %token self_ Token::Self_;
+//@ %token trait_self Token::TraitSelf;
 //@ %token bool_ Token::Bool;
 //@ %token true_ Token::True;
 //@ %token false_ Token::False;

@@ -53,8 +53,17 @@ pub mod parser {
                 }
             }
         }
-        let (program, _data) = context.accept()?;
-        Ok(program)
+        let parses: Vec<_> = context.accept_all()?.collect();
+        match parses.as_slice() {
+            [(program, _data)] => Ok(program.clone()),
+            [] => Err(ParseProgramError("no valid parse".to_owned())),
+            parses => Err(ParseProgramError(format!(
+                "ambiguous parse: found {} valid parses, such as:\nparse 1:\n{}\n\nparse 2:\n{}",
+                parses.len(),
+                parses[0].0,
+                parses[1].0,
+            ))),
+        }
     }
 }
 
