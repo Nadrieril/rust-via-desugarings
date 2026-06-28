@@ -26,4 +26,4 @@ optional = true
 
 [preprocessor.literate-rust]
 before = [ "links" ]
-command = "python3 ./preprocessors/literate_rust.py"
+command = "python3 ../tools/literate_rust.py"
