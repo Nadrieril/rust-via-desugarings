@@ -1,5 +1,7 @@
 //@ # Printing
 //@
+//@ > This section is a work-in-progress experiment about making the book executable.
+//@
 //@ These printers turn the AST back into Rust syntax.
 use crate::language::*; //#
 use itertools::Itertools; //#

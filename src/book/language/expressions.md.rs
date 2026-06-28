@@ -1,5 +1,7 @@
 //@ # Expressions
 //@
+//@ > This section is a work-in-progress experiment about making the book executable.
+//@
 //@ ```lalrpop
 //@ BlockExpression: BlockExpression = {
 //@     "{" <value:BooleanLiteral> "}" => BlockExpression::BoolLiteral(value),

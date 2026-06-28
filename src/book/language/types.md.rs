@@ -1,5 +1,7 @@
 //@ # Types
 //@
+//@ > This section is a work-in-progress experiment about making the book executable.
+//@
 //@ ```lalrpop
 //@ Type: Type = {
 //@     "bool" => Type::Bool,

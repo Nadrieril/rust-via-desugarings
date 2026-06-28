@@ -1,5 +1,7 @@
 //@ # Functions
 //@
+//@ > This section is a work-in-progress experiment about making the book executable.
+//@
 use crate::language::*; //#
 //@ A function consists of a block (that’s the body of the function), along with a name, a set of
 //@ parameters, and an output type. Other than a name, all these are optional.
