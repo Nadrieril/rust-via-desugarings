@@ -25,20 +25,26 @@ fn implicit_return(f: &mut Function) {
 fn shorthand_self(f: &mut Function) {
     if let Some(p) = f.parameters.args.first_mut() {
         match &p.kind {
-            FunctionParamKind::SelfParam { is_mut, ty: None } => {
+            FunctionParamKind::SelfParam {
+                mutability,
+                ty: None,
+            } => {
                 p.kind = FunctionParamKind::SelfParam {
-                    is_mut: *is_mut,
+                    mutability: *mutability,
                     ty: Some(Type::TraitSelf),
                 }
             }
-            // TODO: mutable ref
             FunctionParamKind::RefSelfShorthand {
                 lifetime,
-                is_mut: false,
+                mutability,
             } => {
                 p.kind = FunctionParamKind::SelfParam {
-                    is_mut: false,
-                    ty: Some(Type::Ref(lifetime.clone(), Box::new(Type::TraitSelf))),
+                    mutability: Mutability::Immutable,
+                    ty: Some(Type::Ref(
+                        lifetime.clone(),
+                        *mutability,
+                        Box::new(Type::TraitSelf),
+                    )),
                 }
             }
             _ => {}

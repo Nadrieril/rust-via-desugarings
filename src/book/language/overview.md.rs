@@ -18,7 +18,7 @@ use crate::language::*; //#
 //@     ;
 //@ ```
 //@
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Program {
     pub functions: Vec<Function>,
 }
@@ -39,6 +39,20 @@ pub struct Program {
 //@ ```
 //@
 pub type Identifier = String;
+
+//@ ```rustylr
+//@ Mutability(Mutability)
+//@     : is_mut=mut_? {
+//@         if is_mut.is_some() { Mutability::Mutable } else { Mutability::Immutable }
+//@     }
+//@     ;
+//@ ```
+//@
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mutability {
+    Mutable,
+    Immutable,
+}
 
 //@ ```rustylr
 //@ GenericParams(GenericParams)

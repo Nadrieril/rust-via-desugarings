@@ -1,1 +1,1 @@
- fn method(&'_ mut self) -> () {}
+ fn method(self: &'_ mut Self) -> () {}

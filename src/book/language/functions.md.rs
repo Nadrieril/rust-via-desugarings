@@ -149,15 +149,15 @@ pub struct FunctionParam {
 
 //@ ```rustylr
 //@ FunctionParamKind(FunctionParamKind)
-//@     : amp! lifetime=Lifetime? is_mut=mut_? self_! {
+//@     : amp! lifetime=Lifetime? mutability=Mutability self_! {
 //@         FunctionParamKind::RefSelfShorthand {
 //@             lifetime,
-//@             is_mut: is_mut.is_some(),
+//@             mutability,
 //@         }
 //@     }
-//@     | is_mut=mut_? self_! ty=(colon! Type)? {
+//@     | mutability=Mutability self_! ty=(colon! Type)? {
 //@         FunctionParamKind::SelfParam {
-//@             is_mut: is_mut.is_some(),
+//@             mutability,
 //@             ty,
 //@         }
 //@     }
@@ -177,12 +177,12 @@ pub enum FunctionParamKind {
         ty: FunctionParamType,
     },
     SelfParam {
-        is_mut: bool,
+        mutability: Mutability,
         ty: Option<Type>,
     },
     RefSelfShorthand {
         lifetime: Option<Lifetime>,
-        is_mut: bool,
+        mutability: Mutability,
     },
 }
 

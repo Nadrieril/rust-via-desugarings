@@ -65,6 +65,15 @@ impl Display for ItemSafety {
     }
 }
 
+impl Display for Mutability {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Mutable => "mut ",
+            Self::Immutable => "",
+        })
+    }
+}
+
 impl Display for ExternAbi {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match &self.abi {
@@ -98,20 +107,19 @@ impl Display for FunctionParamKind {
                 }
                 write!(f, "{ty}")
             }
-            FunctionParamKind::RefSelfShorthand { lifetime, is_mut } => {
+            FunctionParamKind::RefSelfShorthand {
+                lifetime,
+                mutability,
+            } => {
                 write!(f, "&")?;
                 if let Some(lifetime) = lifetime {
                     write!(f, "{lifetime} ")?;
                 }
-                if *is_mut {
-                    f.write_str("mut ")?;
-                }
+                write!(f, "{mutability}")?;
                 f.write_str("self")
             }
-            FunctionParamKind::SelfParam { is_mut, ty } => {
-                if *is_mut {
-                    f.write_str("mut ")?;
-                }
+            FunctionParamKind::SelfParam { mutability, ty } => {
+                write!(f, "{mutability}")?;
                 f.write_str("self")?;
                 if let Some(ty) = ty {
                     write!(f, ": {ty}")?;
@@ -137,11 +145,12 @@ impl Display for Type {
             Type::Unit => write!(f, "()"),
             Type::Bool => write!(f, "bool"),
             Type::TraitSelf => write!(f, "Self"),
-            Type::Ref(lifetime, ty) => {
+            Type::Ref(lifetime, mutability, ty) => {
                 f.write_str("&")?;
                 if let Some(lifetime) = lifetime {
                     write!(f, "{lifetime} ")?;
                 }
+                write!(f, "{mutability}")?;
                 write!(f, "{ty}")
             }
         }

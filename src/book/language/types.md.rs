@@ -7,7 +7,7 @@
 //@     : bool_! { Type::Bool }
 //@     | lparen! rparen! { Type::Unit }
 //@     | trait_self! { Type::TraitSelf }
-//@     | amp! lifetime=Lifetime? ty=Type { Type::Ref(lifetime, Box::new(ty)) }
+//@     | amp! lifetime=Lifetime? m=Mutability ty=Type { Type::Ref(lifetime, m, Box::new(ty)) }
 //@     ;
 //@ ```
 //@
@@ -17,5 +17,5 @@ pub enum Type {
     Unit,
     Bool,
     TraitSelf,
-    Ref(Option<Lifetime>, Box<Type>),
+    Ref(Option<Lifetime>, Mutability, Box<Type>),
 }
