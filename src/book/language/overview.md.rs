@@ -56,23 +56,23 @@ pub enum Mutability {
 //@     => GenericParams {}
 //@ ```
 //@
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct GenericParams {}
 
 //@ ```grammar
-//@ WhereClause: UNSUPPORTED
-//@     => WhereClause {}
+//@ WhereClauses: UNSUPPORTED
+//@     => WhereClauses {}
 //@ ```
 //@
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WhereClause {}
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct WhereClauses {}
 
 //@ ```grammar
 //@ OuterAttribute: UNSUPPORTED
 //@     => OuterAttribute {}
 //@ ```
 //@
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OuterAttribute {}
 
 //@ ```grammar
@@ -80,7 +80,7 @@ pub struct OuterAttribute {}
 //@     => Lifetime {}
 //@ ```
 //@
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Lifetime {}
 
 //@ ```grammar
@@ -89,5 +89,5 @@ pub struct Lifetime {}
 //@     | `_` => PatternNoTopAlt {}
 //@ ```
 //@
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PatternNoTopAlt {}

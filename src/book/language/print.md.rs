@@ -31,9 +31,7 @@ impl Display for Function {
         if let Some(return_type) = &self.return_type {
             write!(f, " -> {return_type}")?;
         }
-        if let Some(where_clause) = &self.where_clause {
-            write!(f, " {where_clause}")?;
-        }
+        write!(f, " {}", self.where_clauses)?;
         match &self.body {
             FunctionBody::Block(block) => write!(f, " {block}"),
             FunctionBody::Missing => f.write_str(";"),
@@ -169,7 +167,7 @@ impl Display for GenericParams {
     }
 }
 
-impl Display for WhereClause {
+impl Display for WhereClauses {
     fn fmt(&self, _f: &mut Formatter<'_>) -> fmt::Result {
         Ok(())
     }

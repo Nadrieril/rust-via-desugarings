@@ -653,7 +653,7 @@ mod tests {
 Function:
     FunctionQualifiers `fn` IDENTIFIER GenericParams?
         `(` FunctionParameters? `)`
-        ( `->` Type )? WhereClause?
+        ( `->` Type )? WhereClauses?
         FunctionBody
     => Function { name: IDENTIFIER, return_type: Type }
 "#,

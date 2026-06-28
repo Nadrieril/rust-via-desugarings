@@ -1,1 +1,1 @@
- extern "Rust" fn f() -> () {}
+ extern "Rust" fn f() -> ()  {}

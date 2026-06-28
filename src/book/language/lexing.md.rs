@@ -105,7 +105,7 @@ fn string_literal(lex: &mut logos::Lexer<'_, Token>) -> String {
 //@
 //@ %allow unit_production_eliminated(Identifier);
 //@ %allow unit_production_eliminated(GenericParams);
-//@ %allow unit_production_eliminated(WhereClause);
+//@ %allow unit_production_eliminated(WhereClauses);
 //@ %allow unit_production_eliminated(OuterAttribute);
 //@ %allow unit_production_eliminated(Lifetime);
 //@ ```

@@ -1,1 +1,1 @@
- fn method(self: bool) -> () {}
+ fn method(self: bool) -> ()  {}
