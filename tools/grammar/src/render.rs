@@ -42,10 +42,24 @@ fn make_relative_link_map(grammar: &Grammar, chapter_path: &Path) -> HashMap<Str
         .map(|p| {
             let relative = pathdiff::diff_paths(&p.path, current_path)
                 .unwrap_or_else(|| PathBuf::from(&p.path));
-            let relative = relative.display().to_string().replace('\\', "/");
+            let relative = html_path(&relative);
             (p.name.clone(), relative)
         })
         .collect()
+}
+
+fn html_path(path: &Path) -> String {
+    let path = path.display().to_string().replace('\\', "/");
+    if let Some(path) = path.strip_suffix(".md.rs") {
+        // mdBook rewrites raw HTML hrefs containing a literal `.md`, and would
+        // turn `chapter.md.html` into `chapter.html`. Escape the dot so the
+        // browser still resolves the final `chapter.md.html` file.
+        format!("{path}%2Emd.html")
+    } else if let Some(path) = path.strip_suffix(".md") {
+        format!("{path}.html")
+    } else {
+        path
+    }
 }
 
 fn render_names(
@@ -147,5 +161,28 @@ Rule:
         assert!(
             rendered.contains("<span class=\"grammar-action\"><br>\n&nbsp;&nbsp;&nbsp;&nbsp;=&gt;")
         );
+    }
+
+    #[test]
+    fn renders_links_to_literate_markdown_sources() {
+        let source = r#"
+```grammar
+Rule: Other => Other
+```
+"#;
+        let mut grammar = Grammar::default();
+        crate::parse_grammar(
+            "Other: `x` => ()",
+            &mut grammar,
+            "syntax",
+            "language/other.md.rs",
+        )
+        .unwrap();
+        crate::parse_grammar_blocks(source, &mut grammar, "syntax", "language/current.md.rs")
+            .unwrap();
+
+        let rendered = render_chapter(&grammar, source, Path::new("language/current.md.rs"));
+
+        assert!(rendered.contains("href=\"other%2Emd.html#grammar-Other\""));
     }
 }

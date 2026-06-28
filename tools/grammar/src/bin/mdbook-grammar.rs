@@ -65,8 +65,8 @@ fn render_sections(sections: &mut Value, grammar: &Grammar) {
 
 fn chapter_path(chapter: &Value) -> PathBuf {
     chapter
-        .get("path")
-        .or_else(|| chapter.get("source_path"))
+        .get("source_path")
+        .or_else(|| chapter.get("path"))
         .and_then(Value::as_str)
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("chapter.md"))
