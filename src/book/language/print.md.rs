@@ -139,6 +139,7 @@ impl Display for Type {
         match self {
             Type::Unit => write!(f, "()"),
             Type::Bool => write!(f, "bool"),
+            Type::Str => write!(f, "str"),
             Type::TraitSelf => write!(f, "Self"),
             Type::Ref(lifetime, mutability, ty) => {
                 f.write_str("&")?;
@@ -154,9 +155,95 @@ impl Display for Type {
 
 impl Display for BlockExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str("{")?;
+        for statement in &self.statements {
+            write!(f, " {statement}")?;
+        }
+        if let Some(tail) = &self.tail {
+            write!(f, " {tail}")?;
+        }
+        f.write_str(" }")
+    }
+}
+
+impl Display for Statement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            BlockExpression::Empty => write!(f, "{{}}"),
-            BlockExpression::BoolLiteral(value) => write!(f, "{{ {} }}", value),
+            Statement::Empty => f.write_str(";"),
+            Statement::Let {
+                attrs,
+                pattern,
+                ty,
+                initial_value,
+                else_branch,
+            } => {
+                write!(f, "{} ", attrs.iter().format(" "))?;
+                write!(f, "let {pattern}")?;
+                if let Some(ty) = ty {
+                    write!(f, ": {ty}")?;
+                }
+                if let Some(initial_value) = initial_value {
+                    write!(f, " = {initial_value}")?;
+                }
+                if let Some(else_branch) = else_branch {
+                    write!(f, " else {else_branch}")?;
+                }
+                f.write_str(";")
+            }
+            Statement::Expr(expression) => write!(f, "{expression};"),
+        }
+    }
+}
+
+impl Display for Expression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{} ", self.attrs.iter().format(" "))?;
+        write!(f, "{}", self.kind)
+    }
+}
+
+impl Display for ExpressionKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            ExpressionKind::Literal(literal) => write!(f, "{literal}"),
+            ExpressionKind::Path(path) => write!(f, "{path}"),
+            ExpressionKind::Operator(operator) => write!(f, "{operator}"),
+            ExpressionKind::Block(block) => write!(f, "{block}"),
+            ExpressionKind::Tuple(tuple) => write!(f, "{tuple}"),
+            ExpressionKind::Call(call) => write!(f, "{call}"),
+        }
+    }
+}
+
+impl Display for LiteralExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            LiteralExpression::String(value) => write!(f, "\"{value}\""),
+            LiteralExpression::Integer(value) => write!(f, "{value}"),
+            LiteralExpression::Bool(value) => write!(f, "{value}"),
+        }
+    }
+}
+
+impl Display for TupleExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            TupleExpression::Unit => f.write_str("()"),
+        }
+    }
+}
+
+impl Display for CallExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}({})", self.callee, self.args.iter().format(", "))
+    }
+}
+
+impl Display for OperatorExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            OperatorExpression::Add(left, right) => write!(f, "{left} + {right}"),
+            OperatorExpression::Assignment(left, right) => write!(f, "{left} = {right}"),
         }
     }
 }
@@ -185,8 +272,11 @@ impl Display for Lifetime {
     }
 }
 
-impl Display for PatternNoTopAlt {
+impl Display for Pattern {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.write_str("_")
+        match self {
+            Pattern::Identifier(name) => f.write_str(name),
+            Pattern::Wildcard => f.write_str("_"),
+        }
     }
 }

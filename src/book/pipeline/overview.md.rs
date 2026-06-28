@@ -17,6 +17,8 @@
 //@
 //@ At the end of all that, we get a program in a very limited and precise subset of Rust.
 //@ See [The Final Language](final-language.md) for details and discussion.
+//@
+//@ > The rest of this section is a work-in-progress experiment about making the book executable.
 use crate::language::*;
 use crate::*;
 

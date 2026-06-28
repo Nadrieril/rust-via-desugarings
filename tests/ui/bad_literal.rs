@@ -1,2 +1,3 @@
-//@ known-failure
-fn f() -> bool { 0 }
+fn f() -> bool {
+    0
+}

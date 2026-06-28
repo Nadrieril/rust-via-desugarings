@@ -8,6 +8,8 @@ pub mod lexing;
 pub mod overview;
 #[path = "print.md.rs"]
 pub mod print;
+#[path = "statements.md.rs"]
+pub mod statements;
 #[path = "types.md.rs"]
 pub mod types;
 
@@ -16,4 +18,5 @@ pub use functions::*;
 pub use lexing::*;
 pub use overview::*;
 pub use print::*;
+pub use statements::*;
 pub use types::*;

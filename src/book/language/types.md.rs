@@ -5,6 +5,7 @@
 //@ ```grammar
 //@ Type:
 //@     | `bool` => Type::Bool
+//@     | `str` => Type::Str
 //@     | `(` `)` => Type::Unit
 //@     | `Self` => Type::TraitSelf
 //@     | `&` lifetime=Lifetime? m=Mutability ty=Type => Type::Ref(lifetime, m, Box::new(ty))
@@ -15,6 +16,7 @@ use crate::language::*; //#
 pub enum Type {
     Unit,
     Bool,
+    Str,
     TraitSelf,
     Ref(Option<Lifetime>, Mutability, Box<Type>),
 }

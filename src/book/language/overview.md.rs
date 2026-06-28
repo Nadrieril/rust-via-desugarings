@@ -26,14 +26,14 @@ pub struct Program {
 //@ Some syntactic elements we haven't fleshed out yet.
 //@
 //@ ```grammar
-//@ Identifier: IDENTIFIER
+//@ Identifier -> String: IDENTIFIER
 //@     => IDENTIFIER
 //@ ```
 //@
 pub type Identifier = String;
 
 //@ ```grammar
-//@ Abi: STRING_LITERAL
+//@ Abi -> String: STRING_LITERAL
 //@     => STRING_LITERAL
 //@ ```
 //@
@@ -76,6 +76,14 @@ pub struct WhereClauses {}
 pub struct OuterAttribute {}
 
 //@ ```grammar
+//@ InnerAttribute: UNSUPPORTED
+//@     => InnerAttribute {}
+//@ ```
+//@
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InnerAttribute {}
+
+//@ ```grammar
 //@ Lifetime: LIFETIME
 //@     => Lifetime {}
 //@ ```
@@ -84,10 +92,13 @@ pub struct OuterAttribute {}
 pub struct Lifetime {}
 
 //@ ```grammar
-//@ PatternNoTopAlt:
-//@     | IDENTIFIER => PatternNoTopAlt {}
-//@     | `_` => PatternNoTopAlt {}
+//@ PatternNoTopAlt -> Pattern:
+//@     | name=IDENTIFIER => Pattern::Identifier(name)
+//@     | `_` => Pattern::Wildcard
 //@ ```
 //@
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PatternNoTopAlt {}
+pub enum Pattern {
+    Identifier(Identifier),
+    Wildcard,
+}

@@ -19,6 +19,9 @@ pub struct Grammar {
 #[derive(Debug)]
 pub struct Production {
     pub name: String,
+    /// The Rust type returned by this production. Defaults to the production
+    /// name when omitted.
+    pub rust_type: Option<String>,
     /// Comments and breaks that precede the production name.
     pub comments: Vec<Expression>,
     /// Category is from the markdown lang string, and defines how it is

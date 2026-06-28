@@ -89,7 +89,7 @@ pub struct ExternAbi {
 }
 
 //@ ```grammar
-//@ FunctionParameters:
+//@ FunctionParameters -> Vec<FunctionParam>:
 //@     first_arg=FunctionParam remaining_args=(`,` FunctionParam)* `,`?
 //@     => [first_arg].into_iter().chain(remaining_args).collect()
 //@
@@ -105,7 +105,6 @@ pub struct ExternAbi {
 //@     | Type => FunctionParamType::Type(Type),
 //@     | `...` => FunctionParamType::Variadic,
 //@ ```
-pub type FunctionParameters = Vec<FunctionParam>;
 
 #[derive(Debug, Clone, PartialEq, Eq)] //#
 pub struct FunctionParam {
@@ -116,7 +115,7 @@ pub struct FunctionParam {
 #[derive(Debug, Clone, PartialEq, Eq)] //#
 pub enum FunctionParamKind {
     Regular {
-        pattern: Option<PatternNoTopAlt>,
+        pattern: Option<Pattern>,
         ty: FunctionParamType,
     },
     SelfParam {

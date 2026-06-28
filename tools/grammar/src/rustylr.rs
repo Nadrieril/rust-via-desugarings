@@ -225,7 +225,8 @@ pub fn render_rustylr(grammar: &Grammar, lexer: &LexerSpec) -> Result<String> {
     let mut out = String::new();
     for name in &grammar.name_order {
         let production = &grammar.productions[name];
-        writeln!(out, "{}({})", production.name, production.name)?;
+        let rust_type = production.rust_type.as_deref().unwrap_or(&production.name);
+        writeln!(out, "{}({})", production.name, rust_type)?;
         for (index, alternative) in production.alternatives.iter().enumerate() {
             let mut bindings = Vec::new();
             let rhs = emit_expr(

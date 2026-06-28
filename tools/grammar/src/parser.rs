@@ -6,7 +6,7 @@ use super::{
 };
 use nom::IResult;
 use nom::branch::alt;
-use nom::bytes::complete::{tag, take_till, take_while, take_while1};
+use nom::bytes::complete::{tag, take_till, take_till1, take_while, take_while1};
 use nom::character::complete::{char, digit1, line_ending, space0};
 use nom::combinator::{all_consuming, map, map_res, opt, peek, recognize, value};
 use nom::error::{ErrorKind, ParseError};
@@ -20,7 +20,10 @@ type NomError<'a> = nom::error::Error<&'a str>;
 type PResult<'a, T> = IResult<&'a str, T, NomError<'a>>;
 
 static HEADER_RE: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r"^\s*(?:@root\s+)?[A-Z][A-Za-z0-9_]*\s*:").unwrap());
+    LazyLock::new(|| {
+        regex::Regex::new(r"^\s*(?:@root\s+)?[A-Z][A-Za-z0-9_]*\s*(?:->\s*[^:\n\r]+)?\s*:")
+            .unwrap()
+    });
 
 #[derive(Debug)]
 pub struct Error {
@@ -141,7 +144,7 @@ fn parse_production(
     category: &str,
     path: &Path,
 ) -> Result<Production> {
-    let (body, (is_root, name)) = parse_header(block.text)
+    let (body, (is_root, name, rust_type)) = parse_header(block.text)
         .map_err(|_| Error::new(source, block.start, "expected production header"))?;
     let alternatives = split_alternatives(source, block, body)?;
     let expression = match alternatives.len() {
@@ -157,6 +160,7 @@ fn parse_production(
 
     Ok(Production {
         name,
+        rust_type,
         comments: Vec::new(),
         category: category.to_string(),
         expression,
@@ -166,13 +170,29 @@ fn parse_production(
     })
 }
 
-fn parse_header(input: &str) -> PResult<'_, (bool, String)> {
+fn parse_header(input: &str) -> PResult<'_, (bool, String, Option<String>)> {
     let (input, _) = space0(input)?;
     let (input, is_root) =
         map(opt(terminated(tag("@root"), space1)), |root| root.is_some())(input)?;
     let (input, name) = parse_name(input)?;
+    let (input, rust_type) = opt(parse_return_type)(input)?;
     let (input, _) = tuple((space0, char(':'), space0))(input)?;
-    Ok((input, (is_root, name.to_string())))
+    Ok((input, (is_root, name.to_string(), rust_type)))
+}
+
+fn parse_return_type(input: &str) -> PResult<'_, String> {
+    let (input, _) = tuple((space0, tag("->"), space0))(input)?;
+    map_res(
+        take_till1(|ch| ch == ':' || ch == '\n' || ch == '\r'),
+        |rust_type: &str| {
+            let rust_type = rust_type.trim();
+            if rust_type.is_empty() {
+                Err("empty return type")
+            } else {
+                Ok(rust_type.to_string())
+            }
+        },
+    )(input)
 }
 
 fn split_alternatives(
@@ -708,6 +728,13 @@ FunctionParam: attrs=OuterAttribute* kind=FunctionParamKind
         );
         assert!(grammar.productions.contains_key("FunctionParameters"));
         assert!(grammar.productions.contains_key("FunctionParam"));
+    }
+
+    #[test]
+    fn parses_explicit_return_type() {
+        let grammar = parse("LetStatement -> Statement: `let` => Statement::Empty");
+        let statement = grammar.productions.get("LetStatement").unwrap();
+        assert_eq!(statement.rust_type.as_deref(), Some("Statement"));
     }
 
     #[test]

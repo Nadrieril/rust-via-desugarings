@@ -11,7 +11,10 @@ mod render_markdown;
 mod render_railroad;
 
 static NAMES_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?m)^\s*(?:@root\s+)?([A-Z][A-Za-z0-9_]*)\s*:").unwrap());
+    LazyLock::new(|| {
+        Regex::new(r"(?m)^\s*(?:@root\s+)?([A-Z][A-Za-z0-9_]*)\s*(?:->\s*[^:\n\r]+)?\s*:")
+            .unwrap()
+    });
 
 #[derive(Debug)]
 pub struct RenderCtx {
@@ -126,7 +129,7 @@ mod tests {
     fn renders_colon_productions_with_actions() {
         let source = r#"
 ```grammar
-Rule:
+Rule -> Identifier:
     | IDENTIFIER => Identifier::Named(IDENTIFIER),
     | `&` IDENTIFIER => Identifier::Borrowed { name: IDENTIFIER },
 ```

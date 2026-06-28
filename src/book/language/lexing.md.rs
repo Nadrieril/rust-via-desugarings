@@ -19,6 +19,12 @@ pub enum Token {
     Unsafe,
     #[token("extern")]
     Extern,
+    #[token("let")]
+    Let,
+    #[token("if")]
+    If,
+    #[token("else")]
+    Else,
     #[token("mut")]
     Mut,
     #[token("self")]
@@ -27,12 +33,18 @@ pub enum Token {
     TraitSelf,
     #[token("bool")]
     Bool,
+    #[token("str")]
+    Str,
     #[token("true")]
     True,
     #[token("false")]
     False,
     #[token("->")]
     Arrow,
+    #[token("=")]
+    Eq,
+    #[token("+")]
+    Plus,
     #[token("&")]
     Amp,
     #[token(":")]
@@ -53,6 +65,8 @@ pub enum Token {
     Ellipsis,
     #[token("_")]
     Underscore,
+    #[regex(r"[0-9]+", |lex| lex.slice().parse::<u128>().unwrap())]
+    IntegerLiteral(u128),
     #[regex(r"[A-Za-z_][A-Za-z0-9_]*", |lex| lex.slice().to_owned(), priority = 1)]
     Identifier(String),
     #[regex(r#""[^"]*""#, string_literal)]
@@ -78,13 +92,19 @@ fn string_literal(lex: &mut logos::Lexer<'_, Token>) -> String {
 //@ `safe` Safe;
 //@ `unsafe` Unsafe;
 //@ `extern` Extern;
+//@ `if` If;
+//@ `else` Else;
+//@ `let` Let;
 //@ `mut` Mut;
 //@ `self` Self_;
 //@ `Self` TraitSelf;
 //@ `bool` Bool;
+//@ `str` Str;
 //@ `true` True;
 //@ `false` False;
 //@ `->` Arrow;
+//@ `=` Eq;
+//@ `+` Plus;
 //@ `&` Amp;
 //@ `:` Colon;
 //@ `,` Comma;
@@ -95,6 +115,7 @@ fn string_literal(lex: &mut logos::Lexer<'_, Token>) -> String {
 //@ `;` Semicolon;
 //@ `...` Ellipsis;
 //@ `_` Underscore;
+//@ INTEGER_LITERAL IntegerLiteral(u128);
 //@ IDENTIFIER Identifier(String);
 //@ STRING_LITERAL StringLiteral(String);
 //@ LIFETIME Lifetime(String);
