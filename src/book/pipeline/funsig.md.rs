@@ -12,7 +12,7 @@ pub fn desugar_fun_sigs(program: &mut Program) {
 
 //@ If the output type is not explicitly stated, it is the unit
 //@ type
-//@ [[items.fn.implicit-return]](https://doc.rust-lang.org/reference/items/functions.html#r-items.fn.implicit-return).
+//@ [[items.fn.implicit-return](https://doc.rust-lang.org/reference/items/functions.html#r-items.fn.implicit-return)].
 fn implicit_return(f: &mut Function) {
     if f.return_type.is_none() {
         f.return_type = Some(Type::Unit)
