@@ -227,26 +227,116 @@ pub fn render_rustylr(grammar: &Grammar, lexer: &LexerSpec) -> Result<String> {
         let production = &grammar.productions[name];
         let rust_type = production.rust_type.as_deref().unwrap_or(&production.name);
         writeln!(out, "{}({})", production.name, rust_type)?;
-        for (index, alternative) in production.alternatives.iter().enumerate() {
-            let mut bindings = Vec::new();
-            let rhs = emit_expr(
-                &alternative.expression,
-                lexer,
-                &action_names(&alternative.action),
-                true,
-                &mut bindings,
-            )?;
-            let action = render_action(&alternative.action, &bindings, lexer)?;
-            if index == 0 {
-                writeln!(out, "    : {rhs} {action}")?;
-            } else {
-                writeln!(out, "    | {rhs} {action}")?;
+        let mut first = true;
+        for alternative in &production.alternatives {
+            // WORKAROUND(RustyLR#91): avoid emitting bound `*` patterns directly.
+            // Remove this expansion once https://github.com/ehwan/RustyLR/issues/91 is fixed.
+            let expanded = expand_nullable_bindings(&alternative.expression);
+            for expanded in expanded {
+                let action = expanded.action(&alternative.action);
+                let action_names = action_names(&action);
+                let mut bindings = Vec::new();
+                let rhs = emit_expr(
+                    &expanded.expression,
+                    lexer,
+                    &action_names,
+                    true,
+                    &mut bindings,
+                )?;
+                let action = render_action(&action, &bindings, lexer)?;
+                if first {
+                    writeln!(out, "    : {rhs} {action}")?;
+                    first = false;
+                } else {
+                    writeln!(out, "    | {rhs} {action}")?;
+                }
             }
         }
         writeln!(out, "    ;")?;
         writeln!(out)?;
     }
     Ok(out)
+}
+
+#[derive(Debug)]
+struct ExpandedAlternative {
+    expression: Expression,
+    prelude: Vec<String>,
+}
+
+impl ExpandedAlternative {
+    fn action(&self, action: &str) -> String {
+        if self.prelude.is_empty() {
+            return action.to_string();
+        }
+        let mut expanded = self.prelude.join("\n");
+        expanded.push('\n');
+        expanded.push_str(action);
+        expanded
+    }
+}
+
+fn expand_nullable_bindings(expression: &Expression) -> Vec<ExpandedAlternative> {
+    // WORKAROUND(RustyLR#91): RustyLR's GLR parser can stack-overflow when a
+    // nullable prefix appears before a left-recursive rule. A bound `*` pattern
+    // is nullable, so emit `x+` and a separate empty branch with the binding set
+    // to `vec![]` instead. This keeps the book grammar unchanged while avoiding
+    // the problematic generated RustyLR shape.
+    let ExpressionKind::Sequence(sequence) = &expression.kind else {
+        return vec![ExpandedAlternative {
+            expression: expression.clone(),
+            prelude: Vec::new(),
+        }];
+    };
+
+    let mut expanded = vec![(Vec::new(), Vec::new())];
+    for expr in sequence {
+        let expr = expr.clone();
+        let Some(binding) = expr.binding.clone() else {
+            for (sequence, _) in &mut expanded {
+                sequence.push(expr.clone());
+            }
+            continue;
+        };
+
+        match &expr.kind {
+            ExpressionKind::Repeat(inner) => {
+                let mut next = Vec::with_capacity(expanded.len() * 2);
+                for (sequence, prelude) in expanded {
+                    let mut nonempty_sequence = sequence.clone();
+                    let mut nonempty_expr = expr.clone();
+                    nonempty_expr.kind = ExpressionKind::RepeatPlus(inner.clone());
+                    nonempty_sequence.push(nonempty_expr);
+                    next.push((nonempty_sequence, prelude.clone()));
+
+                    let mut empty_prelude = prelude;
+                    // WORKAROUND(RustyLR#91): this branch corresponds to the
+                    // empty case of the original bound `*` pattern.
+                    empty_prelude.push(format!("let {binding} = vec![];"));
+                    next.push((sequence, empty_prelude));
+                }
+                expanded = next;
+            }
+            _ => {
+                for (sequence, _) in &mut expanded {
+                    sequence.push(expr.clone());
+                }
+            }
+        }
+    }
+
+    expanded
+        .into_iter()
+        .map(|(sequence, prelude)| ExpandedAlternative {
+            expression: Expression {
+                kind: ExpressionKind::Sequence(sequence),
+                binding: expression.binding.clone(),
+                suffix: expression.suffix.clone(),
+                footnote: expression.footnote.clone(),
+            },
+            prelude,
+        })
+        .collect()
 }
 
 fn render_action(action: &str, bindings: &[TokenBinding], lexer: &LexerSpec) -> Result<String> {
