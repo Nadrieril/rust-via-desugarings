@@ -72,8 +72,8 @@ issue](https://github.com/Nadrieril/rust-via-desugarings/issues) or PR if you no
 The tooling used in this repo (`./tools`) is heavily LLM-assisted. While this book is an experiment,
 I won't deeply inspect that code as long as it looks reasonable.
 
-The contents of the book itself are carefully handcrafted. LLMs can be used for routine tasks but
-shall not be trusted[^3].
+The contents of the book itself are carefully handcrafted (except when indicated otherwise).
+LLMs can be used for routine tasks but shall not be trusted[^3].
 This book aims for utmost precision; even an "obvious" tweak can turn out to be load-bearingly
 incorrect; hence careful human scrutiny is demanded.
 

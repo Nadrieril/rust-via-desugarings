@@ -4,7 +4,10 @@
 //@
 //@ This best-effort translates our supported subset into MiniRust.
 //@
-//@ Disclaimer: entirely vibe-coded.
+//@ Disclaimer: this is entirely vibe-coded and does not reflect how this is intended to look in
+//@ the end. In particular, the desugarings should make the translation as direct as possible.
+//@ While we're experimenting, this translation may take liberties with that principle, for the
+//@ sake of being able to run more examples.
 use std::{
     cell::RefCell,
     collections::BTreeMap,
