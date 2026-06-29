@@ -1,0 +1,12 @@
+[package]
+name = "mdbook-spec"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "mdBook preprocessor for Rust via Desugarings"
+default-run = "mdbook-spec"
+
+[dependencies]
+anyhow = "1.0.100"
+mdbook-markdown = "0.5.3"
+pulldown-cmark-to-cmark = "22.0.0"
+serde_json = "1.0.145"

@@ -1,8 +1,6 @@
 # Functional Record Update
 
-In this step we desugar [Functional Record
-Update](https://doc.rust-lang.org/reference/expressions/struct-expr.html#r-expr.struct.update)
-syntax:
+In this step we desugar Functional Record Update syntax [ref:expr.struct.update]:
 
 ```rust
 // Assume `Struct` has 4 fields named a,b,c,d

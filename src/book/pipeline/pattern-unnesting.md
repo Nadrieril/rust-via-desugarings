@@ -63,9 +63,8 @@ impl<T> MyOption<T> {
 }
 ```
 
-I learned very recently that this is in fact [suggested by the
-Reference](https://doc.rust-lang.org/1.96.0/reference/items/unions.html#r-items.union.pattern.subpattern),
-hence basically guaranteed by the language.
+I learned very recently that this is in fact suggested by the Reference
+[ref:items.union.pattern.subpattern], hence basically guaranteed by the language.
 
 Beyond this however, the language doesn't currently guarantee any order.
 A reasonable alternative would be to add non-determinism: for the tuple, struct,

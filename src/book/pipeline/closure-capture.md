@@ -57,8 +57,7 @@ let mut increment = || {
 };
 ```
 
-See [the Reference](https://doc.rust-lang.org/reference/types/closure.html#r-type.closure) for
-details about what gets captured and how.
+See [ref:type.closure] for details about what gets captured and how.
 Thanks to previous desugarings all place uses are explicit, which makes the analysis
 straightforward.
 

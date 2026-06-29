@@ -4,10 +4,9 @@ Type coercions are implicit operations that change the type of a value.
 They happen automatically at certain locations when the expected type
 doesn't match the actual type of an expression.
 
-The locations where coercions can happen are called "coercion sites" and listed in [this Reference
-section](https://doc.rust-lang.org/reference/type-coercions.html?#r-coerce.site).
-The allowed coercions are then listed
-[here](https://doc.rust-lang.org/reference/type-coercions.html?#r-coerce.types).
+The locations where coercions can happen are called "coercion sites" and listed in
+[ref:coerce.site].
+The allowed coercions are then listed in [ref:coerce.types].
 
 In this step, we desugar these coercions into explicit conversions. The outcome is either an
 `as`-cast (`$expr as $ty`) or a reborrow (e.g. `&*$expr`).

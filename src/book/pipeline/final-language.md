@@ -6,7 +6,7 @@ Rust, described here.
 An "constant value" `$const` is:
 - A constant literal `true`, `42u32`, `3.14f64`, `"str literal"`, etc;
 - A named constant `CONSTANT`;
-- A [function item](https://doc.rust-lang.org/reference/types/function-item.html#function-item-types) ZST.
+- A function item ZST [ref:type.fn-item].
 
 A "place expression" `$place` is:
 - A local variable `x`;

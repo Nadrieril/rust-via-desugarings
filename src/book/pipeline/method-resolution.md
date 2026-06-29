@@ -4,8 +4,7 @@ Method calls are the expressions that look like `$receiver.method($args..)`. Met
 involve a fair bit of implicit magic: the receiver expression may be referenced and/or dereferenced
 to get to the right type, and figuring out which methods are available requires trait solving.
 
-Explaining how that works is out of scope for this guide (see the [Reference
-section](https://doc.rust-lang.org/reference/expressions/method-call-expr.html#method-call-expressions));
+Explaining how that works is out of scope for this guide (see [ref:expr.method]);
 whatever the exact process, the result is that we replace each method call with a full-unambiguous
 function call expression and some expression adjustments:
 
@@ -16,8 +15,8 @@ let x: &i32 = opt.as_ref().clone().unwrap();
 let x: &i32 = Option::unwrap(<Option<&i32> as Clone>::clone(&Option::as_ref(&opt)));
 ```
 
-The `<Type as Trait>::method(self, args..)` syntax is called [UFCS (Uniform Function Call
-Syntax)](https://doc.rust-lang.org/reference/expressions/call-expr.html#disambiguating-function-calls)
+The `<Type as Trait>::method(self, args..)` syntax is called UFCS (Uniform Function Call Syntax)
+[ref:expr.call.desugar]
 and allows specifying exactly what trait method is getting called. Note also how `opt` got borrowed
 into `&opt` in order to match the type required for `Option::as_ref`.
 

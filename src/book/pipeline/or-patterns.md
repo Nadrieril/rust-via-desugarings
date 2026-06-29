@@ -55,7 +55,7 @@ After this step, patterns don't involve `|`.
 
 The let-chain desugaring is actually incorrect wrt drop order: or-patterns declare their bindings in
 the order given by the first subpattern
-([Reference](https://doc.rust-lang.org/reference/destructors.html#r-destructors.scope.bindings.or-patterns)),
+([ref:destructors.scope.bindings.or-patterns]),
 but our desugaring will drop them in the order of the alternative that succeeds.
 
 I expect that design choice to prove to be trouble when mixing or-patterns and if-let [guard

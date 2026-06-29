@@ -81,9 +81,7 @@ fn foo() -> u32 {
 }
 ```
 
-See the Reference for details on [macro
-expansion](https://doc.rust-lang.org/reference/macros-by-example.html) and [name
-resolution](https://doc.rust-lang.org/reference/names.html).
+See the Reference for details on macro expansion [ref:macro.decl] and name resolution [ref:names].
 
 At the end of this step, there are no macros left, no `use` statements, every item is referred to by
 its full path, and all variables have unique names.

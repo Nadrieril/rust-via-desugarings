@@ -8,8 +8,8 @@
 //@ Whenever that happens, the value will get stored in a temporary variable. In this step, we make
 //@ these temporaries explicit.
 //@
-//@ The rules that determine the scope of these temporaries are complex; they're described in [the
-//@ Reference](https://doc.rust-lang.org/reference/destructors.html#temporary-scopes).
+//@ The rules that determine the scope of these temporaries are complex; they're described in
+//@ [ref:destructors.scope.temporary].
 //@ You may also enjoy [this blog post](https://blog.m-ou.se/super-let/) with a more explanatory style.
 //@
 //@ In this step, for each expression `$expr` to be coerced, we first add a `let tmp;` statement,
@@ -96,8 +96,8 @@
 //@ }
 //@ ```
 //@
-//@ There is an exception to the above: temporaries can, [when
-//@ sensible](https://doc.rust-lang.org/reference/destructors.html#r-destructors.scope.const-promotion),
+//@ There is an exception to the above: temporaries can, when sensible
+//@ [ref:destructors.scope.const-promotion],
 //@ become statics instead of local variables. This is called "constant promotion":
 //@ ```rust
 //@ let x = &1 + 2;

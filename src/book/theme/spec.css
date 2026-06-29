@@ -1,0 +1,14 @@
+.reference-link {
+    color: var(--icons);
+    font-family: var(--mono-font);
+    font-size: 0.82em;
+    font-weight: 500;
+    line-height: 1;
+    text-decoration: none;
+    white-space: normal;
+}
+
+.reference-link:hover {
+    color: var(--links);
+    text-decoration: underline;
+}
