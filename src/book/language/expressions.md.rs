@@ -45,12 +45,14 @@ pub use operator_expressions::*;
 //@ TupleExpression: `(` `)` => TupleExpression::Unit
 //@ ```
 #[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub struct Expression {
     pub attrs: Vec<OuterAttribute>,
     pub kind: ExpressionKind,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub enum ExpressionKind {
     Literal(LiteralExpression),
     Path(PathExpression),
@@ -63,6 +65,7 @@ pub enum ExpressionKind {
 pub type PathExpression = Identifier;
 
 #[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub enum TupleExpression {
     Unit,
 }

@@ -20,6 +20,7 @@ use crate::language::*; //#
 //@     => BlockExpression { inner_attrs: vec![], statements, tail: tail.map(Box::new) }
 //@ ```
 #[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub struct BlockExpression {
     pub inner_attrs: Vec<InnerAttribute>,
     pub statements: Vec<Statement>,

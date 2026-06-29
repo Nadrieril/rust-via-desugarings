@@ -19,6 +19,7 @@ path = "tests/ui.rs"
 harness = false
 
 [dependencies]
+derive_generic_visitor = "1.0.1"
 itertools = "0.14.0"
 logos = "0.16.1"
 minirust-rs = { path = "a-mir-formality/crates/minirust-rs" }

@@ -28,6 +28,7 @@ use crate::language::*; //#
 //@ ```
 //@
 #[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub struct Function {
     pub qualifiers: FunctionQualifiers,
     /// The name of the function.
@@ -45,6 +46,7 @@ pub struct Function {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub enum FunctionBody {
     /// The body of a function is a block.
     Block(BlockExpression),
@@ -70,6 +72,7 @@ pub enum FunctionBody {
 //@     => ExternAbi { abi }
 //@ ```
 #[derive(Debug, Default, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub struct FunctionQualifiers {
     pub is_const: bool,
     pub is_async: bool,
@@ -78,12 +81,14 @@ pub struct FunctionQualifiers {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub enum ItemSafety {
     Safe,
     Unsafe,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub struct ExternAbi {
     pub abi: Option<String>,
 }
@@ -107,12 +112,14 @@ pub struct ExternAbi {
 //@ ```
 
 #[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub struct FunctionParam {
     pub attrs: Vec<OuterAttribute>,
     pub kind: FunctionParamKind,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub enum FunctionParamKind {
     Regular {
         pattern: Option<Pattern>,
@@ -129,6 +136,7 @@ pub enum FunctionParamKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub enum FunctionParamType {
     Type(Type),
     Variadic,

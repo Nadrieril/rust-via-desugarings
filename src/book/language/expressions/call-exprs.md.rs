@@ -13,6 +13,7 @@ use crate::language::*; //#
 //@     => [first_arg].into_iter().chain(args).collect()
 //@ ```
 #[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub struct CallExpression {
     pub callee: Box<Expression>,
     pub args: Vec<Expression>,

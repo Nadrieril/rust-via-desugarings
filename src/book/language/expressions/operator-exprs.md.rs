@@ -14,6 +14,7 @@ use crate::language::*; //#
 //@ AssignmentExpression -> OperatorExpression: lhs=Expression `=` rhs=Expression => OperatorExpression::Assignment(lhs, rhs)
 //@ ```
 #[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub enum OperatorExpression {
     Add(Expression, Expression),
     Assignment(Expression, Expression),

@@ -13,6 +13,7 @@
       - [Block Expressions](language/expressions/block-exprs.md.rs)
       - [Call Expressions](language/expressions/call-exprs.md.rs)
   - [Printing](language/print.md.rs)
+  - [Visiting](language/visitor.md.rs)
 - [Desugaring Steps](pipeline/overview.md.rs)
   - [Name Resolution & Macro Expansion](pipeline/name-resolution-macro-expansion.md)
   - [Function Signature Desugarings](pipeline/funsig.md.rs)

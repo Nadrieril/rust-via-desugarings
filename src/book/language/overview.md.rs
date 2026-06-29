@@ -17,6 +17,7 @@ use crate::language::*; //#
 //@ ```
 //@
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Drive, DriveMut)] //#
 pub struct Program {
     pub functions: Vec<Function>,
 }
@@ -45,7 +46,8 @@ pub type Abi = String;
 //@     => if is_mut.is_some() { Mutability::Mutable } else { Mutability::Immutable }
 //@ ```
 //@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub enum Mutability {
     Mutable,
     Immutable,
@@ -56,7 +58,8 @@ pub enum Mutability {
 //@     => GenericParams {}
 //@ ```
 //@
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub struct GenericParams {}
 
 //@ ```grammar
@@ -64,7 +67,8 @@ pub struct GenericParams {}
 //@     => WhereClauses {}
 //@ ```
 //@
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub struct WhereClauses {}
 
 //@ ```grammar
@@ -72,7 +76,8 @@ pub struct WhereClauses {}
 //@     => OuterAttribute {}
 //@ ```
 //@
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub struct OuterAttribute {}
 
 //@ ```grammar
@@ -80,7 +85,8 @@ pub struct OuterAttribute {}
 //@     => InnerAttribute {}
 //@ ```
 //@
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub struct InnerAttribute {}
 
 //@ ```grammar
@@ -88,7 +94,8 @@ pub struct InnerAttribute {}
 //@     => Lifetime {}
 //@ ```
 //@
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub struct Lifetime {}
 
 //@ ```grammar
@@ -97,7 +104,8 @@ pub struct Lifetime {}
 //@     | `_` => Pattern::Wildcard
 //@ ```
 //@
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub enum Pattern {
     Identifier(Identifier),
     Wildcard,

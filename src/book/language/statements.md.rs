@@ -21,6 +21,7 @@ use crate::language::*; //#
 //@     | expr=ExpressionWithBlock `;`? => expr,
 //@ ```
 #[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
 pub enum Statement {
     Empty,
     Let {
