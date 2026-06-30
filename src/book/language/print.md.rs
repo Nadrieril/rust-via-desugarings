@@ -13,7 +13,7 @@ pub fn print_program(program: &Program) -> String {
 
 impl Display for Program {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.functions.iter().format("\n\n"))
+        write!(f, "{}", self.items.iter().format("\n\n"))
     }
 }
 

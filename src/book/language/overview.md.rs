@@ -10,14 +10,14 @@
 //@
 //@ ```grammar
 //@ Program:
-//@     functions=Function*
-//@     => Program { functions }
+//@     items=Item*
+//@     => Program { items }
 //@ ```
 //@
 #[derive(Debug, Default, Clone, PartialEq, Eq)] //#
 #[derive(Drive, DriveMut)] //#
 pub struct Program {
-    pub functions: Vec<Function>,
+    pub items: Vec<Item>,
 }
 
 //@ ## Misc

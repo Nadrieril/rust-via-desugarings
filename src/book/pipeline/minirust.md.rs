@@ -442,8 +442,11 @@ impl Translator {
 
 fn find_main(program: &language::Program) -> Result<&language::Function, CompilationError> {
     program
-        .functions
+        .items
         .iter()
+        .filter_map(|item| match &item.kind {
+            language::ItemKind::Function(function) => Some(function),
+        })
         .find(|function| function.name == "main")
         .ok_or_else(|| minirust_error("MiniRust runner needs a `main` function"))
 }
