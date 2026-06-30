@@ -39,6 +39,8 @@ use derive_generic_visitor::*; //#
         FunctionQualifiers,
         GenericParams,
         InnerAttribute,
+        Item,
+        ItemKind,
         ItemSafety,
         Lifetime,
         LiteralExpression,
@@ -50,6 +52,7 @@ use derive_generic_visitor::*; //#
         Statement,
         TupleExpression,
         Type,
+        Visibility,
         WhereClauses,
     )
 )]
@@ -60,17 +63,17 @@ pub trait AstVisitable: Any {
     }
 
     /// Visit all occurrences of that type inside `self`, in pre-order traversal.
-    fn dyn_visit<T: AstVisitable>(&self, mut f: impl FnMut(&T)) {
-        let _ = self.dyn_visit_fallible::<T, ()>(|x| Ok(f(x)));
+    fn visit_all_infallible<T: AstVisitable>(&self, mut f: impl FnMut(&T)) {
+        let _ = self.visit_all::<T, ()>(|x| Ok(f(x)));
     }
 
     /// Visit all occurrences of that type inside `self`, in pre-order traversal.
-    fn dyn_visit_mut<T: AstVisitable>(&mut self, mut f: impl FnMut(&mut T)) {
-        let _ = self.dyn_visit_mut_fallible::<T, ()>(|x| Ok(f(x)));
+    fn visit_all_mut_infallible<T: AstVisitable>(&mut self, mut f: impl FnMut(&mut T)) {
+        let _ = self.visit_all_mut::<T, ()>(|x| Ok(f(x)));
     }
 
     /// Visit all occurrences of that type inside `self`, in pre-order traversal.
-    fn dyn_visit_fallible<T: AstVisitable, E>(&self, f: impl FnMut(&T) -> Result<(), E>) -> Result<(), E> {
+    fn visit_all<T: AstVisitable, E>(&self, f: impl FnMut(&T) -> Result<(), E>) -> Result<(), E> {
         match self.drive(&mut DynVisitor::new_shared(f)) {
             Continue(()) => Ok(()),
             Break(e) => Err(e),
@@ -78,7 +81,7 @@ pub trait AstVisitable: Any {
     }
 
     /// Visit all occurrences of that type inside `self`, in pre-order traversal.
-    fn dyn_visit_mut_fallible<T: AstVisitable, E>(&mut self, f: impl FnMut(&mut T) -> Result<(), E>) -> Result<(), E> {
+    fn visit_all_mut<T: AstVisitable, E>(&mut self, f: impl FnMut(&mut T) -> Result<(), E>) -> Result<(), E> {
         match self.drive_mut(&mut DynVisitor::new_mut(f)) {
             Continue(()) => Ok(()),
             Break(e) => Err(e),

@@ -6,6 +6,7 @@ use crate::language::*; //#
 //@ ```grammar
 //@ Statement:
 //@     | `;` => Statement::Empty,
+//@     | item=Item => Statement::Item(item),
 //@     | expr=ExpressionStatement => Statement::Expr(expr),
 //@     | statement=LetStatement => statement,
 //@
@@ -24,6 +25,7 @@ use crate::language::*; //#
 #[derive(Drive, DriveMut)] //#
 pub enum Statement {
     Empty,
+    Item(Item),
     Let {
         attrs: Vec<OuterAttribute>,
         pattern: Pattern,

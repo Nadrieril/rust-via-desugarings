@@ -21,6 +21,14 @@ pub enum Token {
     Extern,
     #[token("let")]
     Let,
+    #[token("pub")]
+    Pub,
+    #[token("crate")]
+    Crate,
+    #[token("super")]
+    Super,
+    #[token("in")]
+    In,
     #[token("if")]
     If,
     #[token("else")]
@@ -95,6 +103,10 @@ fn string_literal(lex: &mut logos::Lexer<'_, Token>) -> String {
 //@ `if` If;
 //@ `else` Else;
 //@ `let` Let;
+//@ `pub` Pub;
+//@ `crate` Crate;
+//@ `super` Super;
+//@ `in` In;
 //@ `mut` Mut;
 //@ `self` Self_;
 //@ `Self` TraitSelf;

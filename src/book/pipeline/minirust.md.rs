@@ -190,6 +190,7 @@ impl Translator {
     ) -> Result<(), CompilationError> {
         match statement {
             language::Statement::Empty => Ok(()),
+            language::Statement::Item(_) => Ok(()),
             language::Statement::Let {
                 pattern,
                 ty,

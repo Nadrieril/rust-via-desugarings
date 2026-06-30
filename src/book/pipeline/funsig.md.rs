@@ -7,12 +7,12 @@ use crate::language::*;
 use crate::*;
 
 pub fn desugar_fun_sigs(program: &mut Program) -> Result<(), CompilationError> {
-    for f in &mut program.functions {
+    program.visit_all_mut(|f: &mut Function| {
         implicit_return(f);
         shorthand_self(f);
         self_first(f)?;
-    }
-    Ok(())
+        Ok(())
+    })
 }
 
 //@ If the output type is not explicitly stated, it is the unit type

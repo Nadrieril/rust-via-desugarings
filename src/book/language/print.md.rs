@@ -39,6 +39,26 @@ impl Display for Function {
     }
 }
 
+impl Display for Item {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        if !self.attrs.is_empty() {
+            write!(f, "{} ", self.attrs.iter().format(" "))?;
+        }
+        if let Some(visibility) = &self.visibility {
+            write!(f, "{visibility} ")?;
+        }
+        write!(f, "{}", self.kind)
+    }
+}
+
+impl Display for ItemKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            ItemKind::Function(function) => write!(f, "{function}"),
+        }
+    }
+}
+
 impl Display for FunctionQualifiers {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         if self.is_const {
@@ -63,6 +83,18 @@ impl Display for ItemSafety {
             ItemSafety::Safe => "safe",
             ItemSafety::Unsafe => "unsafe",
         })
+    }
+}
+
+impl Display for Visibility {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Visibility::Pub => f.write_str("pub"),
+            Visibility::PubCrate => f.write_str("pub(crate)"),
+            Visibility::PubSelf => f.write_str("pub(self)"),
+            Visibility::PubSuper => f.write_str("pub(super)"),
+            Visibility::InPath(path) => write!(f, "pub(in {path})"),
+        }
     }
 }
 
@@ -170,6 +202,7 @@ impl Display for Statement {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Statement::Empty => f.write_str(";"),
+            Statement::Item(item) => write!(f, "{item}"),
             Statement::Let {
                 attrs,
                 pattern,

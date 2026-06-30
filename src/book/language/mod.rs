@@ -2,8 +2,8 @@ pub use derive_generic_visitor::{Drive, DriveMut}; //#
 
 #[path = "expressions.md.rs"]
 pub mod expressions;
-#[path = "functions.md.rs"]
-pub mod functions;
+#[path = "items.md.rs"]
+pub mod items;
 #[path = "lexing.md.rs"]
 pub mod lexing;
 #[path = "overview.md.rs"]
@@ -18,7 +18,7 @@ pub mod types;
 pub mod visitor;
 
 pub use expressions::*;
-pub use functions::*;
+pub use items::*;
 pub use lexing::*;
 pub use overview::*;
 pub use print::*;

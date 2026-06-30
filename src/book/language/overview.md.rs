@@ -16,7 +16,7 @@ use crate::language::*; //#
 //@     => Program { functions }
 //@ ```
 //@
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)] //#
 #[derive(Drive, DriveMut)] //#
 pub struct Program {
     pub functions: Vec<Function>,
@@ -32,6 +32,12 @@ pub struct Program {
 //@ ```
 //@
 pub type Identifier = String;
+
+//@ ```grammar
+//@ SimplePath -> Path: path=IDENTIFIER
+//@     => path
+//@ ```
+pub type Path = Identifier;
 
 //@ ```grammar
 //@ Abi -> String: STRING_LITERAL
@@ -97,6 +103,24 @@ pub struct InnerAttribute {}
 #[derive(Debug, Clone, PartialEq, Eq)] //#
 #[derive(Drive, DriveMut)] //#
 pub struct Lifetime {}
+
+//@ ```grammar
+//@ Visibility:
+//@     | `pub` => Visibility::Pub,
+//@     | `pub` `(` `crate` `)` => Visibility::PubCrate,
+//@     | `pub` `(` `self` `)` => Visibility::PubSelf,
+//@     | `pub` `(` `super` `)` => Visibility::PubSuper,
+//@     | `pub` `(` `in` path=SimplePath `)` => Visibility::InPath(path),
+//@ ```
+#[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
+pub enum Visibility {
+    Pub,
+    PubCrate,
+    PubSelf,
+    PubSuper,
+    InPath(Path),
+}
 
 //@ ```grammar
 //@ PatternNoTopAlt -> Pattern:
