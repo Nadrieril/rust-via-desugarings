@@ -7,7 +7,7 @@ replacing the macro call with its output.
 The two are intertwined: a macro may emit new macros, which will affect the
 state of name resolution for macros. For instance:
 
-```rust
+```rust,example
 macro_rules! define_bump {
     ($name:ident) => {
         macro_rules! $name { ($x:expr) => { $x + 1 } }
@@ -31,7 +31,7 @@ names to full paths, for any name where there could be ambiguity we rename ident
 unique, and we insert [Explicit Hygiene Markers](../features/hygiene-markers.md) as appropriate.
 
 For example:
-```rust
+```rust,example
 mod foo {
     fn bar(x: u32) {}
 }
@@ -55,7 +55,7 @@ fn main() {
 
 This also deals with macro hygiene:
 
-```rust
+```rust,example
 fn foo() -> u32 {
     let x = 1;
     macro_rules! check {

@@ -8,7 +8,7 @@ Explaining how that works is out of scope for this guide (see [ref:expr.method])
 whatever the exact process, the result is that we replace each method call with a full-unambiguous
 function call expression and some expression adjustments:
 
-```rust
+```rust,example
 let opt = Some(42);
 let x: &i32 = opt.as_ref().clone().unwrap();
 // desugars to:
@@ -32,7 +32,7 @@ using traits. We desugar such overridden operations into the appropriate method 
 
 The non-overriden versions of these operations stay unchanged.
 For example `+` on integers is built-in, but on integer references is defined by a trait:
-```rust
+```rust,example
 let x = 1 + 2 + &3;
 // becomes
 let x = 1 + <i32 as Add<&i32>>::add(2, &3);

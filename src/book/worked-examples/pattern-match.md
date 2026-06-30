@@ -1,7 +1,7 @@
 # Example 1: A pattern match
 
 Source:
-```rust
+```rust,example
 fn is_north(cmd: &(Option<&str>, i32)) -> bool {
     match cmd {
         (Some("north" | "n"), dist) if *dist > 0 => true,
@@ -11,7 +11,7 @@ fn is_north(cmd: &(Option<&str>, i32)) -> bool {
 ```
 
 After match ergonomics:
-```rust
+```rust,example
 fn is_north(cmd: &(Option<&str>, i32)) -> bool {
     match cmd {
         &(Some("north" | "n"), ref dist) if *dist > 0 => true,
@@ -21,7 +21,7 @@ fn is_north(cmd: &(Option<&str>, i32)) -> bool {
 ```
 
 After or-pattern desugaring and match desugaring:
-```rust
+```rust,example
 fn is_north(cmd: &(Option<&str>, i32)) -> bool {
     'match_end: {
         let dist_;
@@ -46,7 +46,7 @@ fn is_north(cmd: &(Option<&str>, i32)) -> bool {
 ```
 
 After pattern unnesting:
-```rust
+```rust,example
 fn is_north(cmd: &(Option<&str>, i32)) -> bool {
     'match_end: {
         let dist_;
@@ -81,7 +81,7 @@ fn is_north(cmd: &(Option<&str>, i32)) -> bool {
 ```
 
 After if-let-chain desugaring (and simplifying blocks a bit):
-```rust
+```rust,example
 fn is_north(cmd: &(Option<&str>, i32)) -> bool {
     'match_end: {
         let dist_;

@@ -8,7 +8,7 @@ around trait facts.
 1. Named impls;
 
     First, we need to be able to name a specific trait impl without going through trait solving:
-    ```rust
+    ```rust,example
     trait Trait {
         type Assoc;
     }
@@ -25,7 +25,7 @@ around trait facts.
 2. Named `where` predicates;
 
     We need to be able to refer to local clauses:
-    ```rust
+    ```rust,example
     fn clone_my_thing<T>(x: &T) -> (T, T)
     where
         // This gives a name to the `T: Clone` clause
@@ -40,7 +40,7 @@ around trait facts.
 
     When mentioning an item, we need to be able to tell it which trait facts to use for each
     predicate it has:
-    ```rust
+    ```rust,example
     // The impl found in the standard library.
     impl<T> "impl_clone_for_box" Clone for Box<T>
     where
@@ -65,7 +65,7 @@ around trait facts.
     After trait clauses, the second most important kind of trait fact is associated type equality
     predicates, as in `T: Trait<Assoc = u32>`. To express them, we add standalone `T1 = T2` predicates:
 
-    ```rust
+    ```rust,example
     fn foo<T>()
     where
         T: Trait,
@@ -89,7 +89,7 @@ around trait facts.
     [^3]: By this I mean "only requires normalizing each side, with no extra trait solving or
     anything".
 
-    ```rust
+    ```rust,example
     impl "impl_unit" Trait for () {
         type Assoc = u32;
     }
@@ -108,7 +108,7 @@ around trait facts.
     Finally, given `eq: (T = U)` and `x: T`, `eq::transmute(x)` is a term of type `U`. This is safe
     because the rest of the system ensures we can only get `T = U` if the two types really will be
     identical:
-    ```rust
+    ```rust,example
     fn foo<T>(x: t_trait::Assoc) -> u32
     where
         t_trait: (T: Trait),
@@ -146,7 +146,7 @@ around trait facts.
     impls, they can refer to themselves. They otherwise work like a type alias, i.e. equivalent
     to their contents.
 
-    ```rust
+    ```rust,example
     // The impl found in the standard library.
     impl<T> "impl_clone_for_box" Clone for Box<T>
     where

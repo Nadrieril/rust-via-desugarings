@@ -13,7 +13,7 @@ Inside let chains, we simply turn `let $pat1 | $pat2 = $expr` into `let $pat1 = 
 = $expr` using [Extended Let Chains](../features/extended-let-chains.md).
 
 Inside matches, we encode the non-tree-like control-flow directly:
-```rust
+```rust,example
 match $place {
     $pat1 | $pat2 if $guard => $arm,
     $remaining_arms
@@ -67,7 +67,7 @@ This would make the proposed desugaring correct.
 
 Note an interesting property that this desugaring makes clear: a single match guard may run several
 times. This can be observed, e.g.:
-```rust
+```rust,example
 let mut guard_count = 0;
 match (false, false) {
     (a, _) | (_, a) if { guard_count += 1; a } => {}
@@ -99,7 +99,7 @@ A more robust approach could be to give an index to each sub-pattern
 and branch/loop on these indices to know the right bindings to use/number of times to run a guard.
 For example, using [guard patterns](https://rust-lang.github.io/rfcs//3637-guard-patterns.html):
 
-```rust
+```rust,example
 match $place {
     ($a | $b, Some($c | Ok($d | $e))) if $guard => $arm,
     _ => {}

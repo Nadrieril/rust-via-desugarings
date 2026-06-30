@@ -6,7 +6,7 @@ This proposes a (hopefully) simple modification to the borrow-checker: we should
 In practice, that means that we must put the value back before any function call since any function
 call may unwind (unless compiled with panic=abort I guess).
 
-```rust
+```rust,example
 fn foo(x: &mut Vec<u32>) {
     let vec: Vec<_> = *x; // move out
     // can't call any functions oops

@@ -5,7 +5,7 @@ We desugar them all into binding declarations and assignments:
 
 - By-value bindings:
 
-    ```rust
+    ```rust,example
     let x = $place;
 
     // becomes
@@ -15,7 +15,7 @@ We desugar them all into binding declarations and assignments:
 
 - By-ref bindings:
 
-    ```rust
+    ```rust,example
     let ref x = $place;
 
     // becomes
@@ -25,7 +25,7 @@ We desugar them all into binding declarations and assignments:
 
 - By-ref-mut bindings:
 
-    ```rust
+    ```rust,example
     let ref mut x = $place;
 
     // becomes
@@ -38,7 +38,7 @@ We desugar them all into binding declarations and assignments:
     For place aliases, the RHS is already a side-effect-free place expression.
     We can therefore simply substitute `$place` for `p` syntactically.
     For example:
-    ```rust
+    ```rust,example
     let place p = x.field;
     something(&p);
     something_else(p);

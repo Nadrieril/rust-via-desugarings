@@ -6,7 +6,7 @@ moved out, depending on the type of the place (this is called a "place-to-value 
 We'll use the `copy!` and `move!` operators proposed in [Explicit
 Copy/Move](../features/explicit-copy-move.md).
 This step adds a `copy!` or `move!` to every place-to-value coercion:
-```rust
+```rust,example
 let x = (String::new(), 42);
 let y = x.0;
 let z = x.1;

@@ -10,7 +10,7 @@ In what follows, `$expr1`/`$expr2` are expressions made of `&&`, `||`, `let $bin
 = $place`, `let binding;`, and boolean expressions.
 
 First, the base cases:
-```rust
+```rust,example
 if let $binding = $place {
     $then
 } else {
@@ -26,7 +26,7 @@ if true {
 }
 ```
 
-```rust
+```rust,example
 if let $binding; {
     $then
 } else {
@@ -43,7 +43,7 @@ if true {
 ```
 
 Then the `&&` case, using block-`break` to jump over the `else` branch:
-```rust
+```rust,example
 if $expr1 && $expr2 {
     $then
 } else {
@@ -62,7 +62,7 @@ if $expr1 && $expr2 {
 ```
 
 And finally the `||` case, which we specify as follows, with a duplication:
-```rust
+```rust,example
 if $expr1 || $expr2 {
     $then
 } else {
@@ -99,12 +99,12 @@ First we get rid of non-`place` bindings in two steps:
    $bool_expr`;
 2. Move binding declarations out of `||` as follows, where `x1` is a fresh name.
     (This uses [`scope_end!`](../features/scope-end.md))
-    ```rust
+    ```rust,example
     (let x; && $expr1) || $expr2
     // becomes
     let x1; && (let place x = x1 && $expr1 || { scope_end!(x1); true } && $expr2)
     ```
-    ```rust
+    ```rust,example
     $expr1 || (let x; && $expr2)
     // becomes
     let x1; && ({ scope_end!(x1); true } && $expr1 || let place x = x1 && $expr2)
@@ -123,11 +123,11 @@ This even allows swapping two `let place` bindings.
 By the above the order of the `let place` bindings is unimportant,
 so for any place `p` that has a `let place` alias
 in both `||` alternatives, we can write the condition as follows:
-```rust
+```rust,example
 ($expr1 && let place p = $place1) || ($expr2 && let place p = $place2)
 ```
 then transform it using [conditional place aliases](../features/let-place.md):
-```rust
+```rust,example
 let branch;
     && ($expr1 && { branch = true; true } || $expr2 && { branch = false; true })
     && let place p = if_place!(branch, $place1, $place2)
@@ -138,7 +138,7 @@ which we can desugar like in [Lazy Boolean Operators](boolean-operators.md)
 without needing to care about binding scopes.
 
 Worked example:
-```rust
+```rust,example
 if (let Some(a) = foo() && let Some(b) = a.method())
     || (let Some(b) = bar() && let Some(a) = b.method()) {
   ..

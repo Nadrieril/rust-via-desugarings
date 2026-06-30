@@ -3,13 +3,13 @@
 The boolean operators `&&` and `||` are lazy, which means that they only evaluate their
 right-hand-side if it is can influence the final value of the operation.
 
-```rust
+```rust,example
 $lhs || $rhs
 // desugars to:
 if $lhs { true } else { $rhs }
 ```
 
-```rust
+```rust,example
 $lhs && $rhs
 // desugars to:
 if $lhs { $rhs } else { false }

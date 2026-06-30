@@ -3,7 +3,7 @@
 After the previous desugarings, any block that returns a value is the target of an assignment.
 In this step we move the assignment inside the block so as to remove all tail expressions.
 
-```rust
+```rust,example
 $place = {
     $statements;
     $expr
@@ -16,7 +16,7 @@ $place = {
 }
 ```
 
-```rust
+```rust,example
 $place = if $bool {
     $then
 } else {
@@ -31,7 +31,7 @@ if $bool {
 }
 ```
 
-```rust
+```rust,example
 $place = loop {
     $statements;
     if $bool {
@@ -53,7 +53,7 @@ The one block that is special is the whole function.
 Since the tail of a block is a value context we know the tail
 expression of the function, if any, is a local variable.
 We then simply add an explicit `return` statement.
-```rust
+```rust,example
 fn $name($args..) -> $ty {
     $statements;
     $local

@@ -1,7 +1,7 @@
 # Loop Desugaring
 
 `for` and `while` loops are desugared into a conditionless `loop`:
-```rust
+```rust,example
 for $pat in $iter {
     $loop_body
 }
@@ -16,7 +16,7 @@ for $pat in $iter {
 ```
 
 And then:
-```rust
+```rust,example
 while $condition {
     $loop_body
 }

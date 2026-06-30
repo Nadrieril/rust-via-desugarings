@@ -18,7 +18,7 @@
 //@ To get the right scope, extra blocks `{ .. }` may be added.
 //@
 //@ For example:
-//@ ```rust
+//@ ```rust,example
 //@ let s = if Option::is_some(&Option::clone(&opt)) {
 //@     let _x = &42;
 //@     &String::new()
@@ -40,7 +40,7 @@
 //@ };
 //@ ```
 //@ Or:
-//@ ```rust
+//@ ```rust,example
 //@ let opt: RwLock<Option<u32>> = ...
 //@ if let Some(x) = Option::as_ref(&*Result::unwrap(RwLock::read(&opt))) {
 //@     ...
@@ -63,7 +63,7 @@
 //@ Taking an example from the [edition
 //@ book](https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html):
 //@
-//@ ```rust
+//@ ```rust,example
 //@ fn f() -> usize {
 //@     let c = RefCell::new("..");
 //@     c.borrow().len()
@@ -99,7 +99,7 @@
 //@ There is an exception to the above: temporaries can, when sensible
 //@ [ref:destructors.scope.const-promotion],
 //@ become statics instead of local variables. This is called "constant promotion":
-//@ ```rust
+//@ ```rust,example
 //@ let x = &1 + 2;
 //@
 //@ // becomes:

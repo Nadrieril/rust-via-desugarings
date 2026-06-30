@@ -1,7 +1,7 @@
 # Example 2: Closure capture and bounds checks
 
 Source:
-```rust
+```rust,example
 fn bump_first(xs: &mut [i32]) -> i32 {
     let mut total = 0;
     let mut bump = |delta: i32| {
@@ -15,7 +15,7 @@ fn bump_first(xs: &mut [i32]) -> i32 {
 ```
 
 After expression unnesting:
-```rust
+```rust,example
 fn bump_first(xs: &mut [i32]) -> i32 {
     let mut total = 0;
     let mut bump = |delta: i32| {
@@ -32,7 +32,7 @@ fn bump_first(xs: &mut [i32]) -> i32 {
 ```
 
 After closure capture desugarings:
-```rust
+```rust,example
 fn bump_first(xs: &mut [i32]) -> i32 {
     let mut total = 0;
     let mut bump = |delta: i32| {

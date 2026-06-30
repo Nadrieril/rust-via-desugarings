@@ -1,7 +1,7 @@
 # Closure capture
 
 Closures and async blocks can refer to the places in their environment:
-```rust
+```rust,example
 let mut x = 0;
 let mut increment = || x += 1; // `&mut x` is captured
 increment();
@@ -21,7 +21,7 @@ For every captured place, we introduce at the start of the closure a `let place 
 a move expression.
 The rest of the closure stays unchanged.
 Our initial example becomes:
-```rust
+```rust,example
 let mut increment = || x = copy!(x) + 1;
 
 // desugars to:
@@ -32,7 +32,7 @@ let mut increment = || {
 ```
 
 Another example:
-```rust
+```rust,example
 let mut x = Some(42);
 let mut replace = move |new: u32| Option::replace(&mut x, copy!(new));
 
@@ -45,7 +45,7 @@ let mut replace = |new: u32| {
 
 This final example uses a unique immutable borrow (which we introduce in [Unique-Immutable
 Borrow](../features/uniq-borrow.md)) since a `&mut` borrow would require `let mut rx`:
-```rust
+```rust,example
 let mut x = 42;
 let rx = &mut x;
 let mut increment = || *rx += 1;

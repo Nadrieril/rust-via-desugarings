@@ -11,7 +11,7 @@ place expression, which we can then syntactically substitute wherever `p` is use
 (this is done in the [Desugaring Bindings](../pipeline/desugaring-bindings.md) step).
 
 For example:
-```rust
+```rust,example
 let place p = x.field; // this does not try to move out of the place
 something(&p);
 something_else(p); // now this moves out
@@ -21,7 +21,7 @@ something(&x.field);
 something_else(x.field); // now this moves out
 ```
 
-```rust
+```rust,example
 let place p = x.method().field;
 something(&p);
 
@@ -31,7 +31,7 @@ something(&tmp.field);
 ```
 
 The one point where this feature is a bit tricky is autoderef:
-```rust
+```rust,example
 let mut x: std::cell::RefMut<Struct> = ...;
 let place p = x.field; // should this use `deref` or `deref_mut`?
 something(&p);

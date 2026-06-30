@@ -9,7 +9,7 @@ I believe the relevant edition is that of the `if` token.
 When a crate in edition `N` calls a macro from a crate in edition `M`, each token recalls which
 edition it comes from. So the following code may or may not panic depending on the edition of the
 crate that defines the `if_let` macro.
-```rust
+```rust,example
 use core::cell::Cell;
 
 // Possibly defined in another crate.

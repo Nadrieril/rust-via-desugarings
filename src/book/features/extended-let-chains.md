@@ -11,7 +11,7 @@ and it can then be referred to in the `if` body.
 [`let place`](./let-place.md) bindings cannot be referred to in the arm body,
 unless we accept the "conditional let place" feature which I'm feeling icky about.
 
-```rust
+```rust,example
 if let Some(y) = foo()
   || (let Some(x) = bar() && let Some(y) = baz(x) && cond()) {
     // `x` is accessible here
@@ -20,7 +20,7 @@ if let Some(y) = foo()
 ```
 
 The drop order of the bindings depends on which branch succeeded.
-```rust
+```rust,example
 if (let Some(a) = foo() && let Some(b) = a.method())
   || (let Some(b) = bar() && let Some(a) = b.method()) {
     ..
@@ -34,7 +34,7 @@ This declares the variable without initializing it.
 Its drop order is determined by this declaration site just like a normal `let x = ...`.
 This is used to get the right temporary lifetimes and drop order when desugaring.
 
-```rust
+```rust,example
 if let Some(x) = foo() && let y; && let Some(z) = if bar() { y = Some(thing()); &y } else { &None } {
     ..
 }

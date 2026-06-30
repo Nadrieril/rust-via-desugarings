@@ -7,7 +7,7 @@ refers to the contents of the `$variant_name` variant.
 That place then has one field for each field of the variant.
 
 For example:
-```rust
+```rust,example
 let opt: &mut Option<u32> = ...;
 if let Some(ref mut x) = *opt {
     // x: &mut u32 here

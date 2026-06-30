@@ -7,7 +7,7 @@ initialized with `$expr`. That struct then implements the appropriate `Fn*` trai
 function body, what was a `move(..)` expression is replaced with the appropriate field expression.
 
 Let's take our previous examples again:
-```rust
+```rust,example
 let mut increment = || {
     let place x = *move(&mut x);
     x = copy!(x) + 1
@@ -32,7 +32,7 @@ impl FnMut<()> for Closure<'_> {
 let mut increment = Closure { capture1: &mut x };
 ```
 and
-```rust
+```rust,example
 let mut replace = |new: u32| {
     let place x = move(x);
     Option::replace(&mut x, copy!(new))

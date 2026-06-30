@@ -16,7 +16,7 @@ For any subplace of `$place` that hasn't been explicitly moved out, we insert a 
 `drop_in_place!`.
 This can require adding extra booleans ("drop flags") if different branches haven't moved the same
 places:
-```rust
+```rust,example
 let x = Struct {
     a: String::new(),
     b: String::new(),

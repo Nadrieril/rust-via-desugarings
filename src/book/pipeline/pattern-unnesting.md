@@ -41,7 +41,7 @@ This is useful for unsafe code that may want to know exactly what is accessed in
 detrimental to optimizations.
 
 The kind of `unsafe` code that may motivate such a rigid order is manually-implemented tagged unions:
-```rust
+```rust,example
 struct MyOption<T> {
     is_some: bool,
     contents: MyOptionContents<T>,

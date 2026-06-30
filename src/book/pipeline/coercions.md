@@ -12,7 +12,7 @@ In this step, we desugar these coercions into explicit conversions. The outcome 
 `as`-cast (`$expr as $ty`) or a reborrow (e.g. `&*$expr`).
 
 For example:
-```rust
+```rust,example
 fn foo(s: &str) { .. }
 let x: String = ...;
 let string_ref: &String = &x;
@@ -22,7 +22,7 @@ foo(string_ref);
 foo(&**string_ref);
 ```
 
-```rust
+```rust,example
 let x = 42u32;
 let dyn_x: &dyn Debug = &x;
 let meta = core::ptr::metadata(dyn_x);

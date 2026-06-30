@@ -7,7 +7,7 @@ We surround every function call and every use of `ensure_dropped` with an `on_un
 In the cleanup part of this block, we add `ensure_dropped!($local); scope_end!($local);` statements
 for each in-scope local, in reverse order of declaration.
 
-```rust
+```rust,example
 let n = 42;
 let x = String::new();
 

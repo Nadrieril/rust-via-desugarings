@@ -6,7 +6,7 @@ macro](../features/auto-drop.md).
 We add `ensure_dropped!` statements in two locations: at end of scopes and before variable
 assignments.
 
-```rust
+```rust,example
 scope_end!($local);
 
 // becomes:
@@ -14,7 +14,7 @@ ensure_dropped!($local);
 scope_end!($local);
 ```
 
-```rust
+```rust,example
 $place = $expr;
 
 // becomes:
@@ -23,7 +23,7 @@ $place = $expr;
 ```
 
 One tricky case is assignment through a mutable reference:
-```rust
+```rust,example
 let a: &mut String = ...;
 *a = String::new(); // this drops the previous string
 

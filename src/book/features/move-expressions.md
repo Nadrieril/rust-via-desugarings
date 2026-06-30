@@ -10,7 +10,7 @@ This feature adds a `move($expr)` expression, valid in a closure, that:
 3. Acts as a place alias for the place where that result is stored (i.e. the field of the closure object).
 
 For example, a function that increments a captured variable can be expressed as:
-```rust
+```rust,example
 // Implicit capture:
 let mut increment = || x += 1;
 
@@ -19,7 +19,7 @@ let mut increment = || *move(&mut x) += 1;
 ```
 
 To see why it's important that `move(..)` be a place expression, consider:
-```rust
+```rust,example
 let mut x = Some(42);
 // This moves the whole of `x` inside the closure; this closure could be returned from
 // the current function.
@@ -34,7 +34,7 @@ it on each call. That would not work if `move(..)` was a value expression.
 
 Move expressions can be nested: `move(move($expr))` evaluates the inner `move($expr)` when the outer
 closure is created, then the outer `move(move($expr))` when the inner closure is created:
-```rust
+```rust,example
 let mut x = Some(42);
 let generate_replacer = || {
   do_some_stuff();

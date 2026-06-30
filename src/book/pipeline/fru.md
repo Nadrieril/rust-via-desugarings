@@ -2,7 +2,7 @@
 
 In this step we desugar Functional Record Update syntax [ref:expr.struct.update]:
 
-```rust
+```rust,example
 // Assume `Struct` has 4 fields named a,b,c,d
 x = Struct { a: $expr_a, b: $expr_b, ..$place };
 

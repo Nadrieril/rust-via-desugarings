@@ -7,7 +7,7 @@ place`](../features/let-place.md) and [If Let Guards](../features/if-let-guards.
 
 Let `$pat` be a pattern that has a `ref mut x` binding.
 We desugar this as follows:
-```rust
+```rust,example
 match .. {
     $pat if $guard => $arm,
     ..

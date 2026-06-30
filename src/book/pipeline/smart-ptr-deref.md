@@ -16,7 +16,7 @@ mutability of the contexts in which `p` is used.
 
 We then desugar as follows:
 
-```rust
+```rust,example
 context!(*$expr)
 // becomes, if the context is considered mutable:
 context!(*<T as DerefMut>::deref_mut(&mut $expr))
@@ -25,7 +25,7 @@ context!(*<T as Deref>::deref(&$expr))
 ```
 
 For example:
-```rust
+```rust,example
 let arc: Arc<Option<i32>> = ...;
 if arc.is_some() { .. }
 
@@ -36,7 +36,7 @@ if Option::is_some(&*arc) { .. }
 if Option::is_some(&*Deref::deref(&arc)) { .. }
 ```
 
-```rust
+```rust,example
 let mut v: Vec<u32> = ...;
 match *v {
     [0, ref mut rest @ ..] => ..,

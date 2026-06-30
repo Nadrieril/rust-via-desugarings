@@ -9,7 +9,7 @@ only way an indexing expression may show up is as `let place q = p[i];` where `p
 bindings.
 
 We desugar this as follows, using [Unchecked Indexing](../features/unchecked-indexing.md):
-```rust
+```rust,example
 let place q = p[i];
 
 // becomes:
@@ -27,7 +27,7 @@ At the end of this step, there are no checked indexing place expressions left.
 ## Discussion
 
 This desugaring is actually unsound if we don't run borrow-checking before doing it:
-```rust
+```rust,example
 let mut x: &[[u32; 1]] = &[[42]];
 let _ = &mut x[0][{x = &[]; 0}];
 

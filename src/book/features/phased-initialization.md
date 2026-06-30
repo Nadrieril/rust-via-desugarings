@@ -1,7 +1,7 @@
 # Phased Initialization
 
 This feature allows the following[^1] :
-```rust
+```rust,example
 let x: (u32, u32);
 x.0 = 42;
 x.1 = 43;
@@ -19,7 +19,7 @@ For enums, I propose to use the semantics of [RFC 3727](https://github.com/rust-
 along with the syntax of [RFC 3607](https://github.com/rust-lang/rfcs/pull/3607) that we saw in
 [Enum Discriminant Access](enum-discriminant.md):
 
-```rust
+```rust,example
 let x: Option<u32>;
 unsafe {
     x.Some.0 = 42;

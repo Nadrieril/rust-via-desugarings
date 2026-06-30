@@ -3,7 +3,7 @@
 Depending on compilation flags, built-in arithmetic operations may introduce overflow checks.
 We desugar them here.
 
-```rust
+```rust,example
 $a + $b
 
 // becomes, in debug mode:

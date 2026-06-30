@@ -12,7 +12,7 @@ longer be in scope at the target of the `break;`/`continue;`.
 Finally before a `return $local;` statement we end the scopes of all locals except `$local`.
 
 For example:
-```rust
+```rust,example
 let x;
 loop {
     let b;

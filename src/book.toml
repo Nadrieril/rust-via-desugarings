@@ -12,7 +12,7 @@ build-dir = ".book-build"
 git-repository-url = "https://github.com/Nadrieril/rust-via-desugarings"
 edit-url-template = "https://github.com/Nadrieril/rust-via-desugarings/edit/main/{path}"
 site-url = "/rust-via-desugarings/"
-additional-css = ["book/theme/grammar.css", "book/theme/spec.css"]
+additional-css = ["book/theme/grammar.css", "book/theme/spec.css", "book/theme/examples.css"]
 additional-js = ["book/theme/grammar.js"]
 
 [output.html.fold]

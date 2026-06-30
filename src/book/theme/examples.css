@@ -1,0 +1,39 @@
+:root {
+    --example-code-accent: #8250df;
+    --example-code-bg: color-mix(in srgb, var(--example-code-accent) 8%, var(--quote-bg));
+    --example-code-border: color-mix(in srgb, var(--example-code-accent) 60%, var(--quote-border));
+}
+
+.coal, .navy {
+    --example-code-accent: #ab7df8;
+    --example-code-bg: color-mix(in srgb, var(--example-code-accent) 12%, var(--quote-bg));
+    --example-code-border: color-mix(in srgb, var(--example-code-accent) 65%, var(--quote-border));
+}
+
+.ayu {
+    --example-code-accent: #d3abff;
+    --example-code-bg: color-mix(in srgb, var(--example-code-accent) 13%, var(--quote-bg));
+    --example-code-border: color-mix(in srgb, var(--example-code-accent) 70%, var(--quote-border));
+}
+
+pre > code.language-rust.example {
+    position: relative;
+    border: 1px solid var(--example-code-border);
+    border-inline-start: 4px solid var(--example-code-accent);
+    border-radius: 6px;
+    background: var(--example-code-bg);
+    padding-block-start: 2.6rem;
+}
+
+pre > code.language-rust.example::before {
+    content: "Example";
+    position: absolute;
+    inset-block-start: .55rem;
+    inset-inline-start: .75rem;
+    color: var(--example-code-accent);
+    font-family: "Open Sans", sans-serif;
+    font-size: .78em;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: uppercase;
+}

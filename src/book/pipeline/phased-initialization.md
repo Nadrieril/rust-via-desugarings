@@ -5,7 +5,7 @@ namely struct, enum and union constructors.
 In this step we desugar those into individual assignments,
 using [Phased Initialization](../features/phased-initialization.md).
 
-```rust
+```rust,example
 x = Struct { a: $expr_a, b: $expr_b };
 
 // becomes:
@@ -13,7 +13,7 @@ x.a = $expr_a;
 x.b = $expr_b;
 ```
 
-```rust
+```rust,example
 x = Enum::Variant { a: $expr_a, b: $expr_b };
 
 // becomes:

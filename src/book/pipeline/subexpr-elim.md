@@ -12,7 +12,7 @@ we rewrite it to `{ let place tmp = $subexpr; expr!(tmp) }`;
 We do this in an order that preserves normal left-to-right evaluation order.
 We skip subexpressions that are constants.
 
-```rust
+```rust,example
 let mut vec = Vec::new();
 vec.push(42);
 vec[0] += 1;
@@ -28,7 +28,7 @@ vec[0] += 1;
 }
 ```
 
-```rust
+```rust,example
 let x = 1 + 2 + Some(3).as_ref().unwrap();
 
 // becomes, before this step:
@@ -49,7 +49,7 @@ let x = {
 ```
 
 An example that will be important for [Bounds Checks](./bound-checks.md):
-```rust
+```rust,example
 expr!($place[$i][$j])
 
 // becomes

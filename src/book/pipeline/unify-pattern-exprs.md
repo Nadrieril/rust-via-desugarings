@@ -7,14 +7,14 @@ a simple binding.
 
 - Function parameters
 
-  ```rust
+  ```rust,example
   fn f($pat: T) { $body }
   // becomes
   fn f(tmp: T) { let $pat = tmp; $body }
   ```
 
 - If let
-  ```rust
+  ```rust,example
   if let $pat = $expr { $then }
   // becomes
   if let $pat = $expr { $then } else {}
@@ -22,14 +22,14 @@ a simple binding.
 
 - If let else
 
-  ```rust
+  ```rust,example
   if let $pat = $expr { $then } else { $else }
   // stays unchanged
   ```
 
 - let
 
-  ```rust
+  ```rust,example
   let $pat = $expr;
   // becomes
   let $pat = $expr else { unsafe { core::hint::unreachable_unchecked() } };
@@ -37,7 +37,7 @@ a simple binding.
 
 - let else
 
-  ```rust
+  ```rust,example
   {
     let $pat = $expr else { $else };
     $body
@@ -52,7 +52,7 @@ a simple binding.
   Where we added a block to make `let else` the first statement of its block.
 
 - Destructuring assignment
-  ```rust
+  ```rust,example
   $pat = $expr;
   // becomes
   if let $pat_ = $expr {
@@ -68,7 +68,7 @@ a simple binding.
 
 - Matches
 
-  ```rust
+  ```rust,example
   match $expr {
       $pat if $guard => $arm,
       ..

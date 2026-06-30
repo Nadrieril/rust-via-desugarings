@@ -11,7 +11,7 @@ the [edition guide](https://doc.rust-lang.org/edition-guide/rust-2024/match-ergo
 In terms of desugaring, this step transforms patterns that involve match ergonomics
 into patterns that don't, i.e. that have exact types.
 
-```rust
+```rust,example
 let opt: &&Option<u32> = ..;
 if let Some(x) = opt {
     ..

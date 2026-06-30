@@ -10,7 +10,7 @@ unwinding continues.
 This is used to make cleanup code explicit.
 This could look like:
 
-```rust
+```rust,example
 let x = String::new();
 function_call()
 

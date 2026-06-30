@@ -1,7 +1,7 @@
 # Match Desugaring
 
 We can now simply transform:
-```rust
+```rust,example
 match $place {
     $pat1 if $guard1 => $arm1,
     $pat2 if $guard2 => $arm2,
@@ -9,7 +9,7 @@ match $place {
 }
 ```
 into:
-```rust
+```rust,example
 if let $pat1 = $place && $guard1 {
     $arm1
 } else if let $pat2 = $place && $guard2 {
@@ -26,7 +26,7 @@ expression, and 2. we've dealt with any trickiness around guards, either related
 or to bindings.
 
 If there are no arms, we emit:
-```rust
+```rust,example
 let _ = $place;
 unsafe { core::hint::unreachable_unchecked() }
 ```
