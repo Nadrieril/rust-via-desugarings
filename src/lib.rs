@@ -5,14 +5,14 @@
 // 3. mdbook indexes everything it sees, including cargo's `target/` directory if there's one.
 //
 // Therefore the rust project root must be a parent of the mdbook root.
-#[path = "book/language/mod.rs"]
+#[path = "book/language/overview.md.rs"]
 pub mod language;
 pub use language::{Program, print_program};
 
-#[path = "book/pipeline/mod.rs"]
+#[path = "book/pipeline/overview.md.rs"]
 pub mod desugarings;
+pub use desugarings::desugar;
 pub use desugarings::minirust::{run_in_minirust, translate_to_minirust};
-pub use desugarings::overview::desugar;
 
 pub mod parser {
     use crate::{

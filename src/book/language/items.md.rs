@@ -2,10 +2,6 @@
 //@
 //@ > This section is a work-in-progress experiment about making the book executable.
 use crate::language::*; //#
-
-#[path = "items/functions.md.rs"]
-pub mod functions;
-pub use functions::*;
 //@
 //@ ```grammar
 //@ Item:
@@ -28,3 +24,9 @@ pub struct Item {
 pub enum ItemKind {
     Function(Function),
 }
+
+//@ ## Submodules
+#[path = "items/functions.md.rs"]
+pub mod functions;
+
+pub use functions::*;

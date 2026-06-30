@@ -6,8 +6,6 @@
 //@ along with their grammar.
 //@ For now this describes only a very small subset of the full language.
 //@
-use crate::language::*; //#
-//@
 //@ A program consists in a list of items.
 //@
 //@ ```grammar
@@ -134,3 +132,28 @@ pub enum Pattern {
     Identifier(Identifier),
     Wildcard,
 }
+
+//@ ## Submodules
+pub use derive_generic_visitor::{Drive, DriveMut}; //#
+#[path = "expressions.md.rs"]
+pub mod expressions;
+#[path = "items.md.rs"]
+pub mod items;
+#[path = "lexing.md.rs"]
+pub mod lexing;
+#[path = "print.md.rs"]
+pub mod print;
+#[path = "statements.md.rs"]
+pub mod statements;
+#[path = "types.md.rs"]
+pub mod types;
+#[path = "visitor.md.rs"]
+pub mod visitor;
+
+pub use expressions::*;
+pub use items::*;
+pub use lexing::*;
+pub use print::*;
+pub use statements::*;
+pub use types::*;
+pub use visitor::*;

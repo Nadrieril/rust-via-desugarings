@@ -27,9 +27,14 @@ macro_rules! desugaring_error {
         return Err(crate::CompilationError::Desugaring($msg.to_string()));
     }};
 }
-pub(crate) use desugaring_error;
 
 pub fn desugar(mut program: Program) -> Result<Program, CompilationError> {
-    super::funsig::desugar_fun_sigs(&mut program)?;
+    funsig::desugar_fun_sigs(&mut program)?;
     Ok(program)
 }
+
+//@ ## Submodules
+#[path = "funsig.md.rs"]
+pub mod funsig;
+#[path = "minirust.md.rs"]
+pub mod minirust;

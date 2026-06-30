@@ -3,8 +3,6 @@
 //@ > This section is a work-in-progress experiment about making the book executable.
 //@
 use crate::desugarings::*;
-use crate::language::*;
-use crate::*;
 
 pub fn desugar_fun_sigs(program: &mut Program) -> Result<(), CompilationError> {
     program.visit_all_mut(|f: &mut Function| {
