@@ -20,3 +20,9 @@ on_unwind function_call() {
   scope_end!(x);
 };
 ```
+(Where `scope_end!` is defined [here](./scope-end.md)).
+
+This is different from `catch_unwind` because one cannot go back to normal function execution;
+when the end of the `on_unwind` block is reached, unwinding continues into the parent stack frame.
+(Tho maybe we could allow `return`ing from such a block, and `catch_unwind` could just be
+implemented in terms of that?).
