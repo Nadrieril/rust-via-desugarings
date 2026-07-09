@@ -32,12 +32,6 @@ pub struct Program {
 pub type Identifier = String;
 
 //@ ```grammar
-//@ SimplePath -> Path: path=IDENTIFIER
-//@     => path
-//@ ```
-pub type Path = Identifier;
-
-//@ ```grammar
 //@ Abi -> String: STRING_LITERAL
 //@     => STRING_LITERAL
 //@ ```
@@ -141,6 +135,8 @@ pub mod expressions;
 pub mod items;
 #[path = "lexing.md.rs"]
 pub mod lexing;
+#[path = "names.md.rs"]
+pub mod names;
 #[path = "print.md.rs"]
 pub mod print;
 #[path = "statements.md.rs"]
@@ -153,6 +149,7 @@ pub mod visitor;
 pub use expressions::*;
 pub use items::*;
 pub use lexing::*;
+pub use names::*;
 pub use print::*;
 pub use statements::*;
 pub use types::*;

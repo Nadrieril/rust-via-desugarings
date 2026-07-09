@@ -27,6 +27,8 @@ pub enum Token {
     Crate,
     #[token("super")]
     Super,
+    #[token("as")]
+    As,
     #[token("in")]
     In,
     #[token("if")]
@@ -53,8 +55,18 @@ pub enum Token {
     Eq,
     #[token("+")]
     Plus,
+    #[token("-")]
+    Minus,
+    #[token("*")]
+    Star,
     #[token("&")]
     Amp,
+    #[token("::")]
+    PathSep,
+    #[token("<")]
+    Lt,
+    #[token(">")]
+    Gt,
     #[token(":")]
     Colon,
     #[token(",")]
@@ -73,6 +85,8 @@ pub enum Token {
     Ellipsis,
     #[token("_")]
     Underscore,
+    #[token("$crate")]
+    MacroCrate,
     #[regex(r"[0-9]+", |lex| lex.slice().parse::<u128>().unwrap())]
     IntegerLiteral(u128),
     #[regex(r"[A-Za-z_][A-Za-z0-9_]*", |lex| lex.slice().to_owned(), priority = 1)]
@@ -106,6 +120,7 @@ fn string_literal(lex: &mut logos::Lexer<'_, Token>) -> String {
 //@ `pub` Pub;
 //@ `crate` Crate;
 //@ `super` Super;
+//@ `as` As;
 //@ `in` In;
 //@ `mut` Mut;
 //@ `self` Self_;
@@ -117,7 +132,12 @@ fn string_literal(lex: &mut logos::Lexer<'_, Token>) -> String {
 //@ `->` Arrow;
 //@ `=` Eq;
 //@ `+` Plus;
+//@ `-` Minus;
+//@ `*` Star;
 //@ `&` Amp;
+//@ `::` PathSep;
+//@ `<` Lt;
+//@ `>` Gt;
 //@ `:` Colon;
 //@ `,` Comma;
 //@ `(` LParen;
@@ -127,6 +147,7 @@ fn string_literal(lex: &mut logos::Lexer<'_, Token>) -> String {
 //@ `;` Semicolon;
 //@ `...` Ellipsis;
 //@ `_` Underscore;
+//@ `$crate` MacroCrate;
 //@ INTEGER_LITERAL IntegerLiteral(u128);
 //@ IDENTIFIER Identifier(String);
 //@ STRING_LITERAL StringLiteral(String);
@@ -135,6 +156,10 @@ fn string_literal(lex: &mut logos::Lexer<'_, Token>) -> String {
 //@
 //@ %precedence `self`;
 //@ %precedence `:`;
+//@ %precedence `=`;
+//@ %precedence `+`;
+//@ %precedence `&`;
+//@ %precedence `*`;
 //@
 //@ %allow unit_production_eliminated(Identifier);
 //@ %allow unit_production_eliminated(GenericParams);

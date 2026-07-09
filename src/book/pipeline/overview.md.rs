@@ -30,11 +30,14 @@ macro_rules! desugaring_error {
 
 pub fn desugar(mut program: Program) -> Result<Program, CompilationError> {
     funsig::desugar_fun_sigs(&mut program)?;
+    misc_expr_desugarings::desugar_misc_exprs(&mut program)?;
     Ok(program)
 }
 
 //@ ## Submodules
 #[path = "funsig.md.rs"]
 pub mod funsig;
+#[path = "misc-expr-desugarings.md.rs"]
+pub mod misc_expr_desugarings;
 #[path = "minirust.md.rs"]
 pub mod minirust;

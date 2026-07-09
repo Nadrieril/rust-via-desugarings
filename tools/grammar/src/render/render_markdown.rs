@@ -76,14 +76,28 @@ fn render_production(prod: &Production, cx: &RenderCtx, output: &mut String) {
 fn render_alternative(alternative: &Alternative, cx: &RenderCtx, output: &mut String) {
     render_expression(&alternative.expression, cx, output);
     if alternative.action_layout.separator_on_new_line {
-        output.push_str("<span class=\"grammar-action\"><br>\n");
+        output.push_str("<span class=\"grammar-action\">");
+        render_precedence(alternative, output);
+        output.push_str("<br>\n");
         render_indent(&alternative.action_layout.separator_indent, output);
     } else {
         output.push_str("<span class=\"grammar-action\"> ");
+        render_precedence(alternative, output);
     }
     output.push_str("=&gt; <code class=\"grammar-action-code\">");
     output.push_str(&html_escape(&alternative.action));
     output.push_str("</code></span>");
+}
+
+fn render_precedence(alternative: &Alternative, output: &mut String) {
+    if let Some(precedence) = &alternative.precedence {
+        write!(
+            output,
+            "<code class=\"grammar-action-code\">#[prec = {}]</code> ",
+            html_escape(precedence)
+        )
+        .unwrap();
+    }
 }
 
 fn render_indent(indent: &str, output: &mut String) {

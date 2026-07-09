@@ -243,12 +243,22 @@ pub fn render_rustylr(grammar: &Grammar, lexer: &LexerSpec) -> Result<String> {
                     true,
                     &mut bindings,
                 )?;
+                let precedence = alternative
+                    .precedence
+                    .as_deref()
+                    .map(|terminal| {
+                        lexer
+                            .resolve_terminal(terminal)
+                            .map(|terminal| format!(" %prec {terminal}"))
+                    })
+                    .transpose()?
+                    .unwrap_or_default();
                 let action = render_action(&action, &bindings, lexer)?;
                 if first {
-                    writeln!(out, "    : {rhs} {action}")?;
+                    writeln!(out, "    : {rhs}{precedence} {action}")?;
                     first = false;
                 } else {
-                    writeln!(out, "    | {rhs} {action}")?;
+                    writeln!(out, "    | {rhs}{precedence} {action}")?;
                 }
             }
         }

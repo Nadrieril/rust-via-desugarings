@@ -24,6 +24,9 @@ static HEADER_RE: LazyLock<regex::Regex> =
         regex::Regex::new(r"^\s*(?:@root\s+)?[A-Z][A-Za-z0-9_]*\s*(?:->\s*[^:\n\r]+)?\s*:")
             .unwrap()
     });
+static PRECEDENCE_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r#"(?s)\s*#\[prec\s*=\s*(`[^`\n]+`|[A-Za-z_][A-Za-z0-9_]*)\]\s*$"#).unwrap()
+});
 
 #[derive(Debug)]
 pub struct Error {
@@ -233,16 +236,26 @@ fn parse_alternative(source: &str, start: usize, segment: &str) -> Result<Altern
         return Err(Error::new(source, start, "expected `=>` action"));
     };
     let action_layout = parse_action_layout(expr_text);
-    let expr_text = expr_text.trim();
+    let (expr_text, precedence) = parse_precedence_annotation(expr_text.trim());
     let expression = parse_expression_complete(expr_text).map_err(|message| {
         let relative = segment.find(expr_text).unwrap_or(0);
         Error::new(source, start + relative, message)
     })?;
     Ok(Alternative {
         expression,
+        precedence,
         action: trim_action(action),
         action_layout,
     })
+}
+
+fn parse_precedence_annotation(expr_text: &str) -> (&str, Option<String>) {
+    let Some(captures) = PRECEDENCE_RE.captures(expr_text) else {
+        return (expr_text, None);
+    };
+    let whole = captures.get(0).unwrap();
+    let precedence = captures.get(1).unwrap().as_str().to_string();
+    (expr_text[..whole.start()].trim_end(), Some(precedence))
 }
 
 fn parse_action_layout(expr_text: &str) -> ActionLayout {
@@ -744,6 +757,18 @@ FunctionParam: attrs=OuterAttribute* kind=FunctionParamKind
         assert!(matches!(
             &rule.alternatives[0].expression.kind,
             ExpressionKind::Terminal(name) if name == "IDENTIFIER"
+        ));
+    }
+
+    #[test]
+    fn parses_precedence_annotation() {
+        let grammar = parse("Rule: `*` expression=Expression #[prec = `*`] => expression");
+        let rule = grammar.productions.get("Rule").unwrap();
+        assert_eq!(rule.alternatives[0].precedence.as_deref(), Some("`*`"));
+        assert_eq!(rule.alternatives[0].action, "expression");
+        assert!(matches!(
+            rule.alternatives[0].expression.kind,
+            ExpressionKind::Sequence(_)
         ));
     }
 }

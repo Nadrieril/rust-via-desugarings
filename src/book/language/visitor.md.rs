@@ -27,7 +27,9 @@ use derive_generic_visitor::*; //#
     ),
     override(
         BlockExpression,
+        BorrowExpression,
         CallExpression,
+        DereferenceExpression,
         ExternAbi,
         Expression,
         ExpressionKind,

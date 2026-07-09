@@ -1,18 +1,4 @@
 use crate::language::*; //#
-
-#[path = "expressions/block-exprs.md.rs"]
-pub mod block_expressions;
-#[path = "expressions/call-exprs.md.rs"]
-pub mod call_expressions;
-#[path = "expressions/literal-exprs.md.rs"]
-pub mod literal_expressions;
-#[path = "expressions/operator-exprs.md.rs"]
-pub mod operator_expressions;
-
-pub use block_expressions::*;
-pub use call_expressions::*;
-pub use literal_expressions::*;
-pub use operator_expressions::*;
 //@ # Expressions
 //@
 //@ > This section is a work-in-progress experiment about making the book executable.
@@ -34,13 +20,12 @@ pub use operator_expressions::*;
 //@     | literal=LiteralExpression => ExpressionKind::Literal(literal),
 //@     | path=PathExpression => ExpressionKind::Path(path),
 //@     | operator=OperatorExpression => ExpressionKind::Operator(Box::new(operator)),
+//@     | grouped=GroupedExpression => ExpressionKind::Grouped(grouped),
 //@     | tuple=TupleExpression => ExpressionKind::Tuple(tuple),
 //@     | call=CallExpression => ExpressionKind::Call(call),
 //@
 //@ ExpressionWithBlockNoAttrs -> ExpressionKind:
 //@     | expr=BlockExpression => ExpressionKind::Block(expr)
-//@
-//@ PathExpression -> Identifier: variable=Identifier => variable
 //@
 //@ TupleExpression: `(` `)` => TupleExpression::Unit
 //@ ```
@@ -57,15 +42,34 @@ pub enum ExpressionKind {
     Literal(LiteralExpression),
     Path(PathExpression),
     Operator(Box<OperatorExpression>),
+    Grouped(Box<Expression>),
     Block(BlockExpression),
     Tuple(TupleExpression),
     Call(CallExpression),
 }
-
-pub type PathExpression = Identifier;
 
 #[derive(Debug, Clone, PartialEq, Eq)] //#
 #[derive(Drive, DriveMut)] //#
 pub enum TupleExpression {
     Unit,
 }
+
+//@ ## Submodules
+#[path = "expressions/block-exprs.md.rs"]
+pub mod block_expressions;
+#[path = "expressions/call-exprs.md.rs"]
+pub mod call_expressions;
+#[path = "expressions/grouped-exprs.md.rs"]
+pub mod grouped_expressions;
+#[path = "expressions/literal-exprs.md.rs"]
+pub mod literal_expressions;
+#[path = "expressions/operator-exprs.md.rs"]
+pub mod operator_expressions;
+#[path = "expressions/path-exprs.md.rs"]
+pub mod path_expressions;
+
+pub use block_expressions::*;
+pub use call_expressions::*;
+pub use literal_expressions::*;
+pub use operator_expressions::*;
+pub use path_expressions::*;

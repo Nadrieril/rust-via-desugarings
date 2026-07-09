@@ -110,6 +110,7 @@ struct Translator {
     globals: Map<mini::GlobalName, mini::Global>,
     locals: Map<mini::LocalName, mini::Type>,
     local_names: BTreeMap<String, mini::LocalName>,
+    source_local_types: BTreeMap<String, language::Type>,
     blocks: Map<mini::BbName, mini::BasicBlock>,
     current_block: mini::BbName,
     current_statements: Vec<mini::Statement>,
@@ -129,6 +130,7 @@ impl Translator {
             globals: Map::new(),
             locals,
             local_names: BTreeMap::new(),
+            source_local_types: BTreeMap::new(),
             blocks: Map::new(),
             current_block,
             current_statements: Vec::new(),
@@ -224,11 +226,20 @@ impl Translator {
         expression: &language::Expression,
     ) -> Result<(), CompilationError> {
         match &expression.kind {
+            language::ExpressionKind::Grouped(_) => Err(minirust_error(
+                "MiniRust runner expects grouped expressions to be desugared",
+            )),
             language::ExpressionKind::Call(call) => self.translate_function_call(call),
             language::ExpressionKind::Operator(operator) => match &**operator {
                 language::OperatorExpression::Assignment(target, value) => {
                     self.translate_assignment(target, value)
                 }
+                language::OperatorExpression::Borrow(_) => Err(minirust_error(
+                    "MiniRust runner does not yet support borrow expressions as statements",
+                )),
+                language::OperatorExpression::Dereference(_) => Err(minirust_error(
+                    "MiniRust runner does not yet support dereference expressions as statements",
+                )),
                 language::OperatorExpression::Add(..) => Err(minirust_error(
                     "MiniRust runner does not yet support `+` as a statement",
                 )),
@@ -245,6 +256,9 @@ impl Translator {
         expression: &language::Expression,
     ) -> Result<(), CompilationError> {
         match &expression.kind {
+            language::ExpressionKind::Grouped(_) => Err(minirust_error(
+                "MiniRust runner expects grouped expressions to be desugared",
+            )),
             language::ExpressionKind::Tuple(language::TupleExpression::Unit) => Ok(()),
             language::ExpressionKind::Call(call) => self.translate_function_call(call),
             other => Err(minirust_error(format!(
@@ -259,9 +273,10 @@ impl Translator {
         }
         let local = mini::LocalName(Name::from_internal(self.next_local));
         self.next_local += 1;
-        let ty = translate_type(ty)?;
-        self.locals.insert(local, ty);
+        let mini_ty = translate_type(ty)?;
+        self.locals.insert(local, mini_ty);
         self.local_names.insert(name.to_owned(), local);
+        self.source_local_types.insert(name.to_owned(), ty.clone());
         self.current_statements
             .push(mini::Statement::StorageLive(local));
         Ok(())
@@ -272,8 +287,8 @@ impl Translator {
         target: &language::Expression,
         value: &language::Expression,
     ) -> Result<(), CompilationError> {
-        let target = Self::expression_path(target)?;
-        self.translate_assignment_to(target, value)
+        let (destination, _) = self.translate_place(target)?;
+        self.translate_assignment_to_place(destination, value)
     }
 
     fn translate_assignment_to(
@@ -282,9 +297,17 @@ impl Translator {
         value: &language::Expression,
     ) -> Result<(), CompilationError> {
         let destination = self.local(target)?;
+        self.translate_assignment_to_place(mini::PlaceExpr::Local(destination), value)
+    }
+
+    fn translate_assignment_to_place(
+        &mut self,
+        destination: mini::PlaceExpr,
+        value: &language::Expression,
+    ) -> Result<(), CompilationError> {
         let source = self.translate_value(value)?;
         self.current_statements.push(mini::Statement::Assign {
-            destination: mini::PlaceExpr::Local(destination),
+            destination,
             source,
         });
         Ok(())
@@ -346,9 +369,15 @@ impl Translator {
             language::ExpressionKind::Tuple(language::TupleExpression::Unit) => {
                 Ok(mini::ValueExpr::Tuple(List::new(), mini::unit_ty()))
             }
-            language::ExpressionKind::Path(name) => Ok(mini::ValueExpr::Load {
-                source: GcCow::new(mini::PlaceExpr::Local(self.local(name)?)),
-            }),
+            language::ExpressionKind::Grouped(_) => Err(minirust_error(
+                "MiniRust runner expects grouped expressions to be desugared",
+            )),
+            language::ExpressionKind::Path(path) => {
+                let name = Self::simple_path_name(path)?;
+                Ok(mini::ValueExpr::Load {
+                    source: GcCow::new(mini::PlaceExpr::Local(self.local(name)?)),
+                })
+            }
             language::ExpressionKind::Call(call) => Err(minirust_error(format!(
                 "MiniRust runner only supports function calls as statements, got `{}`",
                 call
@@ -356,19 +385,136 @@ impl Translator {
             language::ExpressionKind::Block(_) => Err(minirust_error(
                 "MiniRust runner does not yet support nested block expressions",
             )),
-            language::ExpressionKind::Operator(operator) => Err(minirust_error(format!(
-                "MiniRust runner does not yet support operator expression `{operator}` as a value"
+            language::ExpressionKind::Operator(operator) => match &**operator {
+                language::OperatorExpression::Borrow(borrow) => self.translate_borrow(borrow),
+                language::OperatorExpression::Dereference(dereference) => {
+                    let (source, _) = self.translate_dereference_place(dereference)?;
+                    Ok(mini::ValueExpr::Load {
+                        source: GcCow::new(source),
+                    })
+                }
+                language::OperatorExpression::Add(..)
+                | language::OperatorExpression::Assignment(..) => Err(minirust_error(format!(
+                    "MiniRust runner does not yet support operator expression `{operator}` as a value"
+                ))),
+            },
+        }
+    }
+
+    fn translate_borrow(
+        &mut self,
+        borrow: &language::BorrowExpression,
+    ) -> Result<mini::ValueExpr, CompilationError> {
+        let (value, _) = self.translate_borrow_with_pointee(borrow)?;
+        Ok(value)
+    }
+
+    fn translate_borrow_with_pointee(
+        &mut self,
+        borrow: &language::BorrowExpression,
+    ) -> Result<(mini::ValueExpr, mini::Type), CompilationError> {
+        let (target, target_ty) = self.translate_place(&borrow.expression)?;
+        let ptr_ty = ref_ptr_type(borrow.mutability, target_ty)?;
+        Ok((
+            mini::ValueExpr::AddrOf {
+                target: GcCow::new(target),
+                ptr_ty,
+            },
+            target_ty,
+        ))
+    }
+
+    fn translate_place(
+        &mut self,
+        expression: &language::Expression,
+    ) -> Result<(mini::PlaceExpr, mini::Type), CompilationError> {
+        match &expression.kind {
+            language::ExpressionKind::Grouped(_) => Err(minirust_error(
+                "MiniRust runner expects grouped expressions to be desugared",
+            )),
+            language::ExpressionKind::Path(path) => {
+                let name = Self::simple_path_name(path)?;
+                let local = self.local(name)?;
+                Ok((mini::PlaceExpr::Local(local), self.local_type(local)?))
+            }
+            language::ExpressionKind::Operator(operator) => match &**operator {
+                language::OperatorExpression::Dereference(dereference) => {
+                    self.translate_dereference_place(dereference)
+                }
+                other => Err(minirust_error(format!(
+                    "MiniRust runner expected a place expression, got `{other}`"
+                ))),
+            },
+            other => Err(minirust_error(format!(
+                "MiniRust runner expected a place expression, got `{other:?}`"
+            ))),
+        }
+    }
+
+    fn translate_dereference_place(
+        &mut self,
+        dereference: &language::DereferenceExpression,
+    ) -> Result<(mini::PlaceExpr, mini::Type), CompilationError> {
+        let (operand, pointee_ty) = self.translate_pointer_value(&dereference.expression)?;
+        Ok((
+            mini::PlaceExpr::Deref {
+                operand: GcCow::new(operand),
+                ty: pointee_ty,
+            },
+            pointee_ty,
+        ))
+    }
+
+    fn translate_pointer_value(
+        &mut self,
+        expression: &language::Expression,
+    ) -> Result<(mini::ValueExpr, mini::Type), CompilationError> {
+        match &expression.kind {
+            language::ExpressionKind::Grouped(_) => Err(minirust_error(
+                "MiniRust runner expects grouped expressions to be desugared",
+            )),
+            language::ExpressionKind::Path(path) => {
+                let name = Self::simple_path_name(path)?;
+                let language::Type::Ref(_, _, pointee_ty) = self.source_local_type(name)? else {
+                    return Err(minirust_error(format!(
+                        "MiniRust runner can only dereference references, got `{name}`"
+                    )));
+                };
+                Ok((
+                    mini::ValueExpr::Load {
+                        source: GcCow::new(mini::PlaceExpr::Local(self.local(name)?)),
+                    },
+                    translate_type(pointee_ty)?,
+                ))
+            }
+            language::ExpressionKind::Operator(operator) => match &**operator {
+                language::OperatorExpression::Borrow(borrow) => {
+                    self.translate_borrow_with_pointee(borrow)
+                }
+                other => Err(minirust_error(format!(
+                    "MiniRust runner expected a reference value, got `{other}`"
+                ))),
+            },
+            other => Err(minirust_error(format!(
+                "MiniRust runner expected a reference value, got `{other:?}`"
             ))),
         }
     }
 
     fn expression_path(expression: &language::Expression) -> Result<&str, CompilationError> {
         match &expression.kind {
-            language::ExpressionKind::Path(name) => Ok(name),
+            language::ExpressionKind::Grouped(_) => Err(minirust_error(
+                "MiniRust runner expects grouped expressions to be desugared",
+            )),
+            language::ExpressionKind::Path(path) => Self::simple_path_name(path),
             other => Err(minirust_error(format!(
                 "MiniRust runner expected a path expression, got `{other:?}`"
             ))),
         }
+    }
+
+    fn simple_path_name(path: &language::PathExpression) -> Result<&str, CompilationError> {
+        Ok(path)
     }
 
     fn pattern_name(pattern: &language::Pattern) -> Result<&str, CompilationError> {
@@ -438,6 +584,18 @@ impl Translator {
             .copied()
             .ok_or_else(|| minirust_error(format!("unknown local `{name}`")))
     }
+
+    fn local_type(&self, local: mini::LocalName) -> Result<mini::Type, CompilationError> {
+        self.locals
+            .get(local)
+            .ok_or_else(|| minirust_error(format!("unknown MiniRust local `{local:?}`")))
+    }
+
+    fn source_local_type(&self, name: &str) -> Result<&language::Type, CompilationError> {
+        self.source_local_types
+            .get(name)
+            .ok_or_else(|| minirust_error(format!("unknown local `{name}`")))
+    }
 }
 
 fn find_main(program: &language::Program) -> Result<&language::Function, CompilationError> {
@@ -463,12 +621,49 @@ fn translate_type(ty: &language::Type) -> Result<mini::Type, CompilationError> {
                 )),
             }
         }
+        language::Type::Ref(_, mutability, inner) => {
+            let pointee_ty = translate_type(inner)?;
+            Ok(mini::Type::Ptr(ref_ptr_type(*mutability, pointee_ty)?))
+        }
         language::Type::Str => Err(minirust_error(
             "MiniRust runner only supports `str` behind a reference",
         )),
-        language::Type::TraitSelf | language::Type::Ref(..) => Err(minirust_error(format!(
+        language::Type::TraitSelf => Err(minirust_error(format!(
             "MiniRust runner does not yet support type `{ty}`"
         ))),
+    }
+}
+
+fn ref_ptr_type(
+    mutability: language::Mutability,
+    pointee_ty: mini::Type,
+) -> Result<memory::PtrType, CompilationError> {
+    Ok(memory::PtrType::Ref {
+        mutbl: translate_mutability(mutability),
+        pointee: sized_pointee_info(pointee_ty)?,
+    })
+}
+
+fn sized_pointee_info(ty: mini::Type) -> Result<memory::PointeeInfo, CompilationError> {
+    let layout = ty.layout::<x86_64>();
+    let memory::LayoutStrategy::Sized(..) = layout else {
+        return Err(minirust_error(format!(
+            "MiniRust runner only supports references to sized types, got `{ty:?}`"
+        )));
+    };
+    Ok(memory::PointeeInfo {
+        layout,
+        inhabited: true,
+        unsafe_cells: memory::UnsafeCellStrategy::Sized { cells: List::new() },
+        freeze: true,
+        unpin: true,
+    })
+}
+
+fn translate_mutability(mutability: language::Mutability) -> MiniMutability {
+    match mutability {
+        language::Mutability::Mutable => MiniMutability::Mutable,
+        language::Mutability::Immutable => MiniMutability::Immutable,
     }
 }
 

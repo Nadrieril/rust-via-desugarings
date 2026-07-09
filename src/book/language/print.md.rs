@@ -241,6 +241,7 @@ impl Display for ExpressionKind {
             ExpressionKind::Literal(literal) => write!(f, "{literal}"),
             ExpressionKind::Path(path) => write!(f, "{path}"),
             ExpressionKind::Operator(operator) => write!(f, "{operator}"),
+            ExpressionKind::Grouped(grouped) => write!(f, "({grouped})"),
             ExpressionKind::Block(block) => write!(f, "{block}"),
             ExpressionKind::Tuple(tuple) => write!(f, "{tuple}"),
             ExpressionKind::Call(call) => write!(f, "{call}"),
@@ -275,9 +276,23 @@ impl Display for CallExpression {
 impl Display for OperatorExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            OperatorExpression::Borrow(borrow) => write!(f, "{borrow}"),
+            OperatorExpression::Dereference(dereference) => write!(f, "{dereference}"),
             OperatorExpression::Add(left, right) => write!(f, "{left} + {right}"),
             OperatorExpression::Assignment(left, right) => write!(f, "{left} = {right}"),
         }
+    }
+}
+
+impl Display for BorrowExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "&{}{}", self.mutability, self.expression)
+    }
+}
+
+impl Display for DereferenceExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "*{}", self.expression)
     }
 }
 

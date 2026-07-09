@@ -167,6 +167,29 @@ Rule:
     }
 
     #[test]
+    fn renders_precedence_annotation_as_hideable_code() {
+        let source = r#"
+```grammar
+Rule:
+    `*` expression=Expression #[prec = `*`]
+    => expression
+
+Expression: IDENTIFIER => IDENTIFIER
+```
+"#;
+        let mut grammar = Grammar::default();
+        crate::parse_grammar_blocks(source, &mut grammar, "syntax", "chapter.md").unwrap();
+
+        let rendered = render_chapter(&grammar, source, Path::new("chapter.md"));
+
+        assert!(
+            rendered.contains(
+                "<span class=\"grammar-action\"><code class=\"grammar-action-code\">#[prec = `*`]</code> <br>"
+            )
+        );
+    }
+
+    #[test]
     fn renders_links_to_literate_markdown_sources() {
         let source = r#"
 ```grammar

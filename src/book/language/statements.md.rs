@@ -7,8 +7,8 @@ use crate::language::*; //#
 //@ Statement:
 //@     | `;` => Statement::Empty,
 //@     | item=Item => Statement::Item(item),
-//@     | expr=ExpressionStatement => Statement::Expr(expr),
 //@     | statement=LetStatement => statement,
+//@     | expr=ExpressionStatement => Statement::Expr(expr),
 //@
 //@ LetStatement -> Statement:
 //@     attrs=OuterAttribute* `let` pattern=PatternNoTopAlt ( `:` ty=Type )?

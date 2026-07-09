@@ -38,6 +38,7 @@ pub struct Production {
 #[derive(Debug)]
 pub struct Alternative {
     pub expression: Expression,
+    pub precedence: Option<String>,
     pub action: String,
     pub action_layout: ActionLayout,
 }
