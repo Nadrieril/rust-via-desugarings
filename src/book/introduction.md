@@ -67,6 +67,12 @@ While I do my best to be precise and correct, this is just a fun project I'm doi
 knowledge of Rust. This book will contain mistakes, imprecisions and omissions; feel free to [open an
 issue](https://github.com/Nadrieril/rust-via-desugarings/issues) or PR if you notice any!
 
+## Executable Experiment
+
+I am currently experimenting with making this book executable, by making it a literate Rust program
+that can parse, desugar and execute real Rust code.
+Sections that are part of this experiment are indicated by a ▶️ symbol.
+
 ## LLM Disclaimer
 
 The tooling used in this repo (`./tools`) is heavily LLM-assisted. While this book is an experiment,

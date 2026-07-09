@@ -6,6 +6,7 @@ use serde_json::Value;
 use std::io::{self, Read};
 
 const REFERENCE_ROOT: &str = "https://doc.rust-lang.org/reference/";
+const LITERATE_RUST_TITLE_PREFIX: &str = "▶️ ";
 
 const RULE_PAGE_PREFIXES: &[(&str, &str)] = &[
     ("associated", "items/associated-items.html"),
@@ -56,6 +57,7 @@ fn render_sections(sections: &mut Value, missing_rules: &mut Vec<String>) -> any
 
     for section in sections {
         if let Some(chapter) = section.get_mut("Chapter") {
+            add_literate_rust_title_prefix(chapter);
             if let Some(content) = chapter.get("content").and_then(Value::as_str) {
                 chapter["content"] =
                     Value::String(render_reference_links_in_chapter(content, missing_rules)?);
@@ -67,6 +69,30 @@ fn render_sections(sections: &mut Value, missing_rules: &mut Vec<String>) -> any
     }
 
     Ok(())
+}
+
+fn add_literate_rust_title_prefix(chapter: &mut Value) {
+    if !is_literate_rust_chapter(chapter) {
+        return;
+    }
+
+    let Some(name) = chapter.get("name").and_then(Value::as_str) else {
+        return;
+    };
+    if name.starts_with(LITERATE_RUST_TITLE_PREFIX) {
+        return;
+    }
+    let name = name.to_owned();
+
+    chapter["name"] = Value::String(format!("{LITERATE_RUST_TITLE_PREFIX}{name}"));
+}
+
+fn is_literate_rust_chapter(chapter: &Value) -> bool {
+    chapter
+        .get("source_path")
+        .or_else(|| chapter.get("path"))
+        .and_then(Value::as_str)
+        .is_some_and(|path| path.ends_with(".md.rs"))
 }
 
 pub fn render_reference_links(content: &str) -> anyhow::Result<String> {
