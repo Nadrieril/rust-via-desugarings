@@ -10,11 +10,9 @@ use std::sync::LazyLock;
 mod render_markdown;
 mod render_railroad;
 
-static NAMES_RE: LazyLock<Regex> =
-    LazyLock::new(|| {
-        Regex::new(r"(?m)^\s*(?:@root\s+)?([A-Z][A-Za-z0-9_]*)\s*(?:->\s*[^:\n\r]+)?\s*:")
-            .unwrap()
-    });
+static NAMES_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?m)^\s*(?:@root\s+)?([A-Z][A-Za-z0-9_]*)\s*(?:->\s*[^:\n\r]+)?\s*:").unwrap()
+});
 
 #[derive(Debug)]
 pub struct RenderCtx {

@@ -3,6 +3,8 @@
 //@ > This section is a work-in-progress experiment about making the book executable.
 //@
 //@ These printers turn the AST back into Rust syntax.
+//@
+//@ AI disclaimer: this section is LLM-generated.
 use crate::language::*; //#
 use itertools::Itertools; //#
 use std::fmt::{self, Display, Formatter}; //#

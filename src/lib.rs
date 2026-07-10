@@ -62,16 +62,19 @@ pub mod parser {
 pub enum CompilationError {
     Parse(String),
     Desugaring(String),
+    Internal(String),
     MiniRust(String),
 }
 
 impl std::error::Error for CompilationError {}
 impl std::fmt::Display for CompilationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (CompilationError::Parse(msg)
-        | CompilationError::Desugaring(msg)
-        | CompilationError::MiniRust(msg)) = self;
-        write!(f, "{msg}")
+        match self {
+            CompilationError::Parse(msg)
+            | CompilationError::Desugaring(msg)
+            | CompilationError::MiniRust(msg) => write!(f, "{msg}"),
+            CompilationError::Internal(msg) => write!(f, "internal error: {msg}"),
+        }
     }
 }
 

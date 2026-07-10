@@ -88,9 +88,7 @@ fn run_case(input_path: &Path) -> Result<(), Failed> {
                     Err(error) => {
                         write_output(&stderr_path, format!("{error}\n"))?;
                         if !directives.known_failure {
-                            Err(format!(
-                                "expected run success, got MiniRust error:\n{error}"
-                            ))?
+                            Err(format!("expected run success, got error:\n{error}"))?
                         }
                         return Ok(());
                     }

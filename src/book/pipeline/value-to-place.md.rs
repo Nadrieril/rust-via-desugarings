@@ -108,3 +108,56 @@
 //@ ```
 //@
 //@ After this step, all place contexts contain place expressions.
+//@
+//@ > The rest of this section is a work-in-progress experiment about making the book executable.
+use crate::desugarings::*; //#
+
+pub fn desugar_value_to_place(program: &mut Program) -> Result<(), CompilationError> {
+    program.visit_all_mut(|block: &mut BlockExpression| {
+        split_let_initializers(block);
+        Ok(())
+    })
+}
+
+//@ As a small first step, we split let-statements with an initializer into a declaration followed
+//@ by assignment:
+//@
+//@ ```rust,example
+//@ let x = val;
+//@ // becomes
+//@ let x;
+//@ x = val;
+//@ ```
+fn split_let_initializers(block: &mut BlockExpression) {
+    let statements = std::mem::take(&mut block.statements);
+    for statement in statements {
+        if let Statement::Let {
+            attrs,
+            pattern: Pattern::Identifier(name),
+            ty,
+            initial_value: Some(value),
+            else_branch: None,
+        } = statement
+        {
+            block.statements.push(Statement::Let {
+                attrs,
+                pattern: Pattern::Identifier(name.clone()),
+                ty,
+                initial_value: None,
+                else_branch: None,
+            });
+            block.statements.push(Statement::Expr(Expression {
+                attrs: vec![],
+                kind: ExpressionKind::Operator(Box::new(OperatorExpression::Assignment(
+                    Expression {
+                        attrs: vec![],
+                        kind: ExpressionKind::Path(name),
+                    },
+                    value,
+                ))),
+            }));
+        } else {
+            block.statements.push(statement)
+        }
+    }
+}

@@ -19,11 +19,9 @@ use std::sync::LazyLock;
 type NomError<'a> = nom::error::Error<&'a str>;
 type PResult<'a, T> = IResult<&'a str, T, NomError<'a>>;
 
-static HEADER_RE: LazyLock<regex::Regex> =
-    LazyLock::new(|| {
-        regex::Regex::new(r"^\s*(?:@root\s+)?[A-Z][A-Za-z0-9_]*\s*(?:->\s*[^:\n\r]+)?\s*:")
-            .unwrap()
-    });
+static HEADER_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r"^\s*(?:@root\s+)?[A-Z][A-Za-z0-9_]*\s*(?:->\s*[^:\n\r]+)?\s*:").unwrap()
+});
 static PRECEDENCE_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
     regex::Regex::new(r#"(?s)\s*#\[prec\s*=\s*(`[^`\n]+`|[A-Za-z_][A-Za-z0-9_]*)\]\s*$"#).unwrap()
 });

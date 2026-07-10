@@ -12,8 +12,7 @@
 //@ ```
 //@
 use crate::language::*; //#
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Drive, DriveMut)] //#
+#[derive(Debug, Clone, PartialEq, Eq, Drive, DriveMut)] //#
 pub enum Type {
     Unit,
     Bool,

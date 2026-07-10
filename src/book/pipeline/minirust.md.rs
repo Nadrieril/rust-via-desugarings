@@ -209,10 +209,12 @@ impl Translator {
                 let ty = ty
                     .as_ref()
                     .ok_or_else(|| minirust_error("MiniRust runner needs typed `let` bindings"))?;
-                self.translate_let(name, ty)?;
-                if let Some(initial_value) = initial_value {
-                    self.translate_assignment_to(name, initial_value)?;
+                if initial_value.is_some() {
+                    return Err(internal_error(
+                        "MiniRust translation received a `let` initializer; expected desugaring to split it into `let x: ty; x = value;`",
+                    ));
                 }
+                self.translate_let(name, ty)?;
                 Ok(())
             }
             language::Statement::Expr(expression) => {
@@ -289,15 +291,6 @@ impl Translator {
     ) -> Result<(), CompilationError> {
         let (destination, _) = self.translate_place(target)?;
         self.translate_assignment_to_place(destination, value)
-    }
-
-    fn translate_assignment_to(
-        &mut self,
-        target: &str,
-        value: &language::Expression,
-    ) -> Result<(), CompilationError> {
-        let destination = self.local(target)?;
-        self.translate_assignment_to_place(mini::PlaceExpr::Local(destination), value)
     }
 
     fn translate_assignment_to_place(
@@ -688,4 +681,8 @@ fn minirust_runtime_error(error: TerminationInfo) -> CompilationError {
 
 fn minirust_error(message: impl Into<String>) -> CompilationError {
     CompilationError::MiniRust(message.into())
+}
+
+fn internal_error(message: impl Into<String>) -> CompilationError {
+    CompilationError::Internal(message.into())
 }
