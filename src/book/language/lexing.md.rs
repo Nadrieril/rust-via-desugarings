@@ -6,6 +6,7 @@ use logos::Logos; //#
 //@
 #[derive(Clone, Debug, PartialEq, Eq, Logos)]
 #[logos(skip r"[ \t\n\r]+")]
+#[logos(skip(r"//[^\n\r]*", allow_greedy = true))]
 pub enum Token {
     #[token("fn")]
     Fn,

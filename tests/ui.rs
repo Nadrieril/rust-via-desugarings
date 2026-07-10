@@ -30,14 +30,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 struct Directives {
     known_failure: bool,
     run: bool,
-    source_start: usize,
 }
 
 fn parse_directives(input: &str) -> Directives {
     let mut directives = Directives {
         known_failure: false,
         run: false,
-        source_start: 0,
     };
 
     for line in input.lines() {
@@ -49,7 +47,6 @@ fn parse_directives(input: &str) -> Directives {
             "run" => directives.run = true,
             _ => {}
         }
-        directives.source_start += line.len();
     }
 
     directives
@@ -59,13 +56,11 @@ fn run_case(input_path: &Path) -> Result<(), Failed> {
     let input = fs::read_to_string(input_path)
         .map_err(|error| format!("failed to read input file: {error}"))?;
     let directives = parse_directives(&input);
-    // Hack because the parser doesn't strip comments yet
-    let source = &input[directives.source_start..];
     let desugared_path = input_path.with_extension(DESUGARED_SUFFIX);
     let stdout_path = input_path.with_extension("out");
     let stderr_path = input_path.with_extension("stderr");
 
-    let result = rust_via_desugarings::parser::parse_program(source);
+    let result = rust_via_desugarings::parser::parse_program(&input);
     if let Ok(program) = &result {
         // Roundtrip the printer.
         let roundtrip = rust_via_desugarings::print_program(program);
