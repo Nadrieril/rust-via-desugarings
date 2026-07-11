@@ -440,6 +440,7 @@ name = "mdbook-spec"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "grammar",
  "mdbook-markdown",
  "pulldown-cmark-to-cmark",
  "serde_json",

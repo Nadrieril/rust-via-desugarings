@@ -3,7 +3,11 @@ use mdbook_markdown::pulldown_cmark::{CowStr, Event, Tag, TagEnd};
 use mdbook_markdown::{MarkdownOptions, new_cmark_parser};
 use pulldown_cmark_to_cmark::cmark;
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::io::{self, Read};
+use std::path::PathBuf;
+
+mod literate_rust;
 
 const REFERENCE_ROOT: &str = "https://doc.rust-lang.org/reference/";
 const LITERATE_RUST_TITLE_PREFIX: &str = "▶️ ";
@@ -37,9 +41,16 @@ pub fn handle_preprocessing() -> anyhow::Result<()> {
     }
 
     let mut book = values.pop().context("mdBook input missing book")?;
+    let context = values.pop().context("mdBook input missing context")?;
+    let literate_chapters = literate_rust::collect_chapters(&book["sections"]);
+    let rustdoc_links = literate_rust::rustdoc_link_map(&context, &literate_chapters);
+
+    render_literate_sections(&mut book["sections"], &rustdoc_links)?;
+    let grammar = collect_grammar(&book["sections"])?;
+    render_grammar_sections(&mut book["sections"], &grammar);
 
     let mut missing_rules = Vec::new();
-    render_sections(&mut book["sections"], &mut missing_rules)?;
+    render_reference_sections(&mut book["sections"], &mut missing_rules)?;
     missing_rules.sort();
     missing_rules.dedup();
     if !missing_rules.is_empty() {
@@ -53,7 +64,10 @@ pub fn handle_preprocessing() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn render_sections(sections: &mut Value, missing_rules: &mut Vec<String>) -> anyhow::Result<()> {
+fn render_literate_sections(
+    sections: &mut Value,
+    rustdoc_links: &BTreeMap<String, BTreeMap<usize, Vec<literate_rust::LinkRange>>>,
+) -> anyhow::Result<()> {
     let Some(sections) = sections.as_array_mut() else {
         return Ok(());
     };
@@ -62,12 +76,100 @@ fn render_sections(sections: &mut Value, missing_rules: &mut Vec<String>) -> any
         if let Some(chapter) = section.get_mut("Chapter") {
             add_literate_rust_title_prefix(chapter);
             if let Some(content) = chapter.get("content").and_then(Value::as_str) {
+                if let Some(source_path) = literate_rust::chapter_source_path(chapter)
+                    && source_path.ends_with(".md.rs")
+                {
+                    chapter["content"] = Value::String(literate_rust::render_chapter(
+                        content,
+                        &source_path,
+                        rustdoc_links.get(&source_path),
+                    ));
+                }
+            }
+            render_literate_sections(&mut chapter["sub_items"], rustdoc_links)?;
+        } else if let Some(part) = section.get_mut("PartTitle") {
+            render_literate_sections(&mut part["sub_items"], rustdoc_links)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn collect_grammar(sections: &Value) -> anyhow::Result<grammar::Grammar> {
+    let mut chapters = Vec::new();
+    collect_chapters(sections, &mut chapters);
+
+    let mut grammar = grammar::Grammar::default();
+    for (content, path) in chapters {
+        grammar::parse_grammar_blocks(&content, &mut grammar, "syntax", path)?;
+    }
+    Ok(grammar)
+}
+
+fn collect_chapters(sections: &Value, chapters: &mut Vec<(String, PathBuf)>) {
+    let Some(sections) = sections.as_array() else {
+        return;
+    };
+
+    for section in sections {
+        if let Some(chapter) = section.get("Chapter") {
+            let content = chapter
+                .get("content")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            chapters.push((content.to_owned(), chapter_path(chapter)));
+            collect_chapters(&chapter["sub_items"], chapters);
+        } else if let Some(part) = section.get("PartTitle") {
+            collect_chapters(&part["sub_items"], chapters);
+        }
+    }
+}
+
+fn render_grammar_sections(sections: &mut Value, grammar: &grammar::Grammar) {
+    let Some(sections) = sections.as_array_mut() else {
+        return;
+    };
+
+    for section in sections {
+        if let Some(chapter) = section.get_mut("Chapter") {
+            let path = chapter_path(chapter);
+            if let Some(content) = chapter.get("content").and_then(Value::as_str) {
+                chapter["content"] =
+                    Value::String(grammar::render::render_chapter(grammar, content, &path));
+            }
+            render_grammar_sections(&mut chapter["sub_items"], grammar);
+        } else if let Some(part) = section.get_mut("PartTitle") {
+            render_grammar_sections(&mut part["sub_items"], grammar);
+        }
+    }
+}
+
+fn chapter_path(chapter: &Value) -> PathBuf {
+    chapter
+        .get("source_path")
+        .or_else(|| chapter.get("path"))
+        .and_then(Value::as_str)
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("chapter.md"))
+}
+
+fn render_reference_sections(
+    sections: &mut Value,
+    missing_rules: &mut Vec<String>,
+) -> anyhow::Result<()> {
+    let Some(sections) = sections.as_array_mut() else {
+        return Ok(());
+    };
+
+    for section in sections {
+        if let Some(chapter) = section.get_mut("Chapter") {
+            if let Some(content) = chapter.get("content").and_then(Value::as_str) {
                 chapter["content"] =
                     Value::String(render_reference_links_in_chapter(content, missing_rules)?);
             }
-            render_sections(&mut chapter["sub_items"], missing_rules)?;
+            render_reference_sections(&mut chapter["sub_items"], missing_rules)?;
         } else if let Some(part) = section.get_mut("PartTitle") {
-            render_sections(&mut part["sub_items"], missing_rules)?;
+            render_reference_sections(&mut part["sub_items"], missing_rules)?;
         }
     }
 
@@ -75,7 +177,7 @@ fn render_sections(sections: &mut Value, missing_rules: &mut Vec<String>) -> any
 }
 
 fn add_literate_rust_title_prefix(chapter: &mut Value) {
-    if !is_literate_rust_chapter(chapter) {
+    if !literate_rust::is_literate_chapter(chapter) {
         return;
     }
 
@@ -88,14 +190,6 @@ fn add_literate_rust_title_prefix(chapter: &mut Value) {
     let name = name.to_owned();
 
     chapter["name"] = Value::String(format!("{LITERATE_RUST_TITLE_PREFIX}{name}"));
-}
-
-fn is_literate_rust_chapter(chapter: &Value) -> bool {
-    chapter
-        .get("source_path")
-        .or_else(|| chapter.get("path"))
-        .and_then(Value::as_str)
-        .is_some_and(|path| path.ends_with(".md.rs"))
 }
 
 pub fn render_reference_links(content: &str) -> anyhow::Result<String> {

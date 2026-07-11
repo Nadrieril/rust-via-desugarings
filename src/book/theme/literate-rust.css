@@ -1,0 +1,19 @@
+.literate-rust-source {
+    display: none;
+}
+
+.literate-rust-line-anchor {
+    scroll-margin-top: 5rem;
+}
+
+.literate-rust-def-link {
+    color: inherit;
+    text-decoration-line: underline;
+    text-decoration-style: dotted;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.16em;
+}
+
+.literate-rust-def-link:hover {
+    text-decoration-style: solid;
+}
