@@ -1,0 +1,12 @@
+a-mir-formality borrow check failed: the rule "borrow of disjoint places" at (a-mir-formality/crates/formality-rust/src/check/borrow_check/nll.rs:725:17) failed because
+  condition evaluated to false: `place_disjoint_from_place(&loan.place, &access.place)`
+    &loan.place = x : bool
+    &access.place = x : bool
+
+the rule "loan_cannot_outlive" at (a-mir-formality/crates/formality-rust/src/check/borrow_check/nll.rs:1303:17) failed because
+  condition evaluated to false: `!outlived_by_loan.contains(&lifetime.upcast())`
+    outlived_by_loan = {?lt_1, ?lt_2}
+    &lifetime.upcast() = ?lt_1
+
+the rule "write-indirect" at (a-mir-formality/crates/formality-rust/src/check/borrow_check/nll.rs:752:73) failed because
+  pattern `TypedPlaceExpressionData::Deref(place_loaned_ref)` did not match value `x`

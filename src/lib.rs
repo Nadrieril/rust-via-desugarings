@@ -12,6 +12,7 @@ pub use language::{Program, print_program};
 #[path = "book/pipeline/overview.md.rs"]
 pub mod desugarings;
 pub use desugarings::desugar;
+pub use desugarings::formality::{check_with_formality, translate_to_formality};
 pub use desugarings::minirust::{run_in_minirust, translate_to_minirust};
 
 pub mod parser {
@@ -62,6 +63,7 @@ pub mod parser {
 pub enum CompilationError {
     Parse(String),
     Desugaring(String),
+    Formality(String),
     Internal(String),
     MiniRust(String),
 }
@@ -72,6 +74,7 @@ impl std::fmt::Display for CompilationError {
         match self {
             CompilationError::Parse(msg)
             | CompilationError::Desugaring(msg)
+            | CompilationError::Formality(msg)
             | CompilationError::MiniRust(msg) => write!(f, "{msg}"),
             CompilationError::Internal(msg) => write!(f, "internal error: {msg}"),
         }
@@ -87,5 +90,10 @@ pub fn parse_desugar_and_print_program(input: &str) -> Result<String, Compilatio
 pub fn parse_desugar_and_run_program(input: &str) -> Result<String, CompilationError> {
     let program = parser::parse_program(input)?;
     let program = desugar(program)?;
-    run_in_minirust(&program)
+    check_and_run(&program)
+}
+
+pub fn check_and_run(program: &Program) -> Result<String, CompilationError> {
+    check_with_formality(program)?;
+    run_in_minirust(program)
 }

@@ -83,7 +83,7 @@ fn run_case(input_path: &Path) -> Result<(), Failed> {
             let output = rust_via_desugarings::print_program(&program);
             write_output(&desugared_path, output)?;
             if directives.run {
-                match rust_via_desugarings::run_in_minirust(&program) {
+                match rust_via_desugarings::check_and_run(&program) {
                     Ok(stdout) => write_output(&stdout_path, stdout)?,
                     Err(error) => {
                         write_output(&stderr_path, format!("{error}\n"))?;
