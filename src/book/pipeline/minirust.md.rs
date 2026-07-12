@@ -34,17 +34,25 @@ type MiniMemory = memory::BasicMemory<x86_64>;
 pub fn translate_to_minirust(
     program: &language::Program,
 ) -> Result<mini::Program, CompilationError> {
-    let main = find_main(program)?;
-    let mut translator = Translator::new();
-    let main_function = translator.translate_main(main)?;
-    let main_name = mini::FnName(Name::from_internal(0));
-
+    let function_names = collect_function_names(program)?;
+    let main_name = *function_names
+        .get("main")
+        .ok_or_else(|| minirust_error("MiniRust runner needs a `main` function"))?;
+    let mut globals = Map::new();
+    let mut next_global = 0;
     let mut functions = Map::new();
-    functions.insert(main_name, main_function);
+    for item in &program.items {
+        let language::ItemKind::Function(function) = &item.kind;
+        let name = function_names[&function.name];
+        let mut translator = Translator::new(&function_names, &mut globals, &mut next_global);
+        let function = translator.translate_function(function, name == main_name)?;
+        functions.insert(name, function);
+    }
+
     Ok(mini::Program {
         functions,
         start: main_name,
-        globals: translator.globals,
+        globals,
         traits: Map::new(),
         vtables: Map::new(),
     })
@@ -106,9 +114,11 @@ impl GcCompat for SharedOutput {
     fn points_to(&self, _buffer: &mut std::collections::HashSet<usize>) {}
 }
 
-struct Translator {
-    globals: Map<mini::GlobalName, mini::Global>,
+struct Translator<'a> {
+    globals: &'a mut Map<mini::GlobalName, mini::Global>,
+    function_names: &'a BTreeMap<String, mini::FnName>,
     locals: Map<mini::LocalName, mini::Type>,
+    args: Vec<mini::LocalName>,
     local_names: BTreeMap<String, mini::LocalName>,
     source_local_types: BTreeMap<String, language::Type>,
     blocks: Map<mini::BbName, mini::BasicBlock>,
@@ -117,18 +127,24 @@ struct Translator {
     ret: mini::LocalName,
     next_local: u32,
     next_block: u32,
-    next_global: u32,
+    next_global: &'a mut u32,
 }
 
-impl Translator {
-    fn new() -> Self {
+impl<'a> Translator<'a> {
+    fn new(
+        function_names: &'a BTreeMap<String, mini::FnName>,
+        globals: &'a mut Map<mini::GlobalName, mini::Global>,
+        next_global: &'a mut u32,
+    ) -> Self {
         let ret = mini::LocalName(Name::from_internal(0));
         let current_block = mini::BbName(Name::from_internal(0));
         let mut locals = Map::new();
         locals.insert(ret, mini::unit_ty());
         Self {
-            globals: Map::new(),
+            globals,
+            function_names,
             locals,
+            args: Vec::new(),
             local_names: BTreeMap::new(),
             source_local_types: BTreeMap::new(),
             blocks: Map::new(),
@@ -137,40 +153,98 @@ impl Translator {
             ret,
             next_local: 1,
             next_block: 1,
-            next_global: 0,
+            next_global,
         }
     }
 
-    fn translate_main(
+    fn translate_function(
         &mut self,
         function: &language::Function,
+        is_main: bool,
     ) -> Result<mini::Function, CompilationError> {
-        if !function.parameters.is_empty() {
+        if is_main && !function.parameters.is_empty() {
             return Err(minirust_error(
                 "MiniRust runner only supports `main` with no parameters",
             ));
         }
+        self.translate_return_type(function.return_type.as_ref())?;
+        self.translate_parameters(&function.parameters)?;
         match &function.body {
             language::FunctionBody::Block(block) => self.translate_block(block)?,
             language::FunctionBody::Missing => {
-                return Err(minirust_error("MiniRust runner needs a `main` body"));
+                return Err(minirust_error(format!(
+                    "MiniRust runner needs a body for function `{}`",
+                    function.name
+                )));
             }
         }
-        self.finish_current_block(mini::Terminator::Intrinsic {
-            intrinsic: mini::IntrinsicOp::Exit,
-            arguments: List::new(),
-            ret: mini::PlaceExpr::Local(self.ret),
-            next_block: None,
-        });
+        if is_main {
+            self.finish_current_block(mini::Terminator::Intrinsic {
+                intrinsic: mini::IntrinsicOp::Exit,
+                arguments: List::new(),
+                ret: mini::PlaceExpr::Local(self.ret),
+                next_block: None,
+            });
+        } else {
+            self.finish_current_block(mini::Terminator::Return);
+        }
 
         Ok(mini::Function {
             locals: self.locals,
-            args: List::new(),
+            args: self.args.iter().copied().collect(),
             ret: self.ret,
             calling_convention: mini::CallingConvention::C,
             blocks: self.blocks,
             start: mini::BbName(Name::from_internal(0)),
         })
+    }
+
+    fn translate_return_type(
+        &self,
+        return_type: Option<&language::Type>,
+    ) -> Result<(), CompilationError> {
+        match return_type {
+            None | Some(language::Type::Unit) => Ok(()),
+            Some(ty) => Err(minirust_error(format!(
+                "MiniRust runner only supports functions returning `()`, got `{ty}`"
+            ))),
+        }
+    }
+
+    fn translate_parameters(
+        &mut self,
+        parameters: &[language::FunctionParam],
+    ) -> Result<(), CompilationError> {
+        for parameter in parameters {
+            self.translate_parameter(parameter)?;
+        }
+        Ok(())
+    }
+
+    fn translate_parameter(
+        &mut self,
+        parameter: &language::FunctionParam,
+    ) -> Result<(), CompilationError> {
+        let language::FunctionParamKind::Regular {
+            pattern: Some(pattern),
+            ty: language::FunctionParamType::Type(ty),
+        } = &parameter.kind
+        else {
+            return Err(minirust_error(format!(
+                "MiniRust runner only supports named regular parameters, got `{parameter}`"
+            )));
+        };
+        let name = Self::pattern_name(pattern)?;
+        if self.local_names.contains_key(name) {
+            return Err(minirust_error(format!("duplicate local `{name}`")));
+        }
+        let local = mini::LocalName(Name::from_internal(self.next_local));
+        self.next_local += 1;
+        self.locals.insert(local, translate_type(ty)?);
+        self.args.push(local);
+        self.local_names.insert(name.to_owned(), local);
+        self.source_local_types.insert(name.to_owned(), ty.clone());
+        Ok(())
     }
 
     fn translate_block(
@@ -312,10 +386,7 @@ impl Translator {
     ) -> Result<(), CompilationError> {
         let name = Self::expression_path(&call.callee)?;
         if name != "print" {
-            return Err(minirust_error(format!(
-                "MiniRust runner only supports the `print` intrinsic, got `{}`",
-                name
-            )));
+            return self.translate_user_function_call(name, call);
         }
         if call.args.len() != 1 {
             return Err(minirust_error(format!(
@@ -330,6 +401,36 @@ impl Translator {
             arguments: [argument].into_iter().collect(),
             ret: mini::PlaceExpr::Local(self.ret),
             next_block: Some(next_block),
+        });
+        self.current_block = next_block;
+        Ok(())
+    }
+
+    fn translate_user_function_call(
+        &mut self,
+        name: &str,
+        call: &language::CallExpression,
+    ) -> Result<(), CompilationError> {
+        let callee = self.function(name)?;
+        let arguments = call
+            .args
+            .iter()
+            .map(|argument| {
+                self.translate_value(argument)
+                    .map(mini::ArgumentExpr::ByValue)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let next_block = self.fresh_block();
+        self.finish_current_block(mini::Terminator::Call {
+            callee: mini::ValueExpr::Constant(
+                mini::Constant::FnPointer(callee),
+                mini::Type::Ptr(memory::PtrType::FnPtr),
+            ),
+            calling_convention: mini::CallingConvention::C,
+            arguments: arguments.into_iter().collect(),
+            ret: mini::PlaceExpr::Local(self.ret),
+            next_block: Some(next_block),
+            unwind_block: None,
         });
         self.current_block = next_block;
         Ok(())
@@ -521,8 +622,8 @@ impl Translator {
 
     fn translate_string_literal(&mut self, value: &str) -> mini::ValueExpr {
         // TODO: do as a desugaring instead.
-        let global_name = mini::GlobalName(Name::from_internal(self.next_global));
-        self.next_global += 1;
+        let global_name = mini::GlobalName(Name::from_internal(*self.next_global));
+        *self.next_global += 1;
         self.globals.insert(
             global_name,
             mini::Global {
@@ -589,17 +690,35 @@ impl Translator {
             .get(name)
             .ok_or_else(|| minirust_error(format!("unknown local `{name}`")))
     }
+
+    fn function(&self, name: &str) -> Result<mini::FnName, CompilationError> {
+        self.function_names
+            .get(name)
+            .copied()
+            .ok_or_else(|| minirust_error(format!("unknown function `{name}`")))
+    }
 }
 
-fn find_main(program: &language::Program) -> Result<&language::Function, CompilationError> {
-    program
-        .items
-        .iter()
-        .filter_map(|item| match &item.kind {
-            language::ItemKind::Function(function) => Some(function),
-        })
-        .find(|function| function.name == "main")
-        .ok_or_else(|| minirust_error("MiniRust runner needs a `main` function"))
+fn collect_function_names(
+    program: &language::Program,
+) -> Result<BTreeMap<String, mini::FnName>, CompilationError> {
+    let mut names = BTreeMap::new();
+    for (index, item) in program.items.iter().enumerate() {
+        let language::ItemKind::Function(function) = &item.kind;
+        if names
+            .insert(
+                function.name.clone(),
+                mini::FnName(Name::from_internal(index as u32)),
+            )
+            .is_some()
+        {
+            return Err(minirust_error(format!(
+                "duplicate function `{}`",
+                function.name
+            )));
+        }
+    }
+    Ok(names)
 }
 
 fn translate_type(ty: &language::Type) -> Result<mini::Type, CompilationError> {
