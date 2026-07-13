@@ -1,3 +1,5 @@
+#![feature(deref_patterns)]
+#![allow(incomplete_features)]
 // This file is here because
 // 1. for editor integration the literate Rust files should be placed in the filesystem like normal
 //    modules;

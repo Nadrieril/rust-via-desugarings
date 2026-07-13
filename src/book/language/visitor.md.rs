@@ -56,6 +56,7 @@ use derive_generic_visitor::*; //#
         TupleIndexingExpression,
         Type,
         Visibility,
+        VirtualExpression,
         WhereClauses,
     )
 )]

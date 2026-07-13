@@ -5,5 +5,5 @@ fn main() -> () {
     let x: bool;
     x = false;
     foo(&mut x);
-    print(x);
+    print(place_to_value!(x));
 }

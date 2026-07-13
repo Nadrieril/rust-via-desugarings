@@ -57,6 +57,9 @@ pub enum ExpressionKind {
     Tuple(Vec<Expression>),
     TupleIndexing(TupleIndexingExpression),
     Call(CallExpression),
+    /// Expressions that don't exist in the surface language, that we invented for the purpose of
+    /// enabling some desugarings.
+    Virtual(VirtualExpression),
 }
 
 //@ ## Submodules
@@ -76,6 +79,8 @@ pub mod operator_expressions;
 pub mod path_expressions;
 #[path = "expressions/tuple-exprs.md.rs"]
 pub mod tuple_expressions;
+#[path = "expressions/virtual-exprs.md.rs"]
+pub mod virtual_expressions;
 
 pub use block_expressions::*;
 pub use call_expressions::*;
@@ -84,3 +89,4 @@ pub use literal_expressions::*;
 pub use operator_expressions::*;
 pub use path_expressions::*;
 pub use tuple_expressions::*;
+pub use virtual_expressions::*;

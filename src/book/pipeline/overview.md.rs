@@ -30,12 +30,17 @@ macro_rules! desugaring_error {
 
 pub fn desugar(mut program: Program) -> Result<Program, CompilationError> {
     funsig::desugar_fun_sigs(&mut program)?;
-    misc_expr_desugarings::desugar_misc_exprs(&mut program)?;
-    value_to_place::desugar_value_to_place(&mut program)?;
+    misc_expr_desugarings::misc_expr_desugarings(&mut program)?;
+    expr_unnesting::desugar_nested_exprs(&mut program)?;
+    final_desugarings::desugar_final(&mut program)?;
     Ok(program)
 }
 
 //@ ## Submodules
+#[path = "expr-unnesting.md.rs"]
+pub mod expr_unnesting;
+#[path = "final-desugarings.md.rs"]
+pub mod final_desugarings;
 #[path = "formality.md.rs"]
 pub mod formality;
 #[path = "funsig.md.rs"]
@@ -44,5 +49,3 @@ pub mod funsig;
 pub mod minirust;
 #[path = "misc-expr-desugarings.md.rs"]
 pub mod misc_expr_desugarings;
-#[path = "value-to-place.md.rs"]
-pub mod value_to_place;

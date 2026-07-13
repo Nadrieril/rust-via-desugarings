@@ -4,5 +4,5 @@ fn main() -> () {
     let r: &mut bool;
     r = &mut x;
     *r = true;
-    print(x);
+    print(place_to_value!(x));
 }

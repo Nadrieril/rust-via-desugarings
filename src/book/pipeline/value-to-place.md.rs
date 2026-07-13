@@ -2,9 +2,6 @@
 //@
 //@ A "value-to-place coercion" occurs when a value expression is used in a context where a place is
 //@ needed, e.g. because it is borrowed, matched on, or has a field accessed.
-//@ See [this blog post](https://nadrieril.github.io/blog/2025/12/06/on-places-and-their-magic.html)
-//@ for more details about place/value expressions and place/value contexts.
-//@
 //@ Whenever that happens, the value will get stored in a temporary variable. In this step, we make
 //@ these temporaries explicit.
 //@
@@ -13,7 +10,7 @@
 //@ You may also enjoy [this blog post](https://blog.m-ou.se/super-let/) with a more explanatory style.
 //@
 //@ In this step, for each expression `$expr` to be coerced, we first add a `let tmp;` statement,
-//@ then assign it `tmp = $expr;` (these two steps can be merged), then use `tmp` where the expression was.
+//@ then assign it `tmp = $expr;` (these two steps can sometimes be merged), then use `tmp` where the expression was.
 //@ The placement of the `let tmp;` determines how long the value will live and its drop order.
 //@ To get the right scope, extra blocks `{ .. }` may be added.
 //@
@@ -113,45 +110,8 @@
 use crate::desugarings::*; //#
 
 pub fn desugar_value_to_place(program: &mut Program) -> Result<(), CompilationError> {
-    program.visit_all_mut(|block: &mut BlockExpression| {
-        split_let_initializers(block);
+    program.visit_all_mut(|_block: &mut BlockExpression| {
+        // TODO: look for all the `VirtualExpression::ValueToPlaceCoercion`
         Ok(())
     })
-}
-
-//@ As a small first step, we split let-statements with an initializer into a declaration followed
-//@ by assignment:
-//@
-//@ ```rust,example
-//@ let x = val;
-//@ // becomes
-//@ let x;
-//@ x = val;
-//@ ```
-fn split_let_initializers(block: &mut BlockExpression) {
-    let statements = std::mem::take(&mut block.statements);
-    for statement in statements {
-        if let Statement::Let {
-            attrs,
-            pattern: Pattern::Identifier(name),
-            ty,
-            initial_value: Some(value),
-            else_branch: None,
-        } = statement
-        {
-            block.statements.push(Statement::Let {
-                attrs,
-                pattern: Pattern::Identifier(name.clone()),
-                ty,
-                initial_value: None,
-                else_branch: None,
-            });
-            let assignment = Expression::new(ExpressionKind::Operator(Box::new(
-                OperatorExpression::Assignment(Expression::new(ExpressionKind::Path(name)), value),
-            )));
-            block.statements.push(Statement::Expr(assignment));
-        } else {
-            block.statements.push(statement)
-        }
-    }
 }

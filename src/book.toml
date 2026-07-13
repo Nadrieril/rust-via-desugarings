@@ -27,5 +27,5 @@ warning-policy = "error"
 optional = true
 
 [preprocessor.spec]
-before = [ "links" ]
+before = [ "links", "backlinks" ]
 command = "cargo run --quiet --manifest-path ../tools/mdbook-spec/Cargo.toml --bin mdbook-spec"

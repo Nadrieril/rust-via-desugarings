@@ -3,7 +3,7 @@ fn main() -> () {
     value = if {
         let x;
         x = true;
-        x
+        place_to_value!(x)
     } {
         false
     } else {
@@ -12,11 +12,11 @@ fn main() -> () {
     let value: &bool;
     value = {
         let y;
-        y = &{
+        y = &value_to_place!({
             let x;
             x = true;
-            x
-        };
-        y
+            place_to_value!(x)
+        });
+        place_to_value!(y)
     };
 }

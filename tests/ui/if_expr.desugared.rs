@@ -5,5 +5,5 @@ fn main() -> () {
     } else {
         true
     };
-    if value {} else {}
+    if place_to_value!(value) {} else {}
 }

@@ -345,6 +345,9 @@ impl FunctionTranslator {
             language::ExpressionKind::TupleIndexing(tuple_indexing) => Ok(rust_expr::Expr::Place(
                 self.translate_tuple_indexing(tuple_indexing)?,
             )),
+            language::ExpressionKind::Virtual(virtual_expression) => {
+                self.translate_virtual_expression(virtual_expression)
+            }
         }
     }
 
@@ -368,9 +371,36 @@ impl FunctionTranslator {
             language::ExpressionKind::Grouped(_) => Err(formality_error(
                 "formality translation expects grouped expressions to be desugared",
             )),
+            language::ExpressionKind::Virtual(virtual_expression) => {
+                self.translate_virtual_place(virtual_expression)
+            }
             other => Err(formality_error(format!(
                 "formality translation expected a place expression, got `{other:?}`"
             ))),
+        }
+    }
+
+    fn translate_virtual_expression(
+        &mut self,
+        virtual_expression: &language::VirtualExpression,
+    ) -> Result<rust_expr::Expr, CompilationError> {
+        match virtual_expression {
+            language::VirtualExpression::ValueToPlaceCoercion(expression)
+            | language::VirtualExpression::PlaceToValueCoercion(expression) => {
+                self.translate_expression(expression)
+            }
+        }
+    }
+
+    fn translate_virtual_place(
+        &mut self,
+        virtual_expression: &language::VirtualExpression,
+    ) -> Result<rust_expr::PlaceExpr, CompilationError> {
+        match virtual_expression {
+            language::VirtualExpression::ValueToPlaceCoercion(expression)
+            | language::VirtualExpression::PlaceToValueCoercion(expression) => {
+                self.translate_place(expression)
+            }
         }
     }
 

@@ -220,6 +220,9 @@ impl Printer {
             ExpressionKind::Literal(literal) => self.display(literal),
             ExpressionKind::Path(path) => self.token(path),
             ExpressionKind::Operator(operator) => self.operator_expression(operator),
+            ExpressionKind::Virtual(virtual_expression) => {
+                self.virtual_expression(virtual_expression)
+            }
             ExpressionKind::Grouped(grouped) => {
                 self.token("(");
                 self.expression(grouped);
@@ -298,6 +301,21 @@ impl Printer {
                 self.expression(left);
                 self.token(" = ");
                 self.expression(right);
+            }
+        }
+    }
+
+    fn virtual_expression(&mut self, virtual_expression: &VirtualExpression) {
+        match virtual_expression {
+            VirtualExpression::ValueToPlaceCoercion(expression) => {
+                self.token("value_to_place!(");
+                self.expression(expression);
+                self.token(")");
+            }
+            VirtualExpression::PlaceToValueCoercion(expression) => {
+                self.token("place_to_value!(");
+                self.expression(expression);
+                self.token(")");
             }
         }
     }
@@ -540,6 +558,7 @@ impl Display for ExpressionKind {
             ExpressionKind::Literal(literal) => write!(f, "{literal}"),
             ExpressionKind::Path(path) => write!(f, "{path}"),
             ExpressionKind::Operator(operator) => write!(f, "{operator}"),
+            ExpressionKind::Virtual(virtual_expression) => write!(f, "{virtual_expression}"),
             ExpressionKind::Grouped(grouped) => write!(f, "({grouped})"),
             ExpressionKind::Block(block) => write!(f, "{block}"),
             ExpressionKind::If(if_expression) => write!(f, "{if_expression}"),
@@ -587,6 +606,19 @@ impl Display for TupleIndexingExpression {
 impl Display for CallExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}({})", self.callee, self.args.iter().format(", "))
+    }
+}
+
+impl Display for VirtualExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            VirtualExpression::ValueToPlaceCoercion(expression) => {
+                write!(f, "value_to_place!({expression})")
+            }
+            VirtualExpression::PlaceToValueCoercion(expression) => {
+                write!(f, "place_to_value!({expression})")
+            }
+        }
     }
 }
 

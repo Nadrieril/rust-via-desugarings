@@ -1,6 +1,6 @@
 fn f() -> () {
     &foo;
     &mut foo;
-    &&foo;
-    &&mut foo;
+    &value_to_place!(&foo);
+    &value_to_place!(&mut foo);
 }

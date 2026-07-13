@@ -325,6 +325,9 @@ impl<'a> Translator<'a> {
                 )),
             },
             language::ExpressionKind::Tuple(elements) if elements.is_empty() => Ok(()),
+            language::ExpressionKind::Virtual(virtual_expression) => {
+                self.translate_virtual_expression_statement(virtual_expression)
+            }
             other => Err(minirust_error(format!(
                 "MiniRust runner does not yet support expression statement `{other:?}`"
             ))),
@@ -344,6 +347,9 @@ impl<'a> Translator<'a> {
             }
             language::ExpressionKind::Tuple(elements) if elements.is_empty() => Ok(()),
             language::ExpressionKind::Call(call) => self.translate_function_call(call),
+            language::ExpressionKind::Virtual(virtual_expression) => {
+                self.translate_virtual_expression_statement(virtual_expression)
+            }
             other => Err(minirust_error(format!(
                 "MiniRust runner only supports `()` or `print(...)` tail expressions, got {other:?}"
             ))),
@@ -625,6 +631,47 @@ impl<'a> Translator<'a> {
                     "MiniRust runner does not yet support operator expression `{operator}` as a value"
                 ))),
             },
+            language::ExpressionKind::Virtual(virtual_expression) => {
+                self.translate_virtual_value_and_type(virtual_expression)
+            }
+        }
+    }
+
+    fn translate_virtual_expression_statement(
+        &mut self,
+        virtual_expression: &language::VirtualExpression,
+    ) -> Result<(), CompilationError> {
+        self.translate_value(Self::virtual_expression_inner(virtual_expression))?;
+        Ok(())
+    }
+
+    fn translate_virtual_value_and_type(
+        &mut self,
+        virtual_expression: &language::VirtualExpression,
+    ) -> Result<(mini::ValueExpr, mini::Type), CompilationError> {
+        self.translate_value_and_type(Self::virtual_expression_inner(virtual_expression))
+    }
+
+    fn translate_virtual_place(
+        &mut self,
+        virtual_expression: &language::VirtualExpression,
+    ) -> Result<(mini::PlaceExpr, mini::Type), CompilationError> {
+        self.translate_place(Self::virtual_expression_inner(virtual_expression))
+    }
+
+    fn translate_virtual_pointer_value(
+        &mut self,
+        virtual_expression: &language::VirtualExpression,
+    ) -> Result<(mini::ValueExpr, mini::Type), CompilationError> {
+        self.translate_pointer_value(Self::virtual_expression_inner(virtual_expression))
+    }
+
+    fn virtual_expression_inner(
+        virtual_expression: &language::VirtualExpression,
+    ) -> &language::Expression {
+        match virtual_expression {
+            language::VirtualExpression::ValueToPlaceCoercion(expression)
+            | language::VirtualExpression::PlaceToValueCoercion(expression) => expression,
         }
     }
 
@@ -691,6 +738,9 @@ impl<'a> Translator<'a> {
                     "MiniRust runner expected a place expression, got `{other}`"
                 ))),
             },
+            language::ExpressionKind::Virtual(virtual_expression) => {
+                self.translate_virtual_place(virtual_expression)
+            }
             other => Err(minirust_error(format!(
                 "MiniRust runner expected a place expression, got `{other:?}`"
             ))),
@@ -772,6 +822,9 @@ impl<'a> Translator<'a> {
                     "MiniRust runner expected a reference value, got `{other}`"
                 ))),
             },
+            language::ExpressionKind::Virtual(virtual_expression) => {
+                self.translate_virtual_pointer_value(virtual_expression)
+            }
             other => Err(minirust_error(format!(
                 "MiniRust runner expected a reference value, got `{other:?}`"
             ))),

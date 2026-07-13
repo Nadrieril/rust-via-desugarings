@@ -22,6 +22,7 @@ const RULE_PAGE_PREFIXES: &[(&str, &str)] = &[
     ("expr.method", "expressions/method-call-expr.html"),
     ("expr.operator", "expressions/operator-expr.html"),
     ("expr.paren", "expressions/grouped-expr.html"),
+    ("expr.place-value", "expressions.html"),
     ("expr.struct", "expressions/struct-expr.html"),
     ("items.associated", "items/associated-items.html"),
     ("items.fn", "items/functions.html"),
