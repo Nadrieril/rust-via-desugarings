@@ -73,19 +73,26 @@ I am currently experimenting with making this book executable, by making it a li
 that can parse, desugar and execute real Rust code.
 Sections that are part of this experiment are indicated by a ▶️ symbol.
 
-## LLM Disclaimer
+## LLM Disclaimer and Policy
 
 The tooling used in this repo (`./tools`) is heavily LLM-assisted. While this book is an experiment,
 I won't deeply inspect that code as long as it looks reasonable.
 
-The contents of the book itself are carefully handcrafted (except when indicated otherwise).
-LLMs can be used for routine tasks but shall not be trusted[^3].
-This book aims for utmost precision; even an "obvious" tweak can turn out to be load-bearingly
-incorrect; hence careful human scrutiny is demanded.
+The contents of the book itself are carefully handcrafted (except in the few sections where it is
+indicated otherwise).
+LLMs assistance is permitted, but LLMs shall not be trusted[^3].
+This book aims for utmost precision;
+even an "obvious" tweak can turn out to be load-bearingly incorrect;
+hence careful human scrutiny is demanded.
+This book also aims to convey meaning to humans;
+LLMs can be notoriously context-blind and aren't good at
+compellingness nor clarity of purpose;
+hence careful human authorship is demanded.
 
 [^1]: The majority of the info in this book is present in one way or another in the [Rust
 Reference](https://doc.rust-lang.org/reference/introduction.html). The point of this book is in part
 to know where to start and which Reference sections are relevant to a given piece of Rust code. Also
 the Reference isn't executable even in theory, unlike this book.
 [^2]: I do wonder if it would make sense for the Reference to be structured in that way.
-[^3]: Especially not for changes that move code around, as it's easy to overlook subtle changes there.
+[^3]: Especially not for changes that move code around, as it's easy to overlook subtle changes
+there and LLMs routinely "think they know better".
