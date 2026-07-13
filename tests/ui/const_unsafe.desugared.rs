@@ -1,1 +1,1 @@
-const unsafe fn f() -> ()  { }
+const unsafe fn f() -> () {}

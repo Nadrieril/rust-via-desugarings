@@ -1,1 +1,5 @@
- fn main() -> ()  {  let x: bool;   x =  true;   print( x); }
+fn main() -> () {
+    let x: bool;
+    x = true;
+    print(x);
+}

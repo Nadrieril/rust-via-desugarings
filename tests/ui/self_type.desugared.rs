@@ -1,1 +1,1 @@
- fn f(x: Self) -> ()  { }
+fn f(x: Self) -> () {}

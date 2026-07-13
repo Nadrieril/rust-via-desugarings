@@ -1,1 +1,6 @@
- fn f() -> ()  {  & foo;  &mut  foo;  & & foo;  & &mut  foo; }
+fn f() -> () {
+    &foo;
+    &mut foo;
+    &&foo;
+    &&mut foo;
+}

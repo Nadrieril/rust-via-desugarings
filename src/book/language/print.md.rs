@@ -10,7 +10,9 @@ use itertools::Itertools; //#
 use std::fmt::{self, Display, Formatter}; //#
 //@
 pub fn print_program(program: &Program) -> String {
-    program.to_string() + "\n"
+    let mut printer = Printer::new();
+    printer.program(program);
+    printer.finish()
 }
 
 fn write_tuple<T: Display>(f: &mut Formatter<'_>, elements: &[T]) -> fmt::Result {
@@ -20,6 +22,285 @@ fn write_tuple<T: Display>(f: &mut Formatter<'_>, elements: &[T]) -> fmt::Result
         f.write_str(",")?;
     }
     f.write_str(")")
+}
+
+struct Printer {
+    output: String,
+    indent: usize,
+    at_line_start: bool,
+}
+
+impl Printer {
+    fn new() -> Self {
+        Self {
+            output: String::new(),
+            indent: 0,
+            at_line_start: true,
+        }
+    }
+
+    fn finish(mut self) -> String {
+        self.newline();
+        self.output
+    }
+
+    fn token(&mut self, token: impl AsRef<str>) {
+        if self.at_line_start {
+            for _ in 0..self.indent {
+                self.output.push_str("    ");
+            }
+            self.at_line_start = false;
+        }
+        self.output.push_str(token.as_ref());
+    }
+
+    fn display(&mut self, value: impl Display) {
+        self.token(value.to_string());
+    }
+
+    fn space(&mut self) {
+        self.output.push(' ');
+    }
+
+    fn newline(&mut self) {
+        if !self.output.ends_with('\n') {
+            self.output.push('\n');
+        }
+        self.at_line_start = true;
+    }
+
+    fn indented(&mut self, f: impl FnOnce(&mut Self)) {
+        self.indent += 1;
+        f(self);
+        self.indent -= 1;
+    }
+
+    fn comma_separated<T>(&mut self, elements: &[T], mut print: impl FnMut(&mut Self, &T)) {
+        for (index, element) in elements.iter().enumerate() {
+            if index > 0 {
+                self.token(", ");
+            }
+            print(self, element);
+        }
+    }
+
+    fn program(&mut self, program: &Program) {
+        for (index, item) in program.items.iter().enumerate() {
+            if index > 0 {
+                self.newline();
+                self.newline();
+            }
+            self.item(item);
+        }
+    }
+
+    fn item(&mut self, item: &Item) {
+        self.attrs(&item.attrs);
+        if let Some(visibility) = &item.visibility {
+            self.display(visibility);
+            self.space();
+        }
+        match &item.kind {
+            ItemKind::Function(function) => self.function(function),
+        }
+    }
+
+    fn attrs(&mut self, attrs: &[OuterAttribute]) {
+        for attr in attrs {
+            self.display(attr);
+            self.space();
+        }
+    }
+
+    fn function(&mut self, function: &Function) {
+        self.function_qualifiers(&function.qualifiers);
+        self.token("fn ");
+        self.token(&function.name);
+        self.display(&function.generic_params);
+        self.token("(");
+        self.comma_separated(&function.parameters, |printer, parameter| {
+            printer.display(parameter);
+        });
+        self.token(")");
+        if let Some(return_type) = &function.return_type {
+            self.token(" -> ");
+            self.display(return_type);
+        }
+        self.display(&function.where_clauses);
+        match &function.body {
+            FunctionBody::Block(block) => {
+                self.space();
+                self.block(block);
+            }
+            FunctionBody::Missing => self.token(";"),
+        }
+    }
+
+    fn function_qualifiers(&mut self, qualifiers: &FunctionQualifiers) {
+        let mut parts = Vec::new();
+        if qualifiers.is_const {
+            parts.push("const".to_owned());
+        }
+        if qualifiers.is_async {
+            parts.push("async".to_owned());
+        }
+        if let Some(safety) = &qualifiers.safety {
+            parts.push(safety.to_string());
+        }
+        if let Some(extern_abi) = &qualifiers.extern_abi {
+            parts.push(extern_abi.to_string());
+        }
+        if !parts.is_empty() {
+            self.display(parts.iter().format(" "));
+            self.space();
+        }
+    }
+
+    fn block(&mut self, block: &BlockExpression) {
+        if block.statements.is_empty() && block.tail.is_none() {
+            self.token("{}");
+            return;
+        }
+
+        self.token("{");
+        self.indented(|printer| {
+            for statement in &block.statements {
+                printer.newline();
+                printer.statement(statement);
+            }
+            if let Some(tail) = &block.tail {
+                printer.newline();
+                printer.expression(tail);
+            }
+        });
+        self.newline();
+        self.token("}");
+    }
+
+    fn statement(&mut self, statement: &Statement) {
+        match statement {
+            Statement::Empty => self.token(";"),
+            Statement::Item(item) => self.item(item),
+            Statement::Let {
+                attrs,
+                pattern,
+                ty,
+                initial_value,
+                else_branch,
+            } => {
+                self.attrs(attrs);
+                self.token("let ");
+                self.display(pattern);
+                if let Some(ty) = ty {
+                    self.token(": ");
+                    self.display(ty);
+                }
+                if let Some(initial_value) = initial_value {
+                    self.token(" = ");
+                    self.expression(initial_value);
+                }
+                if let Some(else_branch) = else_branch {
+                    self.token(" else ");
+                    self.block(else_branch);
+                }
+                self.token(";");
+            }
+            Statement::Expr(expression) => {
+                self.expression(expression);
+                if !expression.is_with_block() {
+                    self.token(";");
+                }
+            }
+        }
+    }
+
+    fn expression(&mut self, expression: &Expression) {
+        self.attrs(&expression.attrs);
+        match &expression.kind {
+            ExpressionKind::Literal(literal) => self.display(literal),
+            ExpressionKind::Path(path) => self.token(path),
+            ExpressionKind::Operator(operator) => self.operator_expression(operator),
+            ExpressionKind::Grouped(grouped) => {
+                self.token("(");
+                self.expression(grouped);
+                self.token(")");
+            }
+            ExpressionKind::Block(block) => self.block(block),
+            ExpressionKind::If(if_expression) => self.if_expression(if_expression),
+            ExpressionKind::Tuple(elements) => self.tuple(elements),
+            ExpressionKind::TupleIndexing(tuple_indexing) => {
+                self.expression(&tuple_indexing.expression);
+                self.token(".");
+                self.token(tuple_indexing.index.to_string());
+            }
+            ExpressionKind::Call(call) => {
+                self.expression(&call.callee);
+                self.token("(");
+                self.comma_separated(&call.args, |printer, argument| {
+                    printer.expression(argument);
+                });
+                self.token(")");
+            }
+        }
+    }
+
+    fn tuple(&mut self, elements: &[Expression]) {
+        self.token("(");
+        self.comma_separated(elements, |printer, element| {
+            printer.expression(element);
+        });
+        if elements.len() == 1 {
+            self.token(",");
+        }
+        self.token(")");
+    }
+
+    fn if_expression(&mut self, if_expression: &IfExpression) {
+        self.token("if ");
+        self.expression(&if_expression.condition);
+        self.space();
+        self.expression(&if_expression.then_branch);
+        if let Some(else_branch) = &if_expression.else_branch {
+            match &else_branch.kind {
+                ExpressionKind::If(nested) if else_branch.attrs.is_empty() => {
+                    self.token(" else ");
+                    self.if_expression(nested);
+                }
+                ExpressionKind::Block(block) if else_branch.attrs.is_empty() => {
+                    self.token(" else ");
+                    self.block(block);
+                }
+                _ => {
+                    self.token(" else ");
+                    self.expression(else_branch);
+                }
+            }
+        }
+    }
+
+    fn operator_expression(&mut self, operator: &OperatorExpression) {
+        match operator {
+            OperatorExpression::Borrow(borrow) => {
+                self.token("&");
+                self.display(borrow.mutability);
+                self.expression(&borrow.expression);
+            }
+            OperatorExpression::Dereference(dereference) => {
+                self.token("*");
+                self.expression(&dereference.expression);
+            }
+            OperatorExpression::Add(left, right) => {
+                self.expression(left);
+                self.token(" + ");
+                self.expression(right);
+            }
+            OperatorExpression::Assignment(left, right) => {
+                self.expression(left);
+                self.token(" = ");
+                self.expression(right);
+            }
+        }
+    }
 }
 
 impl Display for Program {
@@ -242,10 +523,7 @@ impl Display for Statement {
 
 impl Expression {
     fn is_with_block(&self) -> bool {
-        matches!(
-            self.kind,
-            ExpressionKind::Block(_) | ExpressionKind::If(_)
-        )
+        matches!(self.kind, ExpressionKind::Block(_) | ExpressionKind::If(_))
     }
 }
 

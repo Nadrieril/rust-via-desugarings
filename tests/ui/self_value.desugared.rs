@@ -1,1 +1,1 @@
- fn method(self: Self) -> ()  { }
+fn method(self: Self) -> () {}

@@ -1,1 +1,3 @@
- fn f() -> bool  {  true }
+fn f() -> bool {
+    true
+}
