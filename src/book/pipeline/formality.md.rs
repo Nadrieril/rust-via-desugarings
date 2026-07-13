@@ -15,8 +15,9 @@ use crate::{CompilationError, language};
 use formality_rust::{
     check,
     grammar::{
-        self as rust, Crate as RustCrate, CrateId, CrateItem, Crates, Fn as RustFn, FnBody,
-        FnBoundData, InputArg, Lt, MaybeFnBody, RefKind, ScalarId, Ty, ValueId, expr as rust_expr,
+        self as rust, Crate as RustCrate, CrateId, CrateItem, Crates, FieldName, Fn as RustFn,
+        FnBody, FnBoundData, InputArg, Lt, MaybeFnBody, Parameter, RefKind, RigidName, ScalarId,
+        Ty, ValueId, expr as rust_expr,
     },
     prove::prove::Safety,
 };
@@ -198,8 +199,8 @@ impl FunctionTranslator {
         stmts: &mut Vec<rust_expr::Stmt>,
     ) -> Result<(), CompilationError> {
         if matches!(
-            expression.kind,
-            language::ExpressionKind::Tuple(language::TupleExpression::Unit)
+            &expression.kind,
+            language::ExpressionKind::Tuple(elements) if elements.is_empty()
         ) {
             return Ok(());
         }
@@ -286,9 +287,12 @@ impl FunctionTranslator {
             language::ExpressionKind::Block(_) => Err(formality_error(
                 "formality translation does not yet support nested block expressions",
             )),
-            language::ExpressionKind::Tuple(language::TupleExpression::Unit) => Err(
-                formality_error("formality translation does not yet support `()` as a value"),
-            ),
+            language::ExpressionKind::Tuple(_) => Err(formality_error(
+                "formality translation does not yet support tuple expressions",
+            )),
+            language::ExpressionKind::TupleIndexing(tuple_indexing) => Ok(rust_expr::Expr::Place(
+                self.translate_tuple_indexing(tuple_indexing)?,
+            )),
         }
     }
 
@@ -298,6 +302,9 @@ impl FunctionTranslator {
     ) -> Result<rust_expr::PlaceExpr, CompilationError> {
         match &expression.kind {
             language::ExpressionKind::Path(path) => Ok(Self::translate_simple_path(path)),
+            language::ExpressionKind::TupleIndexing(tuple_indexing) => {
+                self.translate_tuple_indexing(tuple_indexing)
+            }
             language::ExpressionKind::Operator(operator) => match &**operator {
                 language::OperatorExpression::Dereference(dereference) => {
                     self.translate_dereference(dereference)
@@ -324,13 +331,32 @@ impl FunctionTranslator {
         })
     }
 
+    fn translate_tuple_indexing(
+        &mut self,
+        tuple_indexing: &language::TupleIndexingExpression,
+    ) -> Result<rust_expr::PlaceExpr, CompilationError> {
+        Ok(rust_expr::PlaceExpr::Field {
+            prefix: Arc::new(self.translate_place(&tuple_indexing.expression)?),
+            field_name: FieldName::Index(tuple_indexing.index),
+        })
+    }
+
     fn translate_simple_path(path: &language::PathExpression) -> rust_expr::PlaceExpr {
         rust_expr::PlaceExpr::Var(ValueId::new(path))
     }
 
     fn translate_type(&mut self, ty: &language::Type) -> Result<Ty, CompilationError> {
         match ty {
-            language::Type::Unit => Ok(Ty::unit()),
+            language::Type::Tuple(types) => {
+                let parameters = types
+                    .iter()
+                    .map(|ty| {
+                        self.translate_type(ty)
+                            .map(|ty| Parameter::Ty(Arc::new(ty)))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(Ty::rigid(RigidName::Tuple(types.len()), parameters))
+            }
             language::Type::Bool => Ok(Ty::bool()),
             language::Type::Ref(_, mutability, inner) => {
                 let inner = self.translate_type(inner)?;
@@ -357,7 +383,13 @@ impl FunctionTranslator {
 
 fn translate_type(ty: &language::Type) -> Result<Ty, CompilationError> {
     match ty {
-        language::Type::Unit => Ok(Ty::unit()),
+        language::Type::Tuple(types) => {
+            let parameters = types
+                .iter()
+                .map(|ty| translate_type(ty).map(|ty| Parameter::Ty(Arc::new(ty))))
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(Ty::rigid(RigidName::Tuple(types.len()), parameters))
+        }
         language::Type::Bool => Ok(Ty::bool()),
         language::Type::Ref(_, mutability, inner) => {
             let inner = translate_type(inner)?;

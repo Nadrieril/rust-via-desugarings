@@ -17,7 +17,7 @@ pub fn desugar_fun_sigs(program: &mut Program) -> Result<(), CompilationError> {
 //@ [ref:items.fn.implicit-return].
 fn implicit_return(f: &mut Function) {
     if f.return_type.is_none() {
-        f.return_type = Some(Type::Unit)
+        f.return_type = Some(Type::mk_unit())
     }
 }
 

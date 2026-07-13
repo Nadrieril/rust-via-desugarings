@@ -36,10 +36,10 @@ pub fn desugar(mut program: Program) -> Result<Program, CompilationError> {
 }
 
 //@ ## Submodules
-#[path = "funsig.md.rs"]
-pub mod funsig;
 #[path = "formality.md.rs"]
 pub mod formality;
+#[path = "funsig.md.rs"]
+pub mod funsig;
 #[path = "minirust.md.rs"]
 pub mod minirust;
 #[path = "misc-expr-desugarings.md.rs"]

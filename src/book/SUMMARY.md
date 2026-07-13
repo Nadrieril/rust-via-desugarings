@@ -15,6 +15,7 @@
       - [Path Expressions](language/expressions/path-exprs.md.rs)
       - [Operator Expressions](language/expressions/operator-exprs.md.rs)
       - [Grouped Expressions](language/expressions/grouped-exprs.md.rs)
+      - [Tuple Expressions](language/expressions/tuple-exprs.md.rs)
       - [Block Expressions](language/expressions/block-exprs.md.rs)
       - [Call Expressions](language/expressions/call-exprs.md.rs)
   - [Printing](language/print.md.rs)

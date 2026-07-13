@@ -204,7 +204,8 @@ impl<'a> Translator<'a> {
         return_type: Option<&language::Type>,
     ) -> Result<(), CompilationError> {
         match return_type {
-            None | Some(language::Type::Unit) => Ok(()),
+            None => Ok(()),
+            Some(language::Type::Tuple(types)) if types.is_empty() => Ok(()),
             Some(ty) => Err(minirust_error(format!(
                 "MiniRust runner only supports functions returning `()`, got `{ty}`"
             ))),
@@ -320,7 +321,7 @@ impl<'a> Translator<'a> {
                     "MiniRust runner does not yet support `+` as a statement",
                 )),
             },
-            language::ExpressionKind::Tuple(language::TupleExpression::Unit) => Ok(()),
+            language::ExpressionKind::Tuple(elements) if elements.is_empty() => Ok(()),
             other => Err(minirust_error(format!(
                 "MiniRust runner does not yet support expression statement `{other:?}`"
             ))),
@@ -335,7 +336,7 @@ impl<'a> Translator<'a> {
             language::ExpressionKind::Grouped(_) => Err(minirust_error(
                 "MiniRust runner expects grouped expressions to be desugared",
             )),
-            language::ExpressionKind::Tuple(language::TupleExpression::Unit) => Ok(()),
+            language::ExpressionKind::Tuple(elements) if elements.is_empty() => Ok(()),
             language::ExpressionKind::Call(call) => self.translate_function_call(call),
             other => Err(minirust_error(format!(
                 "MiniRust runner only supports `()` or `print(...)` tail expressions, got {other:?}"
@@ -363,16 +364,17 @@ impl<'a> Translator<'a> {
         target: &language::Expression,
         value: &language::Expression,
     ) -> Result<(), CompilationError> {
-        let (destination, _) = self.translate_place(target)?;
-        self.translate_assignment_to_place(destination, value)
+        let (destination, destination_ty) = self.translate_place(target)?;
+        self.translate_assignment_to_place(destination, destination_ty, value)
     }
 
     fn translate_assignment_to_place(
         &mut self,
         destination: mini::PlaceExpr,
+        destination_ty: mini::Type,
         value: &language::Expression,
     ) -> Result<(), CompilationError> {
-        let source = self.translate_value(value)?;
+        let source = self.translate_value_with_expected_type(value, destination_ty)?;
         self.current_statements.push(mini::Statement::Assign {
             destination,
             source,
@@ -440,13 +442,43 @@ impl<'a> Translator<'a> {
         &mut self,
         expression: &language::Expression,
     ) -> Result<mini::ValueExpr, CompilationError> {
+        self.translate_value_and_type(expression)
+            .map(|(value, _ty)| value)
+    }
+
+    fn translate_value_with_expected_type(
+        &mut self,
+        expression: &language::Expression,
+        expected_ty: mini::Type,
+    ) -> Result<mini::ValueExpr, CompilationError> {
         match &expression.kind {
-            language::ExpressionKind::Literal(language::LiteralExpression::Bool(value)) => Ok(
-                mini::ValueExpr::Constant(mini::Constant::Bool(*value), mini::Type::Bool),
-            ),
-            language::ExpressionKind::Literal(language::LiteralExpression::String(value)) => {
-                Ok(self.translate_string_literal(value))
+            language::ExpressionKind::Tuple(elements) if !elements.is_empty() => {
+                let field_values = elements
+                    .iter()
+                    .map(|expression| self.translate_value(expression))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(mini::ValueExpr::Tuple(
+                    field_values.into_iter().collect(),
+                    expected_ty,
+                ))
             }
+            _ => self.translate_value(expression),
+        }
+    }
+
+    fn translate_value_and_type(
+        &mut self,
+        expression: &language::Expression,
+    ) -> Result<(mini::ValueExpr, mini::Type), CompilationError> {
+        match &expression.kind {
+            language::ExpressionKind::Literal(language::LiteralExpression::Bool(value)) => Ok((
+                mini::ValueExpr::Constant(mini::Constant::Bool(*value), mini::Type::Bool),
+                mini::Type::Bool,
+            )),
+            language::ExpressionKind::Literal(language::LiteralExpression::String(value)) => Ok((
+                self.translate_string_literal(value),
+                mini::Type::Ptr(str_ref_ptr_type()),
+            )),
             language::ExpressionKind::Literal(language::LiteralExpression::Integer(value)) => {
                 let ty = mini::IntType::usize_ty::<x86_64>();
                 let value = Int::from(*value);
@@ -455,22 +487,39 @@ impl<'a> Translator<'a> {
                         "MiniRust runner only supports integer literals that fit in `usize`, got `{value}`"
                     )));
                 }
-                Ok(mini::ValueExpr::Constant(
-                    mini::Constant::Int(value),
-                    mini::Type::Int(ty),
+                let ty = mini::Type::Int(ty);
+                Ok((
+                    mini::ValueExpr::Constant(mini::Constant::Int(value), ty),
+                    ty,
                 ))
             }
-            language::ExpressionKind::Tuple(language::TupleExpression::Unit) => {
-                Ok(mini::ValueExpr::Tuple(List::new(), mini::unit_ty()))
+            language::ExpressionKind::Tuple(elements) => {
+                let fields = elements
+                    .iter()
+                    .map(|expression| self.translate_value_and_type(expression))
+                    .collect::<Result<Vec<_>, _>>()?;
+                let field_tys = fields.iter().map(|(_, ty)| *ty);
+                let ty = tuple_type_from_fields(field_tys)?;
+                Ok((
+                    mini::ValueExpr::Tuple(
+                        fields.into_iter().map(|(value, _)| value).collect(),
+                        ty,
+                    ),
+                    ty,
+                ))
             }
             language::ExpressionKind::Grouped(_) => Err(minirust_error(
                 "MiniRust runner expects grouped expressions to be desugared",
             )),
             language::ExpressionKind::Path(path) => {
                 let name = Self::simple_path_name(path)?;
-                Ok(mini::ValueExpr::Load {
-                    source: GcCow::new(mini::PlaceExpr::Local(self.local(name)?)),
-                })
+                let local = self.local(name)?;
+                Ok((
+                    mini::ValueExpr::Load {
+                        source: GcCow::new(mini::PlaceExpr::Local(local)),
+                    },
+                    self.local_type(local)?,
+                ))
             }
             language::ExpressionKind::Call(call) => Err(minirust_error(format!(
                 "MiniRust runner only supports function calls as statements, got `{}`",
@@ -479,13 +528,27 @@ impl<'a> Translator<'a> {
             language::ExpressionKind::Block(_) => Err(minirust_error(
                 "MiniRust runner does not yet support nested block expressions",
             )),
-            language::ExpressionKind::Operator(operator) => match &**operator {
-                language::OperatorExpression::Borrow(borrow) => self.translate_borrow(borrow),
-                language::OperatorExpression::Dereference(dereference) => {
-                    let (source, _) = self.translate_dereference_place(dereference)?;
-                    Ok(mini::ValueExpr::Load {
+            language::ExpressionKind::TupleIndexing(tuple_indexing) => {
+                let (source, ty) = self.translate_tuple_indexing_place(tuple_indexing)?;
+                Ok((
+                    mini::ValueExpr::Load {
                         source: GcCow::new(source),
-                    })
+                    },
+                    ty,
+                ))
+            }
+            language::ExpressionKind::Operator(operator) => match &**operator {
+                language::OperatorExpression::Borrow(borrow) => {
+                    self.translate_borrow_value_and_type(borrow)
+                }
+                language::OperatorExpression::Dereference(dereference) => {
+                    let (source, ty) = self.translate_dereference_place(dereference)?;
+                    Ok((
+                        mini::ValueExpr::Load {
+                            source: GcCow::new(source),
+                        },
+                        ty,
+                    ))
                 }
                 language::OperatorExpression::Add(..)
                 | language::OperatorExpression::Assignment(..) => Err(minirust_error(format!(
@@ -495,12 +558,15 @@ impl<'a> Translator<'a> {
         }
     }
 
-    fn translate_borrow(
+    fn translate_borrow_value_and_type(
         &mut self,
         borrow: &language::BorrowExpression,
-    ) -> Result<mini::ValueExpr, CompilationError> {
-        let (value, _) = self.translate_borrow_with_pointee(borrow)?;
-        Ok(value)
+    ) -> Result<(mini::ValueExpr, mini::Type), CompilationError> {
+        let (value, pointee_ty) = self.translate_borrow_with_pointee(borrow)?;
+        Ok((
+            value,
+            mini::Type::Ptr(ref_ptr_type(borrow.mutability, pointee_ty)?),
+        ))
     }
 
     fn translate_borrow_with_pointee(
@@ -531,6 +597,9 @@ impl<'a> Translator<'a> {
                 let local = self.local(name)?;
                 Ok((mini::PlaceExpr::Local(local), self.local_type(local)?))
             }
+            language::ExpressionKind::TupleIndexing(tuple_indexing) => {
+                self.translate_tuple_indexing_place(tuple_indexing)
+            }
             language::ExpressionKind::Operator(operator) => match &**operator {
                 language::OperatorExpression::Dereference(dereference) => {
                     self.translate_dereference_place(dereference)
@@ -556,6 +625,37 @@ impl<'a> Translator<'a> {
                 ty: pointee_ty,
             },
             pointee_ty,
+        ))
+    }
+
+    fn translate_tuple_indexing_place(
+        &mut self,
+        tuple_indexing: &language::TupleIndexingExpression,
+    ) -> Result<(mini::PlaceExpr, mini::Type), CompilationError> {
+        let (root, root_ty) = self.translate_place(&tuple_indexing.expression)?;
+        let mini::Type::Tuple {
+            sized_fields,
+            unsized_field,
+            ..
+        } = root_ty
+        else {
+            return Err(minirust_error(format!(
+                "MiniRust runner can only tuple-index tuple places, got `{root_ty:?}`"
+            )));
+        };
+        let field = Int::from(tuple_indexing.index);
+        if field >= sized_fields.len() || unsized_field.extract().is_some() {
+            return Err(minirust_error(format!(
+                "tuple index `{}` is out of bounds",
+                tuple_indexing.index
+            )));
+        }
+        Ok((
+            mini::PlaceExpr::Field {
+                root: GcCow::new(root),
+                field,
+            },
+            sized_fields.index_at(field).1,
         ))
     }
 
@@ -723,7 +823,13 @@ fn collect_function_names(
 
 fn translate_type(ty: &language::Type) -> Result<mini::Type, CompilationError> {
     match ty {
-        language::Type::Unit => Ok(mini::unit_ty()),
+        language::Type::Tuple(types) => {
+            let fields = types
+                .iter()
+                .map(translate_type)
+                .collect::<Result<Vec<_>, _>>()?;
+            tuple_type_from_fields(fields)
+        }
         language::Type::Bool => Ok(mini::Type::Bool),
         language::Type::Ref(_, mutability, inner) if matches!(**inner, language::Type::Str) => {
             match mutability {
@@ -742,6 +848,51 @@ fn translate_type(ty: &language::Type) -> Result<mini::Type, CompilationError> {
         )),
         language::Type::TraitSelf => Err(minirust_error(format!(
             "MiniRust runner does not yet support type `{ty}`"
+        ))),
+    }
+}
+
+fn tuple_type_from_fields(
+    fields: impl IntoIterator<Item = mini::Type>,
+) -> Result<mini::Type, CompilationError> {
+    let mut offset = Size::ZERO;
+    let mut max_align = Align::ONE;
+    let mut sized_fields = Vec::new();
+    for field_ty in fields {
+        let (field_size, field_align) = type_size_align(&field_ty)?;
+        let align_bytes = field_align.bytes();
+        let offset_bytes = offset.bytes();
+        let aligned_offset = (offset_bytes + align_bytes - 1) / align_bytes * align_bytes;
+        offset = Size::from_bytes(aligned_offset)
+            .ok_or_else(|| minirust_error("tuple field offset overflowed"))?;
+        sized_fields.push((offset, field_ty));
+        offset = Size::from_bytes(aligned_offset + field_size.bytes())
+            .ok_or_else(|| minirust_error("tuple field end overflowed"))?;
+        if align_bytes > max_align.bytes() {
+            max_align = field_align;
+        }
+    }
+
+    let size_bytes = offset.bytes();
+    let align_bytes = max_align.bytes();
+    let end = Size::from_bytes((size_bytes + align_bytes - 1) / align_bytes * align_bytes)
+        .ok_or_else(|| minirust_error("tuple size overflowed"))?;
+    Ok(mini::Type::Tuple {
+        sized_fields: sized_fields.into_iter().collect(),
+        sized_head_layout: memory::TupleHeadLayout {
+            end,
+            align: max_align,
+            packed_align: None,
+        },
+        unsized_field: GcCow::new(None),
+    })
+}
+
+fn type_size_align(ty: &mini::Type) -> Result<(Size, Align), CompilationError> {
+    match ty.layout::<x86_64>() {
+        memory::LayoutStrategy::Sized(size, align) => Ok((size, align)),
+        layout => Err(minirust_error(format!(
+            "MiniRust runner only supports sized tuple fields, got layout `{layout:?}`"
         ))),
     }
 }

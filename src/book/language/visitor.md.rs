@@ -52,7 +52,7 @@ use derive_generic_visitor::*; //#
         Pattern,
         Program,
         Statement,
-        TupleExpression,
+        TupleIndexingExpression,
         Type,
         Visibility,
         WhereClauses,

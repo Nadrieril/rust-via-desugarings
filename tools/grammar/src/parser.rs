@@ -742,6 +742,27 @@ FunctionParam: attrs=OuterAttribute* kind=FunctionParamKind
     }
 
     #[test]
+    fn parses_repeat_plus() {
+        let grammar = parse(
+            r#"
+TupleElements -> Vec<Expression>:
+    elements=(Expression `,`)+ last=Expression?
+    => elements.into_iter().chain(last).collect()
+"#,
+        );
+        let tuple_elements = grammar.productions.get("TupleElements").unwrap();
+        assert!(matches!(
+            tuple_elements.alternatives[0].expression.kind,
+            ExpressionKind::Sequence(_)
+        ));
+        let ExpressionKind::Sequence(elements) = &tuple_elements.alternatives[0].expression.kind
+        else {
+            unreachable!()
+        };
+        assert!(matches!(elements[0].kind, ExpressionKind::RepeatPlus(_)));
+    }
+
+    #[test]
     fn parses_explicit_return_type() {
         let grammar = parse("LetStatement -> Statement: `let` => Statement::Empty");
         let statement = grammar.productions.get("LetStatement").unwrap();

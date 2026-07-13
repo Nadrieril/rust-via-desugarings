@@ -82,6 +82,8 @@ pub enum Token {
     RBrace,
     #[token(";")]
     Semicolon,
+    #[token(".")]
+    Dot,
     #[token("...")]
     Ellipsis,
     #[token("_")]
@@ -146,6 +148,7 @@ fn string_literal(lex: &mut logos::Lexer<'_, Token>) -> String {
 //@ `{` LBrace;
 //@ `}` RBrace;
 //@ `;` Semicolon;
+//@ `.` Dot;
 //@ `...` Ellipsis;
 //@ `_` Underscore;
 //@ `$crate` MacroCrate;
@@ -161,6 +164,7 @@ fn string_literal(lex: &mut logos::Lexer<'_, Token>) -> String {
 //@ %precedence `+`;
 //@ %precedence `&`;
 //@ %precedence `*`;
+//@ %precedence `.`;
 //@
 //@ %allow unit_production_eliminated(Identifier);
 //@ %allow unit_production_eliminated(GenericParams);

@@ -13,6 +13,15 @@ pub fn print_program(program: &Program) -> String {
     program.to_string() + "\n"
 }
 
+fn write_tuple<T: Display>(f: &mut Formatter<'_>, elements: &[T]) -> fmt::Result {
+    f.write_str("(")?;
+    write!(f, "{}", elements.iter().format(", "))?;
+    if elements.len() == 1 {
+        f.write_str(",")?;
+    }
+    f.write_str(")")
+}
+
 impl Display for Program {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.items.iter().format("\n\n"))
@@ -171,7 +180,7 @@ impl Display for FunctionParamType {
 impl Display for Type {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Type::Unit => write!(f, "()"),
+            Type::Tuple(types) => write_tuple(f, types),
             Type::Bool => write!(f, "bool"),
             Type::Str => write!(f, "str"),
             Type::TraitSelf => write!(f, "Self"),
@@ -245,8 +254,9 @@ impl Display for ExpressionKind {
             ExpressionKind::Operator(operator) => write!(f, "{operator}"),
             ExpressionKind::Grouped(grouped) => write!(f, "({grouped})"),
             ExpressionKind::Block(block) => write!(f, "{block}"),
-            ExpressionKind::Tuple(tuple) => write!(f, "{tuple}"),
+            ExpressionKind::Tuple(elements) => write_tuple(f, elements),
             ExpressionKind::Call(call) => write!(f, "{call}"),
+            ExpressionKind::TupleIndexing(tuple_indexing) => write!(f, "{tuple_indexing}"),
         }
     }
 }
@@ -261,11 +271,9 @@ impl Display for LiteralExpression {
     }
 }
 
-impl Display for TupleExpression {
+impl Display for TupleIndexingExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            TupleExpression::Unit => f.write_str("()"),
-        }
+        write!(f, "{}.{}", self.expression, self.index)
     }
 }
 
