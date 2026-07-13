@@ -146,16 +146,10 @@ fn split_let_initializers(block: &mut BlockExpression) {
                 initial_value: None,
                 else_branch: None,
             });
-            block.statements.push(Statement::Expr(Expression {
-                attrs: vec![],
-                kind: ExpressionKind::Operator(Box::new(OperatorExpression::Assignment(
-                    Expression {
-                        attrs: vec![],
-                        kind: ExpressionKind::Path(name),
-                    },
-                    value,
-                ))),
-            }));
+            let assignment = Expression::new(ExpressionKind::Operator(Box::new(
+                OperatorExpression::Assignment(Expression::new(ExpressionKind::Path(name)), value),
+            )));
+            block.statements.push(Statement::Expr(assignment));
         } else {
             block.statements.push(statement)
         }

@@ -205,6 +205,11 @@ impl FunctionTranslator {
             return Ok(());
         }
 
+        if let language::ExpressionKind::If(if_expression) = &expression.kind {
+            self.translate_if_statement(if_expression, stmts)?;
+            return Ok(());
+        }
+
         if let language::ExpressionKind::Call(call) = &expression.kind {
             if expression_path(&call.callee)? == "print" {
                 if call.args.len() != 1 {
@@ -224,6 +229,50 @@ impl FunctionTranslator {
             expr: self.translate_expression(expression)?,
         });
         Ok(())
+    }
+
+    fn translate_if_statement(
+        &mut self,
+        if_expression: &language::IfExpression,
+        stmts: &mut Vec<rust_expr::Stmt>,
+    ) -> Result<(), CompilationError> {
+        stmts.push(rust_expr::Stmt::If {
+            condition: self.translate_expression(&if_expression.condition)?,
+            then_block: self.translate_if_branch(&if_expression.then_branch)?,
+            else_block: self.translate_if_else_branch(if_expression.else_branch.as_deref())?,
+        });
+        Ok(())
+    }
+
+    fn translate_if_else_branch(
+        &mut self,
+        else_branch: Option<&language::Expression>,
+    ) -> Result<rust_expr::Block, CompilationError> {
+        match else_branch {
+            None => Err(formality_error(
+                "formality translation expects `if` expressions without `else` to be desugared",
+            )),
+            Some(branch) => self.translate_if_branch(branch),
+        }
+    }
+
+    fn translate_if_branch(
+        &mut self,
+        branch: &language::Expression,
+    ) -> Result<rust_expr::Block, CompilationError> {
+        match &branch.kind {
+            language::ExpressionKind::Block(block) if branch.attrs.is_empty() => {
+                self.translate_block(block)
+            }
+            language::ExpressionKind::If(if_expression) if branch.attrs.is_empty() => {
+                let mut stmts = Vec::new();
+                self.translate_if_statement(if_expression, &mut stmts)?;
+                Ok(rust_expr::Block { label: None, stmts })
+            }
+            _ => Err(formality_error(format!(
+                "formality translation expected an `if` branch, got `{branch:?}`"
+            ))),
+        }
     }
 
     fn translate_expression(
@@ -286,6 +335,9 @@ impl FunctionTranslator {
             )),
             language::ExpressionKind::Block(_) => Err(formality_error(
                 "formality translation does not yet support nested block expressions",
+            )),
+            language::ExpressionKind::If(_) => Err(formality_error(
+                "formality translation does not yet support `if` as a value",
             )),
             language::ExpressionKind::Tuple(_) => Err(formality_error(
                 "formality translation does not yet support tuple expressions",

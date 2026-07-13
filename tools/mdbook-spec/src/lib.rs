@@ -18,6 +18,7 @@ const RULE_PAGE_PREFIXES: &[(&str, &str)] = &[
     ("destructors", "destructors.html"),
     ("expr.call", "expressions/call-expr.html"),
     ("expr.deref", "expressions/operator-expr.html"),
+    ("expr.if", "expressions/if-expr.html"),
     ("expr.method", "expressions/method-call-expr.html"),
     ("expr.operator", "expressions/operator-expr.html"),
     ("expr.paren", "expressions/grouped-expr.html"),

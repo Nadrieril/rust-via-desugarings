@@ -26,3 +26,9 @@ pub struct BlockExpression {
     pub statements: Vec<Statement>,
     pub tail: Option<Box<Expression>>,
 }
+
+impl From<BlockExpression> for Expression {
+    fn from(block: BlockExpression) -> Self {
+        Expression::new(ExpressionKind::Block(block))
+    }
+}

@@ -234,8 +234,18 @@ impl Display for Statement {
                 }
                 f.write_str(";")
             }
+            Statement::Expr(expression) if expression.is_with_block() => write!(f, "{expression}"),
             Statement::Expr(expression) => write!(f, "{expression};"),
         }
+    }
+}
+
+impl Expression {
+    fn is_with_block(&self) -> bool {
+        matches!(
+            self.kind,
+            ExpressionKind::Block(_) | ExpressionKind::If(_)
+        )
     }
 }
 
@@ -254,6 +264,7 @@ impl Display for ExpressionKind {
             ExpressionKind::Operator(operator) => write!(f, "{operator}"),
             ExpressionKind::Grouped(grouped) => write!(f, "({grouped})"),
             ExpressionKind::Block(block) => write!(f, "{block}"),
+            ExpressionKind::If(if_expression) => write!(f, "{if_expression}"),
             ExpressionKind::Tuple(elements) => write_tuple(f, elements),
             ExpressionKind::Call(call) => write!(f, "{call}"),
             ExpressionKind::TupleIndexing(tuple_indexing) => write!(f, "{tuple_indexing}"),
@@ -268,6 +279,24 @@ impl Display for LiteralExpression {
             LiteralExpression::Integer(value) => write!(f, "{value}"),
             LiteralExpression::Bool(value) => write!(f, "{value}"),
         }
+    }
+}
+
+impl Display for IfExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "if{}{}", self.condition, self.then_branch)?;
+        if let Some(else_branch) = &self.else_branch {
+            match &else_branch.kind {
+                ExpressionKind::If(if_expression) if else_branch.attrs.is_empty() => {
+                    write!(f, " else {if_expression}")?;
+                }
+                ExpressionKind::Block(block) if else_branch.attrs.is_empty() => {
+                    write!(f, " else {block}")?;
+                }
+                _ => write!(f, " else {else_branch}")?,
+            }
+        }
+        Ok(())
     }
 }
 

@@ -26,13 +26,23 @@ use crate::language::*; //#
 //@     | call=CallExpression => ExpressionKind::Call(call),
 //@
 //@ ExpressionWithBlockNoAttrs -> ExpressionKind:
-//@     | expr=BlockExpression => ExpressionKind::Block(expr)
+//@     | expr=BlockExpression => ExpressionKind::Block(expr),
+//@     | expr=IfExpression => ExpressionKind::If(expr),
 //@ ```
 #[derive(Debug, Clone, PartialEq, Eq)] //#
 #[derive(Drive, DriveMut)] //#
 pub struct Expression {
     pub attrs: Vec<OuterAttribute>,
     pub kind: ExpressionKind,
+}
+
+impl Expression {
+    pub fn new(kind: ExpressionKind) -> Self {
+        Self {
+            attrs: vec![],
+            kind,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)] //#
@@ -43,6 +53,7 @@ pub enum ExpressionKind {
     Operator(Box<OperatorExpression>),
     Grouped(Box<Expression>),
     Block(BlockExpression),
+    If(IfExpression),
     Tuple(Vec<Expression>),
     TupleIndexing(TupleIndexingExpression),
     Call(CallExpression),
@@ -55,6 +66,8 @@ pub mod block_expressions;
 pub mod call_expressions;
 #[path = "expressions/grouped-exprs.md.rs"]
 pub mod grouped_expressions;
+#[path = "expressions/if-exprs.md.rs"]
+pub mod if_expressions;
 #[path = "expressions/literal-exprs.md.rs"]
 pub mod literal_expressions;
 #[path = "expressions/operator-exprs.md.rs"]
@@ -66,6 +79,7 @@ pub mod tuple_expressions;
 
 pub use block_expressions::*;
 pub use call_expressions::*;
+pub use if_expressions::*;
 pub use literal_expressions::*;
 pub use operator_expressions::*;
 pub use path_expressions::*;

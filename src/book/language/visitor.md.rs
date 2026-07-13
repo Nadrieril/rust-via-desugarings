@@ -40,6 +40,7 @@ use derive_generic_visitor::*; //#
         FunctionParamType,
         FunctionQualifiers,
         GenericParams,
+        IfExpression,
         InnerAttribute,
         Item,
         ItemKind,

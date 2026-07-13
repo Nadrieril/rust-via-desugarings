@@ -24,8 +24,8 @@ use minirust_rs::{
     },
     mem as memory,
     prelude::{
-        Align, DynWrite, Int, List, Map, Mutability as MiniMutability, Size, TerminationInfo,
-        x86_64,
+        Align, DynWrite, Int, List, Map, Mutability as MiniMutability, Signedness, Size,
+        TerminationInfo, x86_64,
     },
 };
 
@@ -306,6 +306,9 @@ impl<'a> Translator<'a> {
             language::ExpressionKind::Grouped(_) => Err(minirust_error(
                 "MiniRust runner expects grouped expressions to be desugared",
             )),
+            language::ExpressionKind::If(if_expression) => {
+                self.translate_if_statement(if_expression)
+            }
             language::ExpressionKind::Call(call) => self.translate_function_call(call),
             language::ExpressionKind::Operator(operator) => match &**operator {
                 language::OperatorExpression::Assignment(target, value) => {
@@ -336,10 +339,74 @@ impl<'a> Translator<'a> {
             language::ExpressionKind::Grouped(_) => Err(minirust_error(
                 "MiniRust runner expects grouped expressions to be desugared",
             )),
+            language::ExpressionKind::If(if_expression) => {
+                self.translate_if_statement(if_expression)
+            }
             language::ExpressionKind::Tuple(elements) if elements.is_empty() => Ok(()),
             language::ExpressionKind::Call(call) => self.translate_function_call(call),
             other => Err(minirust_error(format!(
                 "MiniRust runner only supports `()` or `print(...)` tail expressions, got {other:?}"
+            ))),
+        }
+    }
+
+    fn translate_if_statement(
+        &mut self,
+        if_expression: &language::IfExpression,
+    ) -> Result<(), CompilationError> {
+        let condition = self.translate_bool_value(&if_expression.condition)?;
+        let then_block = self.fresh_block();
+        let else_block = self.fresh_block();
+        let join_block = self.fresh_block();
+
+        let mut cases = Map::new();
+        cases.insert(Int::from(1u8), then_block);
+        self.finish_current_block(mini::Terminator::Switch {
+            value: bool_as_switch_value(condition),
+            cases,
+            fallback: else_block,
+        });
+
+        self.current_block = then_block;
+        self.current_statements.clear();
+        self.translate_if_branch(&if_expression.then_branch)?;
+        self.finish_current_block(mini::Terminator::Goto(join_block));
+
+        self.current_block = else_block;
+        self.current_statements.clear();
+        self.translate_if_else_branch(if_expression.else_branch.as_deref())?;
+        self.finish_current_block(mini::Terminator::Goto(join_block));
+
+        self.current_block = join_block;
+        self.current_statements.clear();
+        Ok(())
+    }
+
+    fn translate_if_else_branch(
+        &mut self,
+        else_branch: Option<&language::Expression>,
+    ) -> Result<(), CompilationError> {
+        match else_branch {
+            None => Err(minirust_error(
+                "MiniRust runner expects `if` expressions without `else` to be desugared",
+            )),
+            Some(branch) => self.translate_if_branch(branch),
+        }
+    }
+
+    fn translate_if_branch(
+        &mut self,
+        branch: &language::Expression,
+    ) -> Result<(), CompilationError> {
+        match &branch.kind {
+            language::ExpressionKind::Block(block) if branch.attrs.is_empty() => {
+                self.translate_block(block)
+            }
+            language::ExpressionKind::If(if_expression) if branch.attrs.is_empty() => {
+                self.translate_if_statement(if_expression)
+            }
+            _ => Err(minirust_error(format!(
+                "MiniRust runner expected an `if` branch, got `{branch:?}`"
             ))),
         }
     }
@@ -528,6 +595,9 @@ impl<'a> Translator<'a> {
             language::ExpressionKind::Block(_) => Err(minirust_error(
                 "MiniRust runner does not yet support nested block expressions",
             )),
+            language::ExpressionKind::If(_) => Err(minirust_error(
+                "MiniRust runner does not yet support `if` as a value",
+            )),
             language::ExpressionKind::TupleIndexing(tuple_indexing) => {
                 let (source, ty) = self.translate_tuple_indexing_place(tuple_indexing)?;
                 Ok((
@@ -556,6 +626,19 @@ impl<'a> Translator<'a> {
                 ))),
             },
         }
+    }
+
+    fn translate_bool_value(
+        &mut self,
+        expression: &language::Expression,
+    ) -> Result<mini::ValueExpr, CompilationError> {
+        let (value, ty) = self.translate_value_and_type(expression)?;
+        if ty != mini::Type::Bool {
+            return Err(minirust_error(format!(
+                "MiniRust runner expected an `if` condition with type `bool`, got `{ty:?}`"
+            )));
+        }
+        Ok(value)
     }
 
     fn translate_borrow_value_and_type(
@@ -894,6 +977,16 @@ fn type_size_align(ty: &mini::Type) -> Result<(Size, Align), CompilationError> {
         layout => Err(minirust_error(format!(
             "MiniRust runner only supports sized tuple fields, got layout `{layout:?}`"
         ))),
+    }
+}
+
+fn bool_as_switch_value(value: mini::ValueExpr) -> mini::ValueExpr {
+    mini::ValueExpr::UnOp {
+        operator: mini::UnOp::Cast(mini::CastOp::Transmute(mini::Type::Int(mini::IntType {
+            signed: Signedness::Unsigned,
+            size: Size::from_bytes_const(1),
+        }))),
+        operand: GcCow::new(value),
     }
 }
 

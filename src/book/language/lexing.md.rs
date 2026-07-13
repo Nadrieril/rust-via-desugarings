@@ -158,6 +158,8 @@ fn string_literal(lex: &mut logos::Lexer<'_, Token>) -> String {
 //@ LIFETIME Lifetime(String);
 //@ UNSUPPORTED Unsupported;
 //@
+//@ %precedence `if`;
+//@ %precedence `else`;
 //@ %precedence `self`;
 //@ %precedence `:`;
 //@ %precedence `=`;
