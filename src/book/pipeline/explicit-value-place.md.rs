@@ -3,6 +3,7 @@
 //@ Expressions can be categorized into two kinds: "value expressions" denote values, while
 //@ "place expressions" denote memory locations [ref:expr.place-value].
 use crate::CompilationError; //#
+use crate::interactive_example; //#
 use crate::language::*; //#
 enum ExprCategory {
     Value,
@@ -43,8 +44,16 @@ impl Expression {
 //@ [ref:expr.place-value.place-context]. When that expectation is unmet, Rust can convert between
 //@ the two by introducing a value-to-place coercion or a place-to-value coercion, respectively.
 //@
+interactive_example! {
+    make_place_coercions_explicit,
+    fn main() {
+        let x = &1 + &2;
+        print(x);
+    }
+}
+//@
 //@ In [Virtual Expressions](../language/expressions/virtual-exprs.md.rs), we added expression
-//@ kinds that represent these two coercions. They shall be desugared further in subsequent passes.
+//@ kinds that represent these two coercions. They will be desugared further in subsequent passes.
 pub fn make_place_coercions_explicit(program: &mut Program) -> Result<(), CompilationError> {
     // Add place/value coercions to all the subexpressions of each expression.
     program.visit_all_mut_infallible(|expression: &mut Expression| match &mut expression.kind {

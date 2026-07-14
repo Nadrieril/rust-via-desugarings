@@ -61,7 +61,6 @@ pub fn handle_preprocessing() -> anyhow::Result<()> {
             missing_rules.join(", ")
         );
     }
-
     serde_json::to_writer(io::stdout(), &book)?;
     Ok(())
 }
@@ -85,7 +84,7 @@ fn render_literate_sections(
                         content,
                         &source_path,
                         rustdoc_links.get(&source_path),
-                    ));
+                    )?);
                 }
             }
             render_literate_sections(&mut chapter["sub_items"], rustdoc_links)?;

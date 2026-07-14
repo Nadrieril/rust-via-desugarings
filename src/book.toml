@@ -12,8 +12,8 @@ build-dir = ".book-build"
 git-repository-url = "https://github.com/Nadrieril/rust-via-desugarings"
 edit-url-template = "https://github.com/Nadrieril/rust-via-desugarings/edit/main/{path}"
 site-url = "/rust-via-desugarings/"
-additional-css = ["book/theme/grammar.css", "book/theme/spec.css", "book/theme/examples.css", "book/theme/literate-rust.css"]
-additional-js = ["book/theme/grammar.js", "book/theme/literate-rust.js"]
+additional-css = ["book/theme/grammar.css", "book/theme/spec.css", "book/theme/examples.css", "book/theme/literate-rust.css", "book/theme/interactive-desugar.css"]
+additional-js = ["book/theme/grammar.js", "book/theme/literate-rust.js", "book/theme/interactive-desugar.js"]
 
 [output.html.fold]
 enable = true

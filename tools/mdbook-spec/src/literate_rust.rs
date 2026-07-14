@@ -1,10 +1,12 @@
-use anyhow::Context;
+use anyhow::{Context, bail};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use syn::parse::{Parse, ParseStream};
+use syn::{ItemMacro, PathArguments, Token};
 
 const RUSTDOC_SOURCE_CRATE: &str = "rust_via_desugarings";
 
@@ -89,15 +91,21 @@ pub fn render_chapter(
     content: &str,
     source_path: &str,
     links_by_line: Option<&BTreeMap<usize, Vec<LinkRange>>>,
-) -> String {
+) -> anyhow::Result<String> {
     let mut result = Vec::new();
     let mut code_buffer = Vec::new();
+    let mut lines = content.lines().enumerate().peekable();
 
-    for (index, line) in content.lines().enumerate() {
+    while let Some((index, line)) = lines.next() {
         let line_no = index + 1;
         if let Some(markdown) = markdown_comment(line) {
             flush_code(&mut result, &mut code_buffer, source_path);
             result.push(markdown.to_owned());
+        } else if is_interactive_example_start(line) {
+            flush_code(&mut result, &mut code_buffer, source_path);
+            let invocation = collect_interactive_example_invocation(line, &mut lines)?;
+            let example = parse_interactive_example(&invocation, source_path, line_no)?;
+            result.push(render_interactive_example(&example));
         } else if !is_hidden_code_line(line) {
             code_buffer.push((line_no, line.to_owned()));
         }
@@ -116,7 +124,7 @@ pub fn render_chapter(
 
     let mut output = result.join("\n");
     output.push('\n');
-    output
+    Ok(output)
 }
 
 fn flush_code(result: &mut Vec<String>, code_buffer: &mut Vec<(usize, String)>, source_path: &str) {
@@ -146,6 +154,171 @@ fn markdown_comment(line: &str) -> Option<&str> {
     let line = line.trim_start_matches([' ', '\t']);
     let markdown = line.strip_prefix("//@")?;
     Some(markdown.strip_prefix(' ').unwrap_or(markdown))
+}
+
+fn is_interactive_example_start(line: &str) -> bool {
+    line.trim_start().starts_with("interactive_example!")
+}
+
+fn collect_interactive_example_invocation<'a>(
+    first_line: &str,
+    lines: &mut std::iter::Peekable<impl Iterator<Item = (usize, &'a str)>>,
+) -> anyhow::Result<String> {
+    let mut invocation = first_line.to_owned();
+
+    loop {
+        if let Ok(item_macro) = syn::parse_str::<ItemMacro>(&invocation) {
+            if item_macro.mac.path.is_ident("interactive_example") {
+                return Ok(invocation);
+            }
+
+            bail!(
+                "expected `interactive_example!` macro, got `{}`",
+                invocation
+            );
+        }
+
+        let Some((_index, line)) = lines.next() else {
+            bail!("unterminated `interactive_example!` macro invocation");
+        };
+        invocation.push('\n');
+        invocation.push_str(line);
+    }
+}
+
+struct InteractiveExample {
+    id: String,
+    step: String,
+    sample: String,
+}
+
+struct InteractiveExampleArgs {
+    step: syn::Path,
+}
+
+impl Parse for InteractiveExampleArgs {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let step = input.parse()?;
+        input.parse::<Token![,]>()?;
+        while !input.is_empty() {
+            input.parse::<syn::Item>()?;
+        }
+        Ok(Self { step })
+    }
+}
+
+fn parse_interactive_example(
+    invocation: &str,
+    source_path: &str,
+    line_no: usize,
+) -> anyhow::Result<InteractiveExample> {
+    let item_macro: ItemMacro = syn::parse_str(invocation).with_context(|| {
+        format!("could not parse interactive example at {source_path}:{line_no}")
+    })?;
+    let args: InteractiveExampleArgs = syn::parse2(item_macro.mac.tokens).with_context(|| {
+        format!("could not parse interactive example at {source_path}:{line_no}")
+    })?;
+
+    Ok(InteractiveExample {
+        id: format!("{}:{line_no}", rustc_source_path(source_path)),
+        step: format_path(&args.step)?,
+        sample: interactive_example_body(invocation, source_path, line_no)?,
+    })
+}
+
+fn rustc_source_path(source_path: &str) -> String {
+    if source_path.starts_with("src/") {
+        source_path.to_owned()
+    } else {
+        format!("src/{source_path}")
+    }
+}
+
+fn format_path(path: &syn::Path) -> anyhow::Result<String> {
+    let mut rendered = String::new();
+    if path.leading_colon.is_some() {
+        rendered.push_str("::");
+    }
+
+    for (index, segment) in path.segments.iter().enumerate() {
+        if !matches!(segment.arguments, PathArguments::None) {
+            bail!("interactive example desugaring path may not contain generic arguments");
+        }
+        if index > 0 {
+            rendered.push_str("::");
+        }
+        rendered.push_str(&segment.ident.to_string());
+    }
+
+    Ok(rendered)
+}
+
+fn interactive_example_body(
+    invocation: &str,
+    source_path: &str,
+    line_no: usize,
+) -> anyhow::Result<String> {
+    let mut lines = invocation.lines();
+    let first_line = lines
+        .next()
+        .context("expected `interactive_example!` macro invocation")?;
+    let body_indent = first_line.bytes().take_while(|&byte| byte == b' ').count() + 4;
+    let mut body_lines = lines.collect::<Vec<_>>();
+    let Some(_closing_brace) = body_lines.pop() else {
+        bail!("unterminated `interactive_example!` macro invocation at {source_path}:{line_no}");
+    };
+
+    let step_index = body_lines
+        .iter()
+        .position(|line| !line.trim().is_empty())
+        .with_context(|| {
+            format!("empty `interactive_example!` macro at {source_path}:{line_no}")
+        })?;
+    let mut sample = dedent_lines(&body_lines[step_index + 1..], body_indent);
+    while sample.starts_with('\n') {
+        sample.remove(0);
+    }
+    let sample = trim_one_final_newline(&sample).to_owned();
+    if sample.trim().is_empty() {
+        bail!("empty interactive example body at {source_path}:{line_no}");
+    }
+    Ok(sample)
+}
+
+fn dedent_lines(lines: &[&str], indent: usize) -> String {
+    let prefix = " ".repeat(indent);
+    lines
+        .iter()
+        .map(|line| line.strip_prefix(&prefix).unwrap_or(line))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn render_interactive_example(example: &InteractiveExample) -> String {
+    format!(
+        r#"<div class="interactive-desugar" data-desugar-example="{id}">
+<div class="interactive-desugar__panes">
+<label class="interactive-desugar__pane">
+<span class="interactive-desugar__label">Input (interactive)</span>
+<textarea class="interactive-desugar__editor" spellcheck="false">{sample}</textarea>
+</label>
+<div class="interactive-desugar__pane">
+<span class="interactive-desugar__label">Desugared (<code>{step}</code>)</span>
+<pre class="interactive-desugar__output"><code></code></pre>
+</div>
+</div>
+</div>"#,
+        id = html_escape(&example.id),
+        step = html_escape(&example.step),
+        sample = html_escape(&example.sample),
+    )
+}
+
+fn trim_one_final_newline(input: &str) -> &str {
+    input
+        .strip_suffix("\r\n")
+        .or_else(|| input.strip_suffix('\n'))
+        .unwrap_or(input)
 }
 
 fn is_hidden_code_line(line: &str) -> bool {
@@ -631,12 +804,44 @@ mod tests {
             "//@ # Title\nuse crate::x; //#\nfn f() {}\n//@ text\n",
             "book/chapter.md.rs",
             None,
-        );
+        )
+        .unwrap();
 
         assert!(rendered.contains("# Title\n"));
         assert!(rendered.contains("```rust,noplayground\nfn f() {}\n```"));
         assert!(rendered.contains("\ntext\n"));
         assert!(!rendered.contains("use crate::x"));
+    }
+
+    #[test]
+    fn renders_interactive_example_macro() {
+        let rendered = render_chapter(
+            r#"fn before() {}
+interactive_example! {
+    make_place_coercions_explicit,
+    fn main() {
+        let x: bool = true;
+        print(x);
+    }
+}
+fn after() {}
+"#,
+            "book/pipeline/explicit-value-place.md.rs",
+            None,
+        )
+        .unwrap();
+
+        assert!(rendered.contains("fn before() {}"));
+        assert!(rendered.contains("fn after() {}"));
+        assert!(rendered.contains("<div class=\"interactive-desugar\""));
+        assert!(
+            rendered.contains(
+                "data-desugar-example=\"src/book/pipeline/explicit-value-place.md.rs:2\""
+            )
+        );
+        assert!(rendered.contains("<code>make_place_coercions_explicit</code>"));
+        assert!(rendered.contains("fn main()"));
+        assert!(!rendered.contains("interactive_example!"));
     }
 
     #[test]

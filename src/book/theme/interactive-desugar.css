@@ -1,0 +1,97 @@
+.interactive-desugar {
+    margin: 1.5rem 0;
+    border: 1px solid var(--example-code-border);
+    border-inline-start: 4px solid var(--example-code-accent);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--example-code-bg);
+}
+
+.interactive-desugar__panes {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.interactive-desugar__pane {
+    display: flex;
+    min-width: 0;
+    min-height: 16rem;
+    flex-direction: column;
+    margin: 0;
+}
+
+.interactive-desugar__pane + .interactive-desugar__pane {
+    border-inline-start: 1px solid var(--example-code-border);
+}
+
+.interactive-desugar__label {
+    padding: 0.45rem 0.75rem;
+    border-bottom: 1px solid var(--example-code-border);
+    color: var(--example-code-accent);
+    font-family: "Open Sans", sans-serif;
+    font-size: .78em;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.interactive-desugar__label code {
+    background: transparent;
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+.interactive-desugar__editor,
+.interactive-desugar__output {
+    box-sizing: border-box;
+    flex: 1;
+    width: 100%;
+    min-height: 15rem;
+    margin: 0;
+    padding: 0.75rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--fg);
+    font-family: var(--mono-font);
+    font-size: var(--code-font-size);
+    line-height: 1.45;
+    tab-size: 4;
+}
+
+.interactive-desugar__editor {
+    resize: vertical;
+}
+
+.interactive-desugar__editor:focus {
+    outline: 2px solid var(--example-code-accent);
+    outline-offset: -2px;
+}
+
+.interactive-desugar__output {
+    overflow: auto;
+    white-space: pre;
+}
+
+.interactive-desugar__output code {
+    display: block;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    font-size: inherit;
+}
+
+.interactive-desugar__output.is-error code {
+    color: #b42318;
+}
+
+@media (max-width: 900px) {
+    .interactive-desugar__panes {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .interactive-desugar__pane + .interactive-desugar__pane {
+        border-block-start: 1px solid var(--example-code-border);
+        border-inline-start: 0;
+    }
+}

@@ -41,10 +41,12 @@ pub fn desugar(mut program: Program) -> Result<Program, CompilationError> {
 pub mod expr_unnesting;
 #[path = "final-desugarings.md.rs"]
 pub mod final_desugarings;
+#[cfg(not(target_arch = "wasm32"))]
 #[path = "formality.md.rs"]
 pub mod formality;
 #[path = "funsig.md.rs"]
 pub mod funsig;
+#[cfg(not(target_arch = "wasm32"))]
 #[path = "minirust.md.rs"]
 pub mod minirust;
 #[path = "misc-expr-desugarings.md.rs"]

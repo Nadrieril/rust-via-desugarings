@@ -12,6 +12,7 @@ edition = "2024"
 [lib]
 name = "rust_via_desugarings"
 path = "src/lib.rs"
+crate-type = ["rlib", "cdylib"]
 
 [[test]]
 name = "ui"
@@ -20,13 +21,18 @@ harness = false
 
 [dependencies]
 derive_generic_visitor = "1.0.1"
-formality-rust = { path = "a-mir-formality/crates/formality-rust" }
+inventory = "0.3.24"
 itertools = "0.14.0"
 logos = "0.16.1"
-minirust-rs = { path = "a-mir-formality/crates/minirust-rs" }
-prettyplease = "0.2"
 rusty_lr = { git = "https://github.com/Nadrieril/RustyLR" }
 syn = { version = "2", features = ["parsing"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+formality-rust = { path = "a-mir-formality/crates/formality-rust" }
+minirust-rs = { path = "a-mir-formality/crates/minirust-rs" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "=0.2.106"
 
 [build-dependencies]
 grammar = { path = "tools/grammar" }

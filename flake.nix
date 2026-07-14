@@ -20,15 +20,18 @@
           overlays = [ (import inputs.rust-overlay) ];
         };
 
-        rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./cargo-desugar/rust-toolchain;
+        rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain;
         craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchain;
         craneArgs = {
-          src = craneLib.cleanCargoSource ./cargo-desugar;
+          src = craneLib.cleanCargoSource ./.;
         };
       in
       {
         packages = {
           inherit rustToolchain;
+          default = craneLib.buildPackage (craneArgs // {
+            cargoExtraArgs = "--package rust-via-desugarings";
+          });
         };
         checks = {
           default = craneLib.cargoFmt craneArgs;
@@ -40,6 +43,7 @@
           packages = [
             pkgs.mdbook
             pkgs.mdbook-linkcheck
+            pkgs.wasm-bindgen-cli
             inputs.mdbook-backlinks.packages.${system}.default
           ];
           nativeBuildInputs = [
@@ -54,7 +58,7 @@
           ];
 
           inputsFrom = [
-            # self.packages.${system}.default
+            self.packages.${system}.default
           ];
         };
       });
