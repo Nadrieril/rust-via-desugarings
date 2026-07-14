@@ -152,6 +152,7 @@ pub mod interactive_examples {
         )))
     }
 
+    #[allow(unused)] // Used in wasm
     fn parse_apply_interactive_example_and_print_program(
         example_id: &str,
         input: &str,
