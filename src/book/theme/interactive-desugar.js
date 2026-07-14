@@ -57,6 +57,12 @@
         }
     }
 
+    function stopBookNavigationShortcuts(event) {
+        if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+            event.stopPropagation();
+        }
+    }
+
     function setupInteractiveDesugar(root) {
         const exampleId = root.dataset.desugarExample;
         const editor = root.querySelector(".interactive-desugar__editor");
@@ -107,6 +113,7 @@
         }
 
         editor.addEventListener("input", scheduleRun);
+        editor.addEventListener("keydown", stopBookNavigationShortcuts);
         run();
     }
 

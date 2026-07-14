@@ -47,7 +47,7 @@ impl Expression {
 interactive_example! {
     make_place_coercions_explicit,
     fn main() {
-        let x = &1 + &2;
+        let x = 1 + &2;
         print(x);
     }
 }
