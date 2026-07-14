@@ -4,8 +4,10 @@ use mdbook_markdown::{MarkdownOptions, new_cmark_parser};
 use pulldown_cmark_to_cmark::cmark;
 use serde_json::Value;
 use std::collections::BTreeMap;
+use std::env;
 use std::io::{self, Read};
 use std::path::PathBuf;
+use std::process::Command;
 
 mod literate_rust;
 
@@ -45,6 +47,7 @@ pub fn handle_preprocessing() -> anyhow::Result<()> {
     let mut book = values.pop().context("mdBook input missing book")?;
     let context = values.pop().context("mdBook input missing context")?;
     let literate_chapters = literate_rust::collect_chapters(&book["sections"]);
+    ensure_interactive_wasm_is_current(&context)?;
     let rustdoc_links = literate_rust::rustdoc_link_map(&context, &literate_chapters);
 
     render_literate_sections(&mut book["sections"], &rustdoc_links)?;
@@ -63,6 +66,37 @@ pub fn handle_preprocessing() -> anyhow::Result<()> {
     }
     serde_json::to_writer(io::stdout(), &book)?;
     Ok(())
+}
+
+fn ensure_interactive_wasm_is_current(context: &Value) -> anyhow::Result<()> {
+    let repo_root = literate_rust::repo_root(context)?;
+    let profile = if env::var_os("CI").is_some() {
+        "release"
+    } else {
+        "debug"
+    };
+
+    eprintln!("mdbook-spec: rebuilding interactive desugaring wasm assets ({profile})");
+    let output = Command::new("just")
+        .args(["build-interactive-wasm", profile])
+        .current_dir(&repo_root)
+        .output()
+        .with_context(|| {
+            format!(
+                "failed to run `just build-interactive-wasm {profile}` from {}",
+                repo_root.display()
+            )
+        })?;
+
+    if output.status.success() {
+        return Ok(());
+    }
+
+    bail!(
+        "`just build-interactive-wasm {profile}` failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
 }
 
 fn render_literate_sections(

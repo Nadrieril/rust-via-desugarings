@@ -27,7 +27,7 @@
         const detail = error && error.message ? error.message : String(error);
         return [
             "Interactive desugarings are unavailable.",
-            "Run `just build-interactive-wasm` from the repository root, then rebuild the book.",
+            "Rebuild the book; mdbook-spec regenerates these assets when wasm-bindgen is available.",
             "",
             detail,
         ].join("\n");

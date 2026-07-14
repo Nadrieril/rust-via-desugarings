@@ -385,7 +385,7 @@ pub fn rustdoc_link_map(
         .collect()
 }
 
-fn repo_root(context: &Value) -> anyhow::Result<PathBuf> {
+pub fn repo_root(context: &Value) -> anyhow::Result<PathBuf> {
     if let Some(root) = context.get("root").and_then(Value::as_str) {
         let root = PathBuf::from(root);
         return Ok(root.parent().unwrap_or(&root).to_path_buf());

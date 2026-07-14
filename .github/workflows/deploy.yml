@@ -36,18 +36,12 @@ jobs:
           rev: 2fb722cd5df25a0d7d5d250910dd0bbc428e61e5
 
       - name: Install wasm-bindgen
-        uses: baptiste0928/cargo-install@v3
+        uses: jetli/wasm-bindgen-action@v0.2.0
         with:
-          crate: wasm-bindgen-cli
           version: '0.2.106'
 
       - name: Install just
-        uses: baptiste0928/cargo-install@v3
-        with:
-          crate: just
-
-      - name: Build interactive wasm assets
-        run: just build-interactive-wasm
+        uses: extractions/setup-just@v4
 
       - name: Build book
         run: cd src && mdbook build
