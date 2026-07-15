@@ -76,7 +76,7 @@ fn ensure_interactive_wasm_is_current(context: &Value) -> anyhow::Result<()> {
         "debug"
     };
 
-    eprintln!("mdbook-spec: rebuilding interactive desugaring wasm assets ({profile})");
+    eprintln!("mdbook-spec: ensuring interactive desugaring wasm assets ({profile})");
     let output = Command::new("just")
         .args(["build-interactive-wasm", profile])
         .current_dir(&repo_root)
