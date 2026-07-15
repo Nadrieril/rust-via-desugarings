@@ -20,6 +20,7 @@ impl Expression {
             ExpressionKind::Virtual(VirtualExpression::ValueToPlaceCoercion(_)) => {
                 ExprCategory::Place
             }
+            //@ Parentheses don't change the category of an expression:
             ExpressionKind::Grouped(expr) => expr.categorize(),
             //@ Anything else is a value expression [ref:expr.place-value.value-expr-kinds]:
             ExpressionKind::Operator(
