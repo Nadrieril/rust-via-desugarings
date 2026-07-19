@@ -99,6 +99,7 @@
   - [Moving Out Of `&mut`](features/moving-out-of-mut.md)
   - [Phased Initialization](features/phased-initialization.md)
   - [Place Aliases](features/let-place.md)
+  - [Scoped Let](features/scoped-let.md)
   - [Unchecked Indexing](features/unchecked-indexing.md)
   - [Unique-Immutable Borrow](features/uniq-borrow.md)
 - [Worked Examples](worked-examples.md)

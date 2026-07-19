@@ -187,13 +187,20 @@ impl Printer {
             Statement::Item(item) => self.item(item),
             Statement::Let {
                 attrs,
+                scope,
                 pattern,
                 ty,
                 initial_value,
                 else_branch,
             } => {
                 self.attrs(attrs);
-                self.token("let ");
+                self.token("let");
+                if let Some(scope) = scope {
+                    self.token("(in ");
+                    self.display(scope);
+                    self.token(")");
+                }
+                self.space();
                 self.display(pattern);
                 if let Some(ty) = ty {
                     self.token(": ");
@@ -522,13 +529,18 @@ impl Display for Statement {
             Statement::Item(item) => write!(f, "{item}"),
             Statement::Let {
                 attrs,
+                scope,
                 pattern,
                 ty,
                 initial_value,
                 else_branch,
             } => {
                 write!(f, "{} ", attrs.iter().format(" "))?;
-                write!(f, "let {pattern}")?;
+                f.write_str("let")?;
+                if let Some(scope) = scope {
+                    write!(f, "(in {scope})")?;
+                }
+                write!(f, " {pattern}")?;
                 if let Some(ty) = ty {
                     write!(f, ": {ty}")?;
                 }

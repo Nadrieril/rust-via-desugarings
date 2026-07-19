@@ -27,6 +27,7 @@ fn split_let_initializers(block: &mut BlockExpression) {
     for statement in statements {
         if let Statement::Let {
             attrs,
+            scope,
             pattern: Pattern::Identifier(name),
             ty,
             initial_value: Some(value),
@@ -35,6 +36,7 @@ fn split_let_initializers(block: &mut BlockExpression) {
         {
             block.statements.push(Statement::Let {
                 attrs,
+                scope,
                 pattern: Pattern::Identifier(name.clone()),
                 ty,
                 initial_value: None,
