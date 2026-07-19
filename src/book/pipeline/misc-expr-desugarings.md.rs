@@ -27,6 +27,7 @@ fn add_missing_else_branch(expression: &mut Expression) {
 
 fn empty_block_expression() -> Expression {
     BlockExpression {
+        label: None,
         inner_attrs: vec![],
         statements: vec![],
         tail: None,

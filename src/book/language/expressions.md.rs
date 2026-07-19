@@ -26,7 +26,7 @@ use crate::language::*; //#
 //@     | call=CallExpression => ExpressionKind::Call(call),
 //@
 //@ ExpressionWithBlockNoAttrs -> ExpressionKind:
-//@     | expr=BlockExpression => ExpressionKind::Block(expr),
+//@     | expr=LabelBlockExpression => ExpressionKind::Block(expr),
 //@     | expr=IfExpression => ExpressionKind::If(expr),
 //@ ```
 #[derive(Debug, Clone, PartialEq, Eq)] //#

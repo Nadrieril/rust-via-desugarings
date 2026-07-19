@@ -157,6 +157,10 @@ impl Printer {
     }
 
     fn block(&mut self, block: &BlockExpression) {
+        if let Some(label) = &block.label {
+            self.display(label);
+            self.token(": ");
+        }
         if block.statements.is_empty() && block.tail.is_none() {
             self.token("{}");
             return;
@@ -497,6 +501,9 @@ impl Display for Type {
 
 impl Display for BlockExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        if let Some(label) = &self.label {
+            write!(f, "{label}: ")?;
+        }
         f.write_str("{")?;
         for statement in &self.statements {
             write!(f, " {statement}")?;
