@@ -42,8 +42,8 @@
           #   pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.openssl pkgs.curl pkgs.zlib ];
           packages = [
             pkgs.mdbook
-            pkgs.mdbook-linkcheck
-            pkgs.wasm-bindgen-cli
+            pkgs.mdbook-linkcheck2
+            pkgs.wasm-bindgen-cli_0_2_106
             inputs.mdbook-backlinks.packages.${system}.default
           ];
           nativeBuildInputs = [

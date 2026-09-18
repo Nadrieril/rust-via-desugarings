@@ -74,11 +74,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1767300107,
-        "narHash": "sha256-0/e830bzX5IIKoMipZIais7ZmPZNSpQudYVBZZAl30E=",
+        "lastModified": 1768253930,
+        "narHash": "sha256-A3IgbneaqHFmfYViNraImlF92Jo0lU/A7hmGERyzFJI=",
         "owner": "nadrieril",
         "repo": "mdbook-backlinks",
-        "rev": "2fb722cd5df25a0d7d5d250910dd0bbc428e61e5",
+        "rev": "b2ce2e69219a2065dd9c054154e2a9d5e53a1d95",
         "type": "github"
       },
       "original": {
@@ -120,12 +120,11 @@
     },
     "nixpkgs_3": {
       "locked": {
-        "lastModified": 1767116409,
-        "narHash": "sha256-5vKw92l1GyTnjoLzEagJy5V5mDFck72LiQWZSOnSicw=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "cad22e7d996aea55ecab064e84834289143e44a0",
-        "type": "github"
+        "lastModified": 1789546076,
+        "narHash": "sha256-vWkSk5bbfTqdtMoSgD9FshACO8JCvXTFi+3cqEp0mH0=",
+        "rev": "b1b875982b17dabde9b4a37f3e229e74913e6db3",
+        "type": "tarball",
+        "url": "https://releases.nixos.org/nixos/unstable/nixos-26.11pre1074753.b1b875982b17/nixexprs.tar.zst"
       },
       "original": {
         "id": "nixpkgs",
