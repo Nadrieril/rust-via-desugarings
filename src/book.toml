@@ -19,7 +19,7 @@ additional-js = ["book/theme/grammar.js", "book/theme/literate-rust.js", "book/t
 enable = true
 level = 2
 
-[output.linkcheck]
+[output.linkcheck2]
 optional = true
 warning-policy = "error"
 

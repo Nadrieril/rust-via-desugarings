@@ -46,16 +46,16 @@ pub fn handle_preprocessing() -> anyhow::Result<()> {
 
     let mut book = values.pop().context("mdBook input missing book")?;
     let context = values.pop().context("mdBook input missing context")?;
-    let literate_chapters = literate_rust::collect_chapters(&book["sections"]);
+    let literate_chapters = literate_rust::collect_chapters(&book["items"]);
     ensure_interactive_wasm_is_current(&context)?;
     let rustdoc_links = literate_rust::rustdoc_link_map(&context, &literate_chapters);
 
-    render_literate_sections(&mut book["sections"], &rustdoc_links)?;
-    let grammar = collect_grammar(&book["sections"])?;
-    render_grammar_sections(&mut book["sections"], &grammar);
+    render_literate_sections(&mut book["items"], &rustdoc_links)?;
+    let grammar = collect_grammar(&book["items"])?;
+    render_grammar_sections(&mut book["items"], &grammar);
 
     let mut missing_rules = Vec::new();
-    render_reference_sections(&mut book["sections"], &mut missing_rules)?;
+    render_reference_sections(&mut book["items"], &mut missing_rules)?;
     missing_rules.sort();
     missing_rules.dedup();
     if !missing_rules.is_empty() {
