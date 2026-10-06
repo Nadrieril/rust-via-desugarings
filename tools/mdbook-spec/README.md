@@ -2,6 +2,23 @@
 
 mdbook extension for our spec-writing.
 
+This crate provides two preprocessors.
+
+`mdbook-spec` (`[preprocessor.spec]`) runs for all renderers. It:
+- makes sure the interactive desugaring wasm is up to date
+- renders literate Rust (`.md.rs`) chapters as markdown:
+  `//@` lines become markdown, lines ending in `//#` are hidden,
+  `interactive_example!` invocations become interactive examples,
+  and the remaining lines become code blocks;
+- adds go-to-definition links to that code,
+  using `cargo doc` with `--generate-link-to-definition`;
+- adds a "▶️ " prefix to the titles of literate Rust chapters;
+- renders `grammar` blocks;
+- turns Reference rule links into links to the Reference (see below).
+
+`mdbook-html-filenames` (`[preprocessor.html-filenames]`)
+runs only for the HTML renderer. It makes the output filenames for Literate Rust files cleaner (see below).
+
 ## Reference Rule Links
 
 This:
