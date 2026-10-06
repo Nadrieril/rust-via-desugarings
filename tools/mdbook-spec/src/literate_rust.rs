@@ -675,8 +675,8 @@ fn normalize_posix_path(path: &str) -> String {
 
 fn html_path_for_source(source_path: &str) -> String {
     let source_path = source_path.strip_prefix("book/").unwrap_or(source_path);
-    if let Some(markdown_source) = source_path.strip_suffix(".rs") {
-        format!("{markdown_source}.html")
+    if let Some(stem) = source_path.strip_suffix(".md.rs") {
+        format!("{stem}.html")
     } else {
         format!("{source_path}.html")
     }
@@ -872,12 +872,8 @@ fn after() {}
     #[test]
     fn builds_relative_book_href() {
         assert_eq!(
-            relative_href(
-                "pipeline/current.md.html",
-                "language/other.md.html",
-                "target",
-            ),
-            "../language/other.md.html#target",
+            relative_href("pipeline/current.html", "language/other.html", "target",),
+            "../language/other.html#target",
         );
     }
 }

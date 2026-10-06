@@ -9,6 +9,7 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 use std::process::Command;
 
+pub mod html_filenames;
 mod literate_rust;
 
 const REFERENCE_ROOT: &str = "https://doc.rust-lang.org/reference/";
