@@ -272,6 +272,13 @@ impl Printer {
     fn path_expression(&mut self, path: &PathExpression) {
         match path {
             PathExpression::SingleSegment(segment) => self.token(segment),
+            PathExpression::CrateRelative(segments) => {
+                self.token("crate");
+                for segment in segments {
+                    self.token("::");
+                    self.token(segment);
+                }
+            }
         }
     }
 
@@ -608,6 +615,9 @@ impl Display for PathExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             PathExpression::SingleSegment(identifier) => write!(f, "{identifier}"),
+            PathExpression::CrateRelative(segments) => {
+                write!(f, "crate::{}", segments.iter().format("::"))
+            }
         }
     }
 }

@@ -299,6 +299,9 @@ impl FunctionTranslator {
             language::ExpressionKind::Path(language::PathExpression::SingleSegment(segment)) => Ok(
                 rust_expr::Expr::Place(Self::translate_single_segment_path(segment)),
             ),
+            language::ExpressionKind::Path(_) => Err(Rejection::unimplemented(
+                "formality translation expects non-callee path expressions to be single identifiers",
+            )),
             language::ExpressionKind::Call(call) => Ok(rust_expr::Expr::Call {
                 callee: Arc::new(self.translate_expression(&call.callee)?),
                 args: call
@@ -355,6 +358,9 @@ impl FunctionTranslator {
             language::ExpressionKind::Path(language::PathExpression::SingleSegment(segment)) => {
                 Ok(Self::translate_single_segment_path(segment))
             }
+            language::ExpressionKind::Path(_) => Err(Rejection::unimplemented(
+                "formality translation expects place path expressions to be single identifiers",
+            )),
             language::ExpressionKind::TupleIndexing(tuple_indexing) => {
                 self.translate_tuple_indexing(tuple_indexing)
             }
@@ -506,6 +512,9 @@ fn expression_path(expression: &language::Expression) -> Result<&str, Rejection>
         language::ExpressionKind::Path(language::PathExpression::SingleSegment(segment)) => {
             Ok(segment)
         }
+        language::ExpressionKind::Path(_) => Err(Rejection::unimplemented(
+            "formality translation expects callee expressions to be single identifiers",
+        )),
         language::ExpressionKind::Grouped(_) => Err(Rejection::internal_error(
             "formality translation expects grouped expressions to be desugared",
         )),
