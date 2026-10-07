@@ -300,9 +300,9 @@ impl FunctionTranslator {
             language::ExpressionKind::Literal(language::LiteralExpression::String(_)) => Err(
                 formality_error("formality translation does not yet support string literals"),
             ),
-            language::ExpressionKind::Path(path) => {
-                Ok(rust_expr::Expr::Place(Self::translate_simple_path(path)))
-            }
+            language::ExpressionKind::Path(language::PathExpression::SingleSegment(segment)) => Ok(
+                rust_expr::Expr::Place(Self::translate_single_segment_path(segment)),
+            ),
             language::ExpressionKind::Call(call) => Ok(rust_expr::Expr::Call {
                 callee: Arc::new(self.translate_expression(&call.callee)?),
                 args: call
@@ -356,7 +356,9 @@ impl FunctionTranslator {
         expression: &language::Expression,
     ) -> Result<rust_expr::PlaceExpr, CompilationError> {
         match &expression.kind {
-            language::ExpressionKind::Path(path) => Ok(Self::translate_simple_path(path)),
+            language::ExpressionKind::Path(language::PathExpression::SingleSegment(segment)) => {
+                Ok(Self::translate_single_segment_path(segment))
+            }
             language::ExpressionKind::TupleIndexing(tuple_indexing) => {
                 self.translate_tuple_indexing(tuple_indexing)
             }
@@ -423,8 +425,8 @@ impl FunctionTranslator {
         })
     }
 
-    fn translate_simple_path(path: &language::PathExpression) -> rust_expr::PlaceExpr {
-        rust_expr::PlaceExpr::Var(ValueId::new(path))
+    fn translate_single_segment_path(identifier: &language::Identifier) -> rust_expr::PlaceExpr {
+        rust_expr::PlaceExpr::Var(ValueId::new(identifier))
     }
 
     fn translate_type(&mut self, ty: &language::Type) -> Result<Ty, CompilationError> {
@@ -505,7 +507,9 @@ fn translate_item_safety(safety: Option<&language::ItemSafety>) -> Safety {
 
 fn expression_path(expression: &language::Expression) -> Result<&str, CompilationError> {
     match &expression.kind {
-        language::ExpressionKind::Path(path) => Ok(path),
+        language::ExpressionKind::Path(language::PathExpression::SingleSegment(segment)) => {
+            Ok(segment)
+        }
         language::ExpressionKind::Grouped(_) => Err(formality_error(
             "formality translation expects grouped expressions to be desugared",
         )),

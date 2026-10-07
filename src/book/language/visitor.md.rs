@@ -50,6 +50,7 @@ use derive_generic_visitor::*; //#
         Mutability,
         OperatorExpression,
         OuterAttribute,
+        PathExpression,
         Pattern,
         Program,
         Statement,

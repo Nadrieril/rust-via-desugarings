@@ -4,6 +4,12 @@ use crate::language::*; //#
 //@ > This section is a work-in-progress experiment about making the book executable.
 //@
 //@ ```grammar
-//@ PathExpression -> Identifier: variable=Identifier => variable
+//@ PathExpression: segment=Identifier
+//@     => PathExpression::SingleSegment(segment)
 //@ ```
-pub type PathExpression = Identifier;
+//@
+#[derive(Debug, Clone, PartialEq, Eq)] //#
+#[derive(Drive, DriveMut)] //#
+pub enum PathExpression {
+    SingleSegment(Identifier),
+}
