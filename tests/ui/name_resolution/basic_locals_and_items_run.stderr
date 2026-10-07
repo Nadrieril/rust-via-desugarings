@@ -1,2 +1,0 @@
-a-mir-formality borrow check failed: the rule "call" at (a-mir-formality/crates/formality-rust/src/check/borrow_check/nll.rs:396:14) failed because
-  pattern `(RigidTy { name: RigidName::FnDef(fn_id), parameters }, state)` did not match value `(bool, flow_state([scope(none, None, {}, None, [], []), scope(none, None, {}, None, [(f1, bool)], [f1 : bool])], point_flow_state({}, {}), {}, {}))`
