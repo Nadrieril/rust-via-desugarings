@@ -367,9 +367,12 @@ impl FunctionTranslator {
                         "formality translation expects callees to be crate-level functions",
                     ));
                 };
-                Ok(rust_expr::Expr::Place(Self::translate_single_segment_path(
-                    name,
-                )))
+                // A plain name would refer to a local with that name if there is one in scope.
+                // a-mir-formality always resolves the turbofish form to a function.
+                Ok(rust_expr::Expr::Turbofish {
+                    id: ValueId::new(name),
+                    args: vec![],
+                })
             }
             language::ExpressionKind::Path(_) => Err(formality_error(
                 "formality translation expects callee expressions to be crate-relative paths",
