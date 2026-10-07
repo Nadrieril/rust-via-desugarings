@@ -844,7 +844,11 @@ impl<'a> Translator<'a> {
     }
 
     fn simple_path_name(path: &language::PathExpression) -> Result<&str, CompilationError> {
-        let language::PathExpression::SingleSegment(segment) = path;
+        let language::PathExpression::SingleSegment(segment) = path else {
+            return Err(minirust_error(
+                "MiniRust runner expects non-callee path expressions to be single identifiers",
+            ));
+        };
         Ok(segment)
     }
 
