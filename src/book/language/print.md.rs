@@ -229,7 +229,7 @@ impl Printer {
         self.attrs(&expression.attrs);
         match &expression.kind {
             ExpressionKind::Literal(literal) => self.display(literal),
-            ExpressionKind::Path(path) => self.token(path),
+            ExpressionKind::Path(path) => self.path_expression(path),
             ExpressionKind::Operator(operator) => self.operator_expression(operator),
             ExpressionKind::Virtual(virtual_expression) => {
                 self.virtual_expression(virtual_expression)
@@ -267,6 +267,12 @@ impl Printer {
             self.token(",");
         }
         self.token(")");
+    }
+
+    fn path_expression(&mut self, path: &PathExpression) {
+        match path {
+            PathExpression::SingleSegment(segment) => self.token(segment),
+        }
     }
 
     fn if_expression(&mut self, if_expression: &IfExpression) {
@@ -594,6 +600,14 @@ impl Display for LiteralExpression {
             LiteralExpression::String(value) => write!(f, "\"{value}\""),
             LiteralExpression::Integer(value) => write!(f, "{value}"),
             LiteralExpression::Bool(value) => write!(f, "{value}"),
+        }
+    }
+}
+
+impl Display for PathExpression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            PathExpression::SingleSegment(identifier) => write!(f, "{identifier}"),
         }
     }
 }

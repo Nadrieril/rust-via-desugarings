@@ -836,7 +836,8 @@ impl<'a> Translator<'a> {
     }
 
     fn simple_path_name(path: &language::PathExpression) -> Result<&str, Rejection> {
-        Ok(path)
+        let language::PathExpression::SingleSegment(segment) = path;
+        Ok(segment)
     }
 
     fn pattern_name(pattern: &language::Pattern) -> Result<&str, Rejection> {
