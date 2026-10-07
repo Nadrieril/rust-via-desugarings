@@ -210,19 +210,21 @@ impl FunctionTranslator {
             return Ok(());
         }
 
-        if let language::ExpressionKind::Call(call) = &expression.kind {
-            if expression_path(&call.callee)? == "print" {
-                if call.args.len() != 1 {
-                    return Err(formality_error(format!(
-                        "`print` expects one argument, got {}",
-                        call.args.len()
-                    )));
-                }
-                stmts.push(rust_expr::Stmt::Print {
-                    expr: self.translate_expression(&call.args[0])?,
-                });
-                return Ok(());
+        if let language::ExpressionKind::Call(call) = &expression.kind
+            && let language::ExpressionKind::Path(language::PathExpression::CrateRelative(segments)) =
+                &call.callee.kind
+            && segments.as_slice() == ["print"]
+        {
+            if call.args.len() != 1 {
+                return Err(formality_error(format!(
+                    "`print` expects one argument, got {}",
+                    call.args.len()
+                )));
             }
+            stmts.push(rust_expr::Stmt::Print {
+                expr: self.translate_expression(&call.args[0])?,
+            });
+            return Ok(());
         }
 
         stmts.push(rust_expr::Stmt::Expr {
@@ -307,7 +309,7 @@ impl FunctionTranslator {
                 "formality translation expects non-callee path expressions to be single identifiers",
             )),
             language::ExpressionKind::Call(call) => Ok(rust_expr::Expr::Call {
-                callee: Arc::new(self.translate_expression(&call.callee)?),
+                callee: Arc::new(self.translate_callee_expression(&call.callee)?),
                 args: call
                     .args
                     .iter()
@@ -351,6 +353,33 @@ impl FunctionTranslator {
             language::ExpressionKind::Virtual(virtual_expression) => {
                 self.translate_virtual_expression(virtual_expression)
             }
+        }
+    }
+
+    fn translate_callee_expression(
+        &mut self,
+        expression: &language::Expression,
+    ) -> Result<rust_expr::Expr, CompilationError> {
+        match &expression.kind {
+            language::ExpressionKind::Path(language::PathExpression::CrateRelative(segments)) => {
+                let [name] = segments.as_slice() else {
+                    return Err(formality_error(
+                        "formality translation expects callees to be crate-level functions",
+                    ));
+                };
+                Ok(rust_expr::Expr::Place(Self::translate_single_segment_path(
+                    name,
+                )))
+            }
+            language::ExpressionKind::Path(_) => Err(formality_error(
+                "formality translation expects callee expressions to be crate-relative paths",
+            )),
+            language::ExpressionKind::Grouped(_) => Err(formality_error(
+                "formality translation expects grouped expressions to be desugared",
+            )),
+            other => Err(formality_error(format!(
+                "formality translation expected a path expression, got `{other:?}`"
+            ))),
         }
     }
 
@@ -508,23 +537,6 @@ fn translate_item_safety(safety: Option<&language::ItemSafety>) -> Safety {
     match safety {
         Some(language::ItemSafety::Unsafe) => Safety::Unsafe,
         Some(language::ItemSafety::Safe) | None => Safety::Safe,
-    }
-}
-
-fn expression_path(expression: &language::Expression) -> Result<&str, CompilationError> {
-    match &expression.kind {
-        language::ExpressionKind::Path(language::PathExpression::SingleSegment(segment)) => {
-            Ok(segment)
-        }
-        language::ExpressionKind::Path(_) => Err(formality_error(
-            "formality translation expects callee expressions to be single identifiers",
-        )),
-        language::ExpressionKind::Grouped(_) => Err(formality_error(
-            "formality translation expects grouped expressions to be desugared",
-        )),
-        other => Err(formality_error(format!(
-            "formality translation expected a path expression, got `{other:?}`"
-        ))),
     }
 }
 

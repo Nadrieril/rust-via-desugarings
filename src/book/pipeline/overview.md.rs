@@ -29,6 +29,7 @@ macro_rules! desugaring_error {
 }
 
 pub fn desugar(mut program: Program) -> Result<Program, CompilationError> {
+    name_resolution::desugar_names(&mut program)?;
     funsig::desugar_fun_sigs(&mut program)?;
     misc_expr_desugarings::misc_expr_desugarings(&mut program)?;
     expr_unnesting::desugar_nested_exprs(&mut program)?;
@@ -51,3 +52,5 @@ pub mod funsig;
 pub mod minirust;
 #[path = "misc-expr-desugarings.md.rs"]
 pub mod misc_expr_desugarings;
+#[path = "name-resolution.md.rs"]
+pub mod name_resolution;

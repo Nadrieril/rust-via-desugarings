@@ -1,4 +1,4 @@
 fn f() -> () {
-    foo;
+    crate::foo;
 }
 fn foo() -> () {}

@@ -459,7 +459,7 @@ impl<'a> Translator<'a> {
         &mut self,
         call: &language::CallExpression,
     ) -> Result<(), CompilationError> {
-        let name = Self::expression_path(&call.callee)?;
+        let name = Self::callee_name(&call.callee)?;
         if name != "print" {
             return self.translate_user_function_call(name, call);
         }
@@ -831,12 +831,22 @@ impl<'a> Translator<'a> {
         }
     }
 
-    fn expression_path(expression: &language::Expression) -> Result<&str, CompilationError> {
+    fn callee_name(expression: &language::Expression) -> Result<&str, CompilationError> {
         match &expression.kind {
             language::ExpressionKind::Grouped(_) => Err(minirust_error(
                 "MiniRust runner expects grouped expressions to be desugared",
             )),
-            language::ExpressionKind::Path(path) => Self::simple_path_name(path),
+            language::ExpressionKind::Path(language::PathExpression::CrateRelative(segments)) => {
+                let [name] = segments.as_slice() else {
+                    return Err(minirust_error(
+                        "MiniRust runner expects callees to be crate-level functions",
+                    ));
+                };
+                Ok(name)
+            }
+            language::ExpressionKind::Path(_) => Err(minirust_error(
+                "MiniRust runner expects callee expressions to be crate-relative paths",
+            )),
             other => Err(minirust_error(format!(
                 "MiniRust runner expected a path expression, got `{other:?}`"
             ))),

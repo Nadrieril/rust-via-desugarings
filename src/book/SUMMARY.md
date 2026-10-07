@@ -23,6 +23,7 @@
   - [Visiting](language/visitor.md.rs)
 - [Desugaring Steps](pipeline/overview.md.rs)
   - [Name Resolution & Macro Expansion](pipeline/name-resolution-macro-expansion.md)
+    - [Name Resolution](pipeline/name-resolution.md.rs)
   - [Function Signature Desugarings](pipeline/funsig.md.rs)
   - [Misc Expression Desugarings](pipeline/misc-expr-desugarings.md.rs)
   - [Control-flow Desugarings](pipeline/control-flow.md)

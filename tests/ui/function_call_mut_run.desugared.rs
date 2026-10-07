@@ -4,6 +4,6 @@ fn foo(x: &mut bool) -> () {
 fn main() -> () {
     let x: bool;
     x = false;
-    foo(&mut x);
-    print(place_to_value!(x));
+    crate::foo(&mut x);
+    crate::print(place_to_value!(x));
 }
