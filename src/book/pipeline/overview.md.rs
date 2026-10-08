@@ -42,6 +42,7 @@ pub fn desugar(mut program: Program) -> Result<Program, Rejection> {
     name_resolution::checks_that_depend_on_resolution(&program)?;
     name_resolution::path_expression_normalisation(&mut program)?;
     name_resolution::nested_function_renaming(&mut program)?;
+    nested_item_hoisting::nested_item_hoisting(&mut program)?;
     funsig::desugar_fun_sigs(&mut program)?;
     misc_expr_desugarings::misc_expr_desugarings(&mut program)?;
     expr_unnesting::desugar_nested_exprs(&mut program)?;
@@ -66,3 +67,5 @@ pub mod minirust;
 pub mod misc_expr_desugarings;
 #[path = "name-resolution.md.rs"]
 pub mod name_resolution;
+#[path = "nested-item-hoisting.md.rs"]
+pub mod nested_item_hoisting;

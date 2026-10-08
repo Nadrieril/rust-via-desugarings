@@ -1,5 +1,5 @@
 fn main() -> () {
-    fn main__print(x: bool) -> () {}
-    main__print(false);
+    crate::main__print(false);
     crate::print(true);
 }
+fn main__print(x: bool) -> () {}

@@ -12,11 +12,11 @@ fn main() -> () {
     d = (place_to_value!(crate::foo), {
         place_to_value!(crate::main)
     });
-    fn main__bar() -> () {}
     let e;
-    e = place_to_value!(main__bar);
+    e = place_to_value!(crate::main__bar);
     let f;
-    f = (place_to_value!(main__bar), {
-        place_to_value!(main__bar)
+    f = (place_to_value!(crate::main__bar), {
+        place_to_value!(crate::main__bar)
     });
 }
+fn main__bar() -> () {}

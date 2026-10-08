@@ -1,4 +1,4 @@
 fn main() -> () {
-    main__foo();
-    fn main__foo() -> () {}
+    crate::main__foo();
 }
+fn main__foo() -> () {}
