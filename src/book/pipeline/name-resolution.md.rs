@@ -66,13 +66,34 @@
 //@ Single-segment path expressions which resolve to crate-level items are rewritten to be
 //@ crate-relative.
 //@
+//@ ## Nested function renaming
+//@
+//@ Each nested function is renamed to a fresh name, used nowhere else in the program (its
+//@ "unambiguous name").
+//@ Path expressions which resolve to those functions are rewritten to follow the rename (these are
+//@ necessarily single-segment path expressions).
+//@
 //@ ## After these steps
 //@ - Every path expression resolves.
-//@ - No two crate-level items have the same name.
+//@ - No two items have the same name.
+//@ - Every nested item has a name which is not used for any local.
 //@ - Every path resolving to a crate-level item is crate-relative.
-//@ - No path expression in a nested function resolves to a local of an enclosing function.
+//@ - Every single-segment path expression contains either
+//@   - the name of a local introduced in the same function; or
+//@   - the unambiguous name of a nested function.
+//@
+//@ (It follows that no path expression in a nested function resolves to a local of an enclosing
+//@ function.)
 //@
 //@ ## Discussion
+//@
+//@ Justification that nested function renaming preserves the program's meaning:
+//@ - the rewritten path expressions still resolve to the function because the new name is fresh, so
+//@   it can have no candidates other than the nested function it used to resolve to.
+//@ - no other path expression's resolution changes because:
+//@   - there were no path expressions using the new name because it is fresh
+//@   - path expressions using the old name have the same resolution because removing a candidate which
+//@     wasn't chosen can't change the choice.
 //@
 //@ Treating the function parameters as living in a block outside the body means that an item in a
 //@ function's body shadows that function's parameters.
@@ -82,11 +103,17 @@
 //@ this happens are rejected). It follows that items in function bodies can't be freely re-ordered
 //@ with statements.
 //@
+//@ TODO: When we rename a function, do we have to preserve the original name for the sake of things
+//@ like `std::any::type_name`? Could we introduce an attribute to hold it?
+//@
 //@ > The rest of this section is a work-in-progress experiment about making the book executable.
 //@ >
 //@ > For the sake of the runners, it pretends there's always a crate-level function named `print`.
+//@ >
+//@ > The unambiguous names have the form `outer__inner`, with a further underscore and numeric
+//@ > suffix added if necessary to make an otherwise-unused name.
 
-use std::collections::BTreeSet; //#
+use std::collections::{BTreeMap, BTreeSet, btree_map::Entry}; //#
 
 use derive_generic_visitor::*; //#
 
@@ -114,6 +141,60 @@ interactive_example! {
         }
         let greet = true;
         print(greet);
+    }
+}
+
+/// Identifiers which are in use, so that fresh names can be chosen to avoid them.
+#[derive(Default)]
+struct UsedNames {
+    seen: BTreeSet<Identifier>,
+}
+
+impl UsedNames {
+    /// Returns a UsedNames populated with the identifiers used in the program.
+    ///
+    /// It treats identifiers which appear in expressions as in use, not just identifiers which
+    /// appear as the names of entities.
+    fn for_program(program: &Program) -> Self {
+        let mut used_names = UsedNames::default();
+        // We pretend there is always a crate-level function named `print`.
+        used_names.register("print".into());
+
+        program.visit_all_infallible(|function: &Function| {
+            used_names.register(function.name.clone());
+        });
+        program.visit_all_infallible(|path_expr: &PathExpression| match path_expr {
+            PathExpression::SingleSegment(identifier) => {
+                used_names.register(identifier.clone());
+            }
+            PathExpression::CrateRelative(segments) => {
+                for segment in segments {
+                    used_names.register(segment.clone());
+                }
+            }
+        });
+        program.visit_all_infallible(|pattern: &Pattern| match pattern {
+            Pattern::Identifier(identifier) => used_names.register(identifier.clone()),
+            Pattern::Wildcard => {}
+        });
+        used_names
+    }
+
+    /// Records an identifier as being in use.
+    fn register(&mut self, name: Identifier) {
+        self.seen.insert(name);
+    }
+
+    /// Returns a previously-unused identifier.
+    ///
+    /// If `base` isn't in use, returns it unchanged. Otherwise adds a numeric suffix.
+    ///
+    /// Records the returned identifier as being in use.
+    fn fresh_name(&mut self, base: &Identifier) -> Identifier {
+        std::iter::once(base.to_owned())
+            .chain((0..).map(|n| format!("{base}_{n}")))
+            .find(|candidate| self.seen.insert(candidate.clone()))
+            .expect("fresh_name should not run out of numbers")
     }
 }
 
@@ -153,9 +234,9 @@ fn parameter_names(function: &Function) -> Result<Vec<Identifier>, CompilationEr
 }
 
 /// What a name means within a single block scope.
-enum Binding {
+enum Binding<'a> {
     Local,
-    Item,
+    Item(&'a Identifier),
 }
 
 /// The names defined in a single block expression (or set of function parameters).
@@ -164,56 +245,65 @@ struct BlockScope {
     /// Names of the locals visible in the scope at the current point of the walk
     /// (or names of the function parameters).
     locals: BTreeSet<Identifier>,
-    /// Names of the items defined in this scope.
-    items: BTreeSet<Identifier>,
-    /// How many functions the block is inside.
-    function_depth: usize,
+    /// Maps the name originally used in this scope to the new (fresh) name of the entity.
+    items: BTreeMap<Identifier, Identifier>,
+    /// Unambiguous name of the function the block is in.
+    function_name: Identifier,
 }
 
 impl BlockScope {
-    fn add_item(&mut self, name: Identifier) -> Result<(), CompilationError> {
-        if !self.items.insert(name.clone()) {
-            return Err(CompilationError::Desugaring(format!(
-                "Duplicate block-level definition of `{name}`"
-            )));
+    fn add_item(
+        &mut self,
+        source_name: Identifier,
+        unambiguous_name: Identifier,
+    ) -> Result<(), CompilationError> {
+        match self.items.entry(source_name) {
+            Entry::Occupied(entry) => Err(CompilationError::Desugaring(format!(
+                "Duplicate block-level definition of `{}`",
+                entry.key()
+            ))),
+            Entry::Vacant(entry) => {
+                entry.insert(unambiguous_name);
+                Ok(())
+            }
         }
-        Ok(())
     }
 
     fn add_local(&mut self, source_name: Identifier) {
         self.locals.insert(source_name);
     }
 
-    fn resolve(&self, name: &Identifier) -> Option<Binding> {
+    fn resolve(&self, name: &Identifier) -> Option<Binding<'_>> {
         if self.locals.contains(name) {
             return Some(Binding::Local);
         }
-        if self.items.contains(name) {
-            return Some(Binding::Item);
+        if let Some(fresh_name) = self.items.get(name) {
+            return Some(Binding::Item(fresh_name));
         }
         None
     }
 }
 
 /// Information about how a name resolves from a particular position in the walk.
-enum Resolution {
+enum Resolution<'a> {
     /// A local from the walk's current function.
     Local,
     /// A local from a function enclosing the walk's current function.
     CapturedLocal,
-    /// An item defined in a block.
-    BlockItem,
+    /// An item defined in a block, together with its proposed unambiguous name.
+    BlockItem(&'a Identifier),
     /// An item defined at crate level.
     CrateItem,
 }
 
-/// Tracks which names are visible during an AST walk.
+/// Tracks which names are visible during an AST walk, and the chosen unambiguous names for items
+/// which the walk renames.
 #[derive(Default)]
 struct Scopes {
     crate_level_items: BTreeSet<Identifier>,
     block_scopes: Vec<BlockScope>,
-    /// How many functions the walk is inside.
-    function_depth: usize,
+    /// The unambiguous names of the functions the walk is inside, innermost last.
+    functions: Vec<Identifier>,
 }
 
 impl Scopes {
@@ -232,9 +322,9 @@ impl Scopes {
         self.crate_level_items.contains(name)
     }
 
-    /// Enters a function, given the names bound by its parameters.
-    fn enter_function(&mut self, parameter_names: Vec<Identifier>) {
-        self.function_depth += 1;
+    /// Enters a function, given its unambiguous name and the names bound by its parameters.
+    fn enter_function(&mut self, name: Identifier, parameter_names: Vec<Identifier>) {
+        self.functions.push(name);
         // We treat function parameters as belonging to a block scope of their own.
         self.enter_block();
         for identifier in parameter_names {
@@ -245,13 +335,22 @@ impl Scopes {
     /// Undoes the most recent enter_function().
     fn leave_function(&mut self) {
         self.leave_block();
-        self.function_depth -= 1;
+        self.functions
+            .pop()
+            .expect("there should be an enclosing function");
+    }
+
+    /// Returns the unambiguous name of the innermost function the walk is inside.
+    fn enclosing_function(&self) -> &Identifier {
+        self.functions
+            .last()
+            .expect("there should be an enclosing function")
     }
 
     /// Enters a new block scope.
     fn enter_block(&mut self) {
         self.block_scopes.push(BlockScope {
-            function_depth: self.function_depth,
+            function_name: self.enclosing_function().clone(),
             ..Default::default()
         })
     }
@@ -264,12 +363,19 @@ impl Scopes {
     }
 
     /// Records an entry for an item defined in the current block scope.
-    fn add_item(&mut self, name: Identifier) -> Result<(), CompilationError> {
+    ///
+    /// `source_name` is the name the item had at the start of this desugaring.
+    /// `unambiguous_name` is the name this desugaring is renaming it to.
+    fn add_item(
+        &mut self,
+        source_name: Identifier,
+        unambiguous_name: Identifier,
+    ) -> Result<(), CompilationError> {
         let block_scope = self
             .block_scopes
             .last_mut()
             .expect("there should be a current block scope");
-        block_scope.add_item(name)
+        block_scope.add_item(source_name, unambiguous_name)
     }
 
     /// Records an entry for a local bound at this point in the current block scope.
@@ -282,17 +388,17 @@ impl Scopes {
     }
 
     /// Resolves a name against the block scopes and crate-level items.
-    fn resolve(&self, name: &Identifier) -> Option<Resolution> {
+    fn resolve(&self, name: &Identifier) -> Option<Resolution<'_>> {
         self.block_scopes
             .iter()
             .rev()
             .find_map(|block_scope| {
                 Some(match block_scope.resolve(name)? {
-                    Binding::Local if block_scope.function_depth != self.function_depth => {
+                    Binding::Local if &block_scope.function_name != self.enclosing_function() => {
                         Resolution::CapturedLocal
                     }
                     Binding::Local => Resolution::Local,
-                    Binding::Item => Resolution::BlockItem,
+                    Binding::Item(fresh_name) => Resolution::BlockItem(fresh_name),
                 })
             })
             .or_else(|| {
@@ -306,6 +412,8 @@ pub fn desugar_names(program: &mut Program) -> Result<(), CompilationError> {
     struct Walker {
         /// Information about what's currently in scope.
         scopes: Scopes,
+        /// Identifiers in use in the whole program.
+        used_names: UsedNames,
     }
 
     impl Visitor for Walker {
@@ -315,8 +423,11 @@ pub fn desugar_names(program: &mut Program) -> Result<(), CompilationError> {
     impl VisitAstMut for Walker {
         /// Keeps track of which function the walk is inside.
         fn visit_function(&mut self, function: &mut Function) -> ControlFlow<Self::Break> {
-            self.scopes
-                .enter_function(parameter_names(function).map_or_else(Break, Continue)?);
+            // At this stage function.name is its unambiguous name.
+            self.scopes.enter_function(
+                function.name.clone(),
+                parameter_names(function).map_or_else(Break, Continue)?,
+            );
             self.visit_inner(function)?;
             self.scopes.leave_function();
             Continue(())
@@ -324,8 +435,9 @@ pub fn desugar_names(program: &mut Program) -> Result<(), CompilationError> {
 
         /// For each block expression:
         /// - keeps track of which block the walk is inside
-        /// - before continuing the walk inside the block, records which nested items are in the
-        ///   block.
+        /// - before continuing the walk inside the block:
+        ///   - renames each function to its unambiguous name
+        ///   - records which nested items are in the block, with their chosen unambiguous names.
         fn visit_block_expression(
             &mut self,
             block: &mut BlockExpression,
@@ -333,8 +445,15 @@ pub fn desugar_names(program: &mut Program) -> Result<(), CompilationError> {
             self.scopes.enter_block();
             for statement in &mut block.statements {
                 if let Statement::Item(nested_item) = statement {
-                    let ItemKind::Function(function) = &nested_item.kind;
-                    if let Err(e) = self.scopes.add_item(function.name.clone()) {
+                    let ItemKind::Function(function) = &mut nested_item.kind;
+                    let unambiguous_name = self.used_names.fresh_name(&format!(
+                        "{}__{}",
+                        self.scopes.enclosing_function(),
+                        function.name
+                    ));
+                    let source_name =
+                        std::mem::replace(&mut function.name, unambiguous_name.clone());
+                    if let Err(e) = self.scopes.add_item(source_name, unambiguous_name) {
                         return Break(e);
                     }
                 }
@@ -357,6 +476,8 @@ pub fn desugar_names(program: &mut Program) -> Result<(), CompilationError> {
         }
 
         /// Checks that names resolve and rewrites path expressions as necessary:
+        /// - rewrites single-segment path expressions which resolve to functions which are being
+        ///   renamed
         /// - rewrites single-segment path expressions which resolve to crate-level items
         ///   as crate-relative path expressions
         /// - rejects path expressions which resolve to a local from an enclosing function
@@ -367,7 +488,10 @@ pub fn desugar_names(program: &mut Program) -> Result<(), CompilationError> {
         ) -> ControlFlow<Self::Break> {
             match path_expr {
                 PathExpression::SingleSegment(name) => match self.scopes.resolve(name) {
-                    Some(Resolution::Local | Resolution::BlockItem) => {}
+                    Some(Resolution::Local) => {}
+                    Some(Resolution::BlockItem(unambiguous_name)) => {
+                        *path_expr = PathExpression::SingleSegment(unambiguous_name.clone());
+                    }
                     Some(Resolution::CrateItem) => {
                         *path_expr = PathExpression::CrateRelative(vec![name.clone()]);
                     }
@@ -411,6 +535,9 @@ pub fn desugar_names(program: &mut Program) -> Result<(), CompilationError> {
     }
 
     // Walk all bodies performing the desugaring.
-    let mut walker = Walker { scopes };
+    let mut walker = Walker {
+        scopes,
+        used_names: UsedNames::for_program(program),
+    };
     walker.visit_program(program).continue_ok()
 }

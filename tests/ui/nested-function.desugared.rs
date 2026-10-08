@@ -1,3 +1,3 @@
 fn foo() -> () {
-    fn bar() -> () {}
+    fn foo__bar() -> () {}
 }
