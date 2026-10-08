@@ -24,6 +24,7 @@
 - [Desugaring Steps](pipeline/overview.md.rs)
   - [Name Resolution & Macro Expansion](pipeline/name-resolution-macro-expansion.md)
     - [Name Resolution](pipeline/name-resolution.md.rs)
+    - [Nested-Item Hoisting](pipeline/nested-item-hoisting.md.rs)
   - [Function Signature Desugarings](pipeline/funsig.md.rs)
   - [Misc Expression Desugarings](pipeline/misc-expr-desugarings.md.rs)
   - [Control-flow Desugarings](pipeline/control-flow.md)
