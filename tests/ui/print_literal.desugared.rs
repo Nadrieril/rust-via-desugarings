@@ -1,3 +1,3 @@
 fn main() -> () {
-    print(42);
+    crate::print(42);
 }
