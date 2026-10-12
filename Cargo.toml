@@ -43,5 +43,3 @@ walkdir = "2.5.0"
 libtest-mimic = "0.8.2"
 walkdir = "2.5.0"
 
-[package.metadata.rust-analyzer]
-rustc_private = true
