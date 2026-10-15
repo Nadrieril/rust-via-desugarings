@@ -210,19 +210,21 @@ impl FunctionTranslator {
             return Ok(());
         }
 
-        if let language::ExpressionKind::Call(call) = &expression.kind {
-            if expression_path(&call.callee)? == "print" {
-                if call.args.len() != 1 {
-                    return Err(formality_error(format!(
-                        "`print` expects one argument, got {}",
-                        call.args.len()
-                    )));
-                }
-                stmts.push(rust_expr::Stmt::Print {
-                    expr: self.translate_expression(&call.args[0])?,
-                });
-                return Ok(());
+        if let language::ExpressionKind::Call(call) = &expression.kind
+            && let language::ExpressionKind::Path(language::PathExpression::CrateRelative(segments)) =
+                &call.callee.kind
+            && segments.as_slice() == ["print"]
+        {
+            if call.args.len() != 1 {
+                return Err(formality_error(format!(
+                    "`print` expects one argument, got {}",
+                    call.args.len()
+                )));
             }
+            stmts.push(rust_expr::Stmt::Print {
+                expr: self.translate_expression(&call.args[0])?,
+            });
+            return Ok(());
         }
 
         stmts.push(rust_expr::Stmt::Expr {
@@ -300,11 +302,14 @@ impl FunctionTranslator {
             language::ExpressionKind::Literal(language::LiteralExpression::String(_)) => Err(
                 formality_error("formality translation does not yet support string literals"),
             ),
-            language::ExpressionKind::Path(path) => {
-                Ok(rust_expr::Expr::Place(Self::translate_simple_path(path)))
-            }
+            language::ExpressionKind::Path(language::PathExpression::SingleSegment(segment)) => Ok(
+                rust_expr::Expr::Place(Self::translate_single_segment_path(segment)),
+            ),
+            language::ExpressionKind::Path(_) => Err(formality_error(
+                "formality translation expects non-callee path expressions to be single identifiers",
+            )),
             language::ExpressionKind::Call(call) => Ok(rust_expr::Expr::Call {
-                callee: Arc::new(self.translate_expression(&call.callee)?),
+                callee: Arc::new(self.translate_callee_expression(&call.callee)?),
                 args: call
                     .args
                     .iter()
@@ -351,12 +356,47 @@ impl FunctionTranslator {
         }
     }
 
+    fn translate_callee_expression(
+        &mut self,
+        expression: &language::Expression,
+    ) -> Result<rust_expr::Expr, CompilationError> {
+        match &expression.kind {
+            language::ExpressionKind::Path(language::PathExpression::CrateRelative(segments)) => {
+                let [name] = segments.as_slice() else {
+                    return Err(formality_error(
+                        "formality translation expects callees to be crate-level functions",
+                    ));
+                };
+                // A plain name would refer to a local with that name if there is one in scope.
+                // a-mir-formality always resolves the turbofish form to a function.
+                Ok(rust_expr::Expr::Turbofish {
+                    id: ValueId::new(name),
+                    args: vec![],
+                })
+            }
+            language::ExpressionKind::Path(_) => Err(formality_error(
+                "formality translation expects callee expressions to be crate-relative paths",
+            )),
+            language::ExpressionKind::Grouped(_) => Err(formality_error(
+                "formality translation expects grouped expressions to be desugared",
+            )),
+            other => Err(formality_error(format!(
+                "formality translation expected a path expression, got `{other:?}`"
+            ))),
+        }
+    }
+
     fn translate_place(
         &mut self,
         expression: &language::Expression,
     ) -> Result<rust_expr::PlaceExpr, CompilationError> {
         match &expression.kind {
-            language::ExpressionKind::Path(path) => Ok(Self::translate_simple_path(path)),
+            language::ExpressionKind::Path(language::PathExpression::SingleSegment(segment)) => {
+                Ok(Self::translate_single_segment_path(segment))
+            }
+            language::ExpressionKind::Path(_) => Err(formality_error(
+                "formality translation expects place path expressions to be single identifiers",
+            )),
             language::ExpressionKind::TupleIndexing(tuple_indexing) => {
                 self.translate_tuple_indexing(tuple_indexing)
             }
@@ -423,8 +463,8 @@ impl FunctionTranslator {
         })
     }
 
-    fn translate_simple_path(path: &language::PathExpression) -> rust_expr::PlaceExpr {
-        rust_expr::PlaceExpr::Var(ValueId::new(path))
+    fn translate_single_segment_path(identifier: &language::Identifier) -> rust_expr::PlaceExpr {
+        rust_expr::PlaceExpr::Var(ValueId::new(identifier))
     }
 
     fn translate_type(&mut self, ty: &language::Type) -> Result<Ty, CompilationError> {
@@ -500,18 +540,6 @@ fn translate_item_safety(safety: Option<&language::ItemSafety>) -> Safety {
     match safety {
         Some(language::ItemSafety::Unsafe) => Safety::Unsafe,
         Some(language::ItemSafety::Safe) | None => Safety::Safe,
-    }
-}
-
-fn expression_path(expression: &language::Expression) -> Result<&str, CompilationError> {
-    match &expression.kind {
-        language::ExpressionKind::Path(path) => Ok(path),
-        language::ExpressionKind::Grouped(_) => Err(formality_error(
-            "formality translation expects grouped expressions to be desugared",
-        )),
-        other => Err(formality_error(format!(
-            "formality translation expected a path expression, got `{other:?}`"
-        ))),
     }
 }
 

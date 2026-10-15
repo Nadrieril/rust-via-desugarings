@@ -1,9 +1,9 @@
 fn main() -> () {
     if false {
-        print(false);
+        crate::print(false);
     } else if true {
-        print(true);
+        crate::print(true);
     } else {
-        print(false);
+        crate::print(false);
     }
 }

@@ -2,6 +2,12 @@
 //@
 //@ Expressions can be categorized into two kinds: "value expressions" denote values, while
 //@ "place expressions" denote memory locations [ref:expr.place-value].
+//@
+//@ ## Preconditions
+//@
+//@ - Path expressions which resolve to items are in crate-relative form.
+//@
+//@ (This is promised by [Nested-item hoisting](nested-item-hoisting.md.rs).)
 use crate::CompilationError; //#
 use crate::interactive_example; //#
 use crate::language::*; //#
@@ -14,7 +20,13 @@ impl Expression {
     fn categorize(&self) -> ExprCategory {
         match &self.kind {
             //@ These are all the place expressions [ref:expr.place-value.place-expr-kinds]:
-            ExpressionKind::Path(_) => ExprCategory::Place,
+            ExpressionKind::Path(path) => match path {
+                //@ A path expression is a place expression iff it resolves to a local or static variable.
+                //@ By the precondition, paths which resolve to functions are in crate-relative form
+                //@ (paths which resolve to locals can never be crate-relative).
+                PathExpression::SingleSegment(_) => ExprCategory::Place,
+                PathExpression::CrateRelative(_) => ExprCategory::Value,
+            },
             ExpressionKind::TupleIndexing(..) => ExprCategory::Place,
             ExpressionKind::Operator(OperatorExpression::Dereference(_)) => ExprCategory::Place,
             ExpressionKind::Virtual(VirtualExpression::ValueToPlaceCoercion(_)) => {

@@ -1,0 +1,1 @@
+MiniRust runner only supports function calls as statements, got ` crate::f1()`

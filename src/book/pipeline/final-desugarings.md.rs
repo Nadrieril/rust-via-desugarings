@@ -43,7 +43,10 @@ fn split_let_initializers(block: &mut BlockExpression) {
                 else_branch: None,
             });
             let assignment = Expression::new(ExpressionKind::Operator(Box::new(
-                OperatorExpression::Assignment(Expression::new(ExpressionKind::Path(name)), value),
+                OperatorExpression::Assignment(
+                    Expression::new(ExpressionKind::Path(PathExpression::SingleSegment(name))),
+                    value,
+                ),
             )));
             block.statements.push(Statement::Expr(assignment));
         } else {
