@@ -51,12 +51,10 @@ fn make_relative_link_map(grammar: &Grammar, chapter_path: &Path) -> HashMap<Str
 
 fn html_path(path: &Path) -> String {
     let path = path.display().to_string().replace('\\', "/");
-    if let Some(path) = path.strip_suffix(".md.rs") {
-        // mdBook rewrites raw HTML hrefs containing a literal `.md`, and would
-        // turn `chapter.md.html` into `chapter.html`. Escape the dot so the
-        // browser still resolves the final `chapter.md.html` file.
-        format!("{path}%2Emd.html")
-    } else if let Some(path) = path.strip_suffix(".md") {
+    if let Some(path) = path
+        .strip_suffix(".md.rs")
+        .or_else(|| path.strip_suffix(".md"))
+    {
         format!("{path}.html")
     } else {
         path
@@ -207,6 +205,6 @@ Rule: Other => Other
 
         let rendered = render_chapter(&grammar, source, Path::new("language/current.md.rs"));
 
-        assert!(rendered.contains("href=\"other%2Emd.html#grammar-Other\""));
+        assert!(rendered.contains("href=\"other.html#grammar-Other\""));
     }
 }

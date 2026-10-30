@@ -29,3 +29,8 @@ optional = true
 [preprocessor.spec]
 before = [ "links", "backlinks" ]
 command = "cargo run --quiet --manifest-path ../tools/mdbook-spec/Cargo.toml --bin mdbook-spec"
+
+[preprocessor.html-filenames]
+after = [ "spec", "backlinks" ]
+renderers = [ "html" ]
+command = "cargo run --quiet --manifest-path ../tools/mdbook-spec/Cargo.toml --bin mdbook-html-filenames"
