@@ -65,11 +65,31 @@ pub mod parser {
 
 #[derive(Debug)]
 pub enum CompilationError {
+    /// Indicates that the program doesn't match the grammar used in the executable part of this
+    /// book.
+    ///
+    /// This might mean the program isn't valid Rust, or that it uses a part of the language which
+    /// isn't yet modelled.
     Parse(String),
+    /// Indicates that a desugaring step detected that the program is not valid Rust.
     Desugaring(String),
+    /// Indicates that the program uses a part of the language which isn't yet handled properly by
+    /// the executable part of this book.
     Unimplemented(String),
-    Formality(String),
+    /// Indicates a mistake in the executable implementation of this book.
     Internal(String),
+    /// Indicates that the program was rejected by the a-mir-formality runner.
+    ///
+    /// This might mean the program uses a part of the language which isn't supported by the
+    /// translation layer (or doesn't yet have enough desugaring implemented to be acceptable to the
+    /// translation layer), or that a-mir-formality itself rejected the program as invalid Rust.
+    Formality(String),
+    /// Indicates that the program was rejected by the MiniRust runner.
+    ///
+    /// This might mean the program uses a part of the language which isn't supported by the
+    /// translation layer (or doesn't yet have enough desugaring implemented to be acceptable to the
+    /// translation layer), that MiniRust rejected the program, or that MiniRust reported a runtime
+    /// error.
     MiniRust(String),
 }
 
