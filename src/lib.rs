@@ -67,6 +67,7 @@ pub mod parser {
 pub enum CompilationError {
     Parse(String),
     Desugaring(String),
+    Unimplemented(String),
     Formality(String),
     Internal(String),
     MiniRust(String),
@@ -80,6 +81,7 @@ impl std::fmt::Display for CompilationError {
             | CompilationError::Desugaring(msg)
             | CompilationError::Formality(msg)
             | CompilationError::MiniRust(msg) => write!(f, "{msg}"),
+            CompilationError::Unimplemented(msg) => write!(f, "not yet implemented: {msg}"),
             CompilationError::Internal(msg) => write!(f, "internal error: {msg}"),
         }
     }

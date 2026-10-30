@@ -28,6 +28,13 @@ macro_rules! desugaring_error {
     }};
 }
 
+#[allow(unused_macros)]
+macro_rules! not_yet_implemented {
+    ($msg:expr) => {{
+        return Err(crate::CompilationError::Unimplemented($msg.to_string()));
+    }};
+}
+
 pub fn desugar(mut program: Program) -> Result<Program, CompilationError> {
     funsig::desugar_fun_sigs(&mut program)?;
     misc_expr_desugarings::misc_expr_desugarings(&mut program)?;
