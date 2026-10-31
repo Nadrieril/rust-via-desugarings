@@ -25,7 +25,7 @@ fn implicit_return(f: &mut Function) {
 fn self_first(f: &Function) -> Result<(), Rejection> {
     for p in f.parameters.iter().skip(1) {
         if !matches!(p.kind, FunctionParamKind::Regular { .. }) {
-            desugaring_error!("A `self` parameter is only allowed as the first function argument")
+            invalid_program!("A `self` parameter is only allowed as the first function argument")
         }
     }
     Ok(())

@@ -22,7 +22,8 @@
 use crate::language::*;
 use crate::*;
 
-macro_rules! desugaring_error {
+/// Returns a rejection saying that the program isn't valid Rust.
+macro_rules! invalid_program {
     ($msg:expr) => {{
         return Err(crate::Rejection::new(
             crate::RejectionKind::Invalid,
@@ -31,6 +32,7 @@ macro_rules! desugaring_error {
     }};
 }
 
+/// Returns a rejection saying that the program uses something which isn't yet modelled.
 #[allow(unused_macros)]
 macro_rules! not_yet_implemented {
     ($msg:expr) => {{
