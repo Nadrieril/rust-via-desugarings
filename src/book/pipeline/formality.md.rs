@@ -92,7 +92,7 @@ impl FormalityTranslator {
             ty: language::FunctionParamType::Type(ty),
         } = &parameter.kind
         else {
-            return Err(formality_error(format!(
+            return Err(Rejection::unimplemented(format!(
                 "formality translation only supports named regular parameters, got `{parameter}`"
             )));
         };
@@ -159,12 +159,12 @@ impl FunctionTranslator {
                 ..
             } => {
                 if else_branch.is_some() {
-                    return Err(formality_error(
+                    return Err(Rejection::unimplemented(
                         "formality translation does not yet support `let else`",
                     ));
                 }
                 let ty = ty.as_ref().ok_or_else(|| {
-                    formality_error("formality translation needs typed `let` bindings")
+                    Rejection::unimplemented("formality translation needs typed `let` bindings")
                 })?;
                 let init = initial_value
                     .as_ref()
@@ -207,7 +207,7 @@ impl FunctionTranslator {
         if let language::ExpressionKind::Call(call) = &expression.kind {
             if expression_path(&call.callee)? == "print" {
                 if call.args.len() != 1 {
-                    return Err(formality_error(format!(
+                    return Err(Rejection::invalid(format!(
                         "`print` expects one argument, got {}",
                         call.args.len()
                     )));
@@ -243,7 +243,7 @@ impl FunctionTranslator {
         else_branch: Option<&language::Expression>,
     ) -> Result<rust_expr::Block, Rejection> {
         match else_branch {
-            None => Err(formality_error(
+            None => Err(Rejection::internal_error(
                 "formality translation expects `if` expressions without `else` to be desugared",
             )),
             Some(branch) => self.translate_if_branch(branch),
@@ -263,7 +263,7 @@ impl FunctionTranslator {
                 self.translate_if_statement(if_expression, &mut stmts)?;
                 Ok(rust_expr::Block { label: None, stmts })
             }
-            _ => Err(formality_error(format!(
+            _ => Err(Rejection::internal_error(format!(
                 "formality translation expected an `if` branch, got `{branch:?}`"
             ))),
         }
@@ -282,7 +282,7 @@ impl FunctionTranslator {
             }
             language::ExpressionKind::Literal(language::LiteralExpression::Integer(value)) => {
                 let value = usize::try_from(*value).map_err(|_| {
-                    formality_error(format!(
+                    Rejection::unimplemented(format!(
                         "formality translation only supports integer literals that fit in `usize`, got `{value}`"
                     ))
                 })?;
@@ -291,9 +291,11 @@ impl FunctionTranslator {
                     ty: ScalarId::Usize,
                 })
             }
-            language::ExpressionKind::Literal(language::LiteralExpression::String(_)) => Err(
-                formality_error("formality translation does not yet support string literals"),
-            ),
+            language::ExpressionKind::Literal(language::LiteralExpression::String(_)) => {
+                Err(Rejection::unimplemented(
+                    "formality translation does not yet support string literals",
+                ))
+            }
             language::ExpressionKind::Path(path) => {
                 Ok(rust_expr::Expr::Place(Self::translate_simple_path(path)))
             }
@@ -320,20 +322,20 @@ impl FunctionTranslator {
                         expr: Arc::new(self.translate_expression(value)?),
                     })
                 }
-                language::OperatorExpression::Add(..) => Err(formality_error(
+                language::OperatorExpression::Add(..) => Err(Rejection::unimplemented(
                     "formality translation does not yet support `+`",
                 )),
             },
-            language::ExpressionKind::Grouped(_) => Err(formality_error(
+            language::ExpressionKind::Grouped(_) => Err(Rejection::internal_error(
                 "formality translation expects grouped expressions to be desugared",
             )),
-            language::ExpressionKind::Block(_) => Err(formality_error(
+            language::ExpressionKind::Block(_) => Err(Rejection::unimplemented(
                 "formality translation does not yet support nested block expressions",
             )),
-            language::ExpressionKind::If(_) => Err(formality_error(
+            language::ExpressionKind::If(_) => Err(Rejection::unimplemented(
                 "formality translation does not yet support `if` as a value",
             )),
-            language::ExpressionKind::Tuple(_) => Err(formality_error(
+            language::ExpressionKind::Tuple(_) => Err(Rejection::unimplemented(
                 "formality translation does not yet support tuple expressions",
             )),
             language::ExpressionKind::TupleIndexing(tuple_indexing) => Ok(rust_expr::Expr::Place(
@@ -358,17 +360,17 @@ impl FunctionTranslator {
                 language::OperatorExpression::Dereference(dereference) => {
                     self.translate_dereference(dereference)
                 }
-                other => Err(formality_error(format!(
+                other => Err(Rejection::unimplemented(format!(
                     "formality translation expected a place expression, got `{other}`"
                 ))),
             },
-            language::ExpressionKind::Grouped(_) => Err(formality_error(
+            language::ExpressionKind::Grouped(_) => Err(Rejection::internal_error(
                 "formality translation expects grouped expressions to be desugared",
             )),
             language::ExpressionKind::Virtual(virtual_expression) => {
                 self.translate_virtual_place(virtual_expression)
             }
-            other => Err(formality_error(format!(
+            other => Err(Rejection::unimplemented(format!(
                 "formality translation expected a place expression, got `{other:?}`"
             ))),
         }
@@ -441,10 +443,10 @@ impl FunctionTranslator {
                     language::Mutability::Mutable => inner.ref_mut_ty(self.fresh_lifetime()),
                 })
             }
-            language::Type::Str => Err(formality_error(
+            language::Type::Str => Err(Rejection::unimplemented(
                 "formality translation does not yet support `str`",
             )),
-            language::Type::TraitSelf => Err(formality_error(format!(
+            language::Type::TraitSelf => Err(Rejection::unimplemented(format!(
                 "formality translation does not yet support type `{ty}`"
             ))),
         }
@@ -474,10 +476,10 @@ fn translate_type(ty: &language::Type) -> Result<Ty, Rejection> {
                 language::Mutability::Mutable => inner.ref_mut_ty(Lt::Erased),
             })
         }
-        language::Type::Str => Err(formality_error(
+        language::Type::Str => Err(Rejection::unimplemented(
             "formality translation does not yet support `str`",
         )),
-        language::Type::TraitSelf => Err(formality_error(format!(
+        language::Type::TraitSelf => Err(Rejection::unimplemented(format!(
             "formality translation does not yet support type `{ty}`"
         ))),
     }
@@ -500,10 +502,10 @@ fn translate_item_safety(safety: Option<&language::ItemSafety>) -> Safety {
 fn expression_path(expression: &language::Expression) -> Result<&str, Rejection> {
     match &expression.kind {
         language::ExpressionKind::Path(path) => Ok(path),
-        language::ExpressionKind::Grouped(_) => Err(formality_error(
+        language::ExpressionKind::Grouped(_) => Err(Rejection::internal_error(
             "formality translation expects grouped expressions to be desugared",
         )),
-        other => Err(formality_error(format!(
+        other => Err(Rejection::unimplemented(format!(
             "formality translation expected a path expression, got `{other:?}`"
         ))),
     }
@@ -512,12 +514,8 @@ fn expression_path(expression: &language::Expression) -> Result<&str, Rejection>
 fn pattern_name(pattern: &language::Pattern) -> Result<&str, Rejection> {
     match pattern {
         language::Pattern::Identifier(name) => Ok(name),
-        language::Pattern::Wildcard => Err(formality_error(
+        language::Pattern::Wildcard => Err(Rejection::unimplemented(
             "formality translation needs named bindings",
         )),
     }
-}
-
-fn formality_error(message: impl Into<String>) -> Rejection {
-    Rejection::unimplemented(message)
 }
