@@ -35,7 +35,7 @@ pub fn translate_to_minirust(program: &language::Program) -> Result<mini::Progra
     let function_names = collect_function_names(program)?;
     let main_name = *function_names
         .get("main")
-        .ok_or_else(|| minirust_error("MiniRust runner needs a `main` function"))?;
+        .ok_or_else(|| Rejection::invalid("MiniRust runner needs a `main` function"))?;
     let mut globals = Map::new();
     let mut next_global = 0;
     let mut functions = Map::new();
@@ -161,7 +161,7 @@ impl<'a> Translator<'a> {
         is_main: bool,
     ) -> Result<mini::Function, Rejection> {
         if is_main && !function.parameters.is_empty() {
-            return Err(minirust_error(
+            return Err(Rejection::invalid(
                 "MiniRust runner only supports `main` with no parameters",
             ));
         }
@@ -170,7 +170,7 @@ impl<'a> Translator<'a> {
         match &function.body {
             language::FunctionBody::Block(block) => self.translate_block(block)?,
             language::FunctionBody::Missing => {
-                return Err(minirust_error(format!(
+                return Err(Rejection::unimplemented(format!(
                     "MiniRust runner needs a body for function `{}`",
                     function.name
                 )));
@@ -201,7 +201,7 @@ impl<'a> Translator<'a> {
         match return_type {
             None => Ok(()),
             Some(language::Type::Tuple(types)) if types.is_empty() => Ok(()),
-            Some(ty) => Err(minirust_error(format!(
+            Some(ty) => Err(Rejection::unimplemented(format!(
                 "MiniRust runner only supports functions returning `()`, got `{ty}`"
             ))),
         }
@@ -226,13 +226,13 @@ impl<'a> Translator<'a> {
             ty: language::FunctionParamType::Type(ty),
         } = &parameter.kind
         else {
-            return Err(minirust_error(format!(
+            return Err(Rejection::unimplemented(format!(
                 "MiniRust runner only supports named regular parameters, got `{parameter}`"
             )));
         };
         let name = Self::pattern_name(pattern)?;
         if self.local_names.contains_key(name) {
-            return Err(minirust_error(format!("duplicate local `{name}`")));
+            return Err(Rejection::invalid(format!("duplicate parameter `{name}`")));
         }
         let local = mini::LocalName(Name::from_internal(self.next_local));
         self.next_local += 1;
@@ -265,16 +265,16 @@ impl<'a> Translator<'a> {
                 ..
             } => {
                 if else_branch.is_some() {
-                    return Err(minirust_error(
+                    return Err(Rejection::unimplemented(
                         "MiniRust runner does not yet support `let else`",
                     ));
                 }
                 let name = Self::pattern_name(pattern)?;
-                let ty = ty
-                    .as_ref()
-                    .ok_or_else(|| minirust_error("MiniRust runner needs typed `let` bindings"))?;
+                let ty = ty.as_ref().ok_or_else(|| {
+                    Rejection::unimplemented("MiniRust runner needs typed `let` bindings")
+                })?;
                 if initial_value.is_some() {
-                    return Err(internal_error(
+                    return Err(Rejection::internal_error(
                         "MiniRust translation received a `let` initializer; expected desugaring to split it into `let x: ty; x = value;`",
                     ));
                 }
@@ -292,7 +292,7 @@ impl<'a> Translator<'a> {
         expression: &language::Expression,
     ) -> Result<(), Rejection> {
         match &expression.kind {
-            language::ExpressionKind::Grouped(_) => Err(minirust_error(
+            language::ExpressionKind::Grouped(_) => Err(Rejection::internal_error(
                 "MiniRust runner expects grouped expressions to be desugared",
             )),
             language::ExpressionKind::If(if_expression) => {
@@ -303,13 +303,13 @@ impl<'a> Translator<'a> {
                 language::OperatorExpression::Assignment(target, value) => {
                     self.translate_assignment(target, value)
                 }
-                language::OperatorExpression::Borrow(_) => Err(minirust_error(
+                language::OperatorExpression::Borrow(_) => Err(Rejection::unimplemented(
                     "MiniRust runner does not yet support borrow expressions as statements",
                 )),
-                language::OperatorExpression::Dereference(_) => Err(minirust_error(
+                language::OperatorExpression::Dereference(_) => Err(Rejection::unimplemented(
                     "MiniRust runner does not yet support dereference expressions as statements",
                 )),
-                language::OperatorExpression::Add(..) => Err(minirust_error(
+                language::OperatorExpression::Add(..) => Err(Rejection::unimplemented(
                     "MiniRust runner does not yet support `+` as a statement",
                 )),
             },
@@ -317,7 +317,7 @@ impl<'a> Translator<'a> {
             language::ExpressionKind::Virtual(virtual_expression) => {
                 self.translate_virtual_expression_statement(virtual_expression)
             }
-            other => Err(minirust_error(format!(
+            other => Err(Rejection::unimplemented(format!(
                 "MiniRust runner does not yet support expression statement `{other:?}`"
             ))),
         }
@@ -328,7 +328,7 @@ impl<'a> Translator<'a> {
         expression: &language::Expression,
     ) -> Result<(), Rejection> {
         match &expression.kind {
-            language::ExpressionKind::Grouped(_) => Err(minirust_error(
+            language::ExpressionKind::Grouped(_) => Err(Rejection::internal_error(
                 "MiniRust runner expects grouped expressions to be desugared",
             )),
             language::ExpressionKind::If(if_expression) => {
@@ -339,7 +339,7 @@ impl<'a> Translator<'a> {
             language::ExpressionKind::Virtual(virtual_expression) => {
                 self.translate_virtual_expression_statement(virtual_expression)
             }
-            other => Err(minirust_error(format!(
+            other => Err(Rejection::unimplemented(format!(
                 "MiniRust runner only supports `()` or `print(...)` tail expressions, got {other:?}"
             ))),
         }
@@ -382,7 +382,7 @@ impl<'a> Translator<'a> {
         else_branch: Option<&language::Expression>,
     ) -> Result<(), Rejection> {
         match else_branch {
-            None => Err(minirust_error(
+            None => Err(Rejection::internal_error(
                 "MiniRust runner expects `if` expressions without `else` to be desugared",
             )),
             Some(branch) => self.translate_if_branch(branch),
@@ -397,7 +397,7 @@ impl<'a> Translator<'a> {
             language::ExpressionKind::If(if_expression) if branch.attrs.is_empty() => {
                 self.translate_if_statement(if_expression)
             }
-            _ => Err(minirust_error(format!(
+            _ => Err(Rejection::internal_error(format!(
                 "MiniRust runner expected an `if` branch, got `{branch:?}`"
             ))),
         }
@@ -405,7 +405,11 @@ impl<'a> Translator<'a> {
 
     fn translate_let(&mut self, name: &str, ty: &language::Type) -> Result<(), Rejection> {
         if self.local_names.contains_key(name) {
-            return Err(minirust_error(format!("duplicate local `{name}`")));
+            // The desugarings are meant to give all variables unique names. Once they do, this
+            // should be an internal error.
+            return Err(Rejection::unimplemented(format!(
+                "duplicate local `{name}` (variables aren't yet renamed to be unique)"
+            )));
         }
         let local = mini::LocalName(Name::from_internal(self.next_local));
         self.next_local += 1;
@@ -450,7 +454,7 @@ impl<'a> Translator<'a> {
             return self.translate_user_function_call(name, call);
         }
         if call.args.len() != 1 {
-            return Err(minirust_error(format!(
+            return Err(Rejection::invalid(format!(
                 "`print` expects one argument, got {}",
                 call.args.len()
             )));
@@ -542,7 +546,7 @@ impl<'a> Translator<'a> {
                 let ty = mini::IntType::usize_ty::<x86_64>();
                 let value = Int::from(*value);
                 if !ty.can_represent(value) {
-                    return Err(minirust_error(format!(
+                    return Err(Rejection::unimplemented(format!(
                         "MiniRust runner only supports integer literals that fit in `usize`, got `{value}`"
                     )));
                 }
@@ -567,7 +571,7 @@ impl<'a> Translator<'a> {
                     ty,
                 ))
             }
-            language::ExpressionKind::Grouped(_) => Err(minirust_error(
+            language::ExpressionKind::Grouped(_) => Err(Rejection::internal_error(
                 "MiniRust runner expects grouped expressions to be desugared",
             )),
             language::ExpressionKind::Path(path) => {
@@ -580,14 +584,14 @@ impl<'a> Translator<'a> {
                     self.local_type(local)?,
                 ))
             }
-            language::ExpressionKind::Call(call) => Err(minirust_error(format!(
+            language::ExpressionKind::Call(call) => Err(Rejection::unimplemented(format!(
                 "MiniRust runner only supports function calls as statements, got `{}`",
                 call
             ))),
-            language::ExpressionKind::Block(_) => Err(minirust_error(
+            language::ExpressionKind::Block(_) => Err(Rejection::unimplemented(
                 "MiniRust runner does not yet support nested block expressions",
             )),
-            language::ExpressionKind::If(_) => Err(minirust_error(
+            language::ExpressionKind::If(_) => Err(Rejection::unimplemented(
                 "MiniRust runner does not yet support `if` as a value",
             )),
             language::ExpressionKind::TupleIndexing(tuple_indexing) => {
@@ -613,9 +617,11 @@ impl<'a> Translator<'a> {
                     ))
                 }
                 language::OperatorExpression::Add(..)
-                | language::OperatorExpression::Assignment(..) => Err(minirust_error(format!(
-                    "MiniRust runner does not yet support operator expression `{operator}` as a value"
-                ))),
+                | language::OperatorExpression::Assignment(..) => {
+                    Err(Rejection::unimplemented(format!(
+                        "MiniRust runner does not yet support operator expression `{operator}` as a value"
+                    )))
+                }
             },
             language::ExpressionKind::Virtual(virtual_expression) => {
                 self.translate_virtual_value_and_type(virtual_expression)
@@ -667,7 +673,7 @@ impl<'a> Translator<'a> {
     ) -> Result<mini::ValueExpr, Rejection> {
         let (value, ty) = self.translate_value_and_type(expression)?;
         if ty != mini::Type::Bool {
-            return Err(minirust_error(format!(
+            return Err(Rejection::invalid(format!(
                 "MiniRust runner expected an `if` condition with type `bool`, got `{ty:?}`"
             )));
         }
@@ -705,7 +711,7 @@ impl<'a> Translator<'a> {
         expression: &language::Expression,
     ) -> Result<(mini::PlaceExpr, mini::Type), Rejection> {
         match &expression.kind {
-            language::ExpressionKind::Grouped(_) => Err(minirust_error(
+            language::ExpressionKind::Grouped(_) => Err(Rejection::internal_error(
                 "MiniRust runner expects grouped expressions to be desugared",
             )),
             language::ExpressionKind::Path(path) => {
@@ -720,14 +726,14 @@ impl<'a> Translator<'a> {
                 language::OperatorExpression::Dereference(dereference) => {
                     self.translate_dereference_place(dereference)
                 }
-                other => Err(minirust_error(format!(
+                other => Err(Rejection::unimplemented(format!(
                     "MiniRust runner expected a place expression, got `{other}`"
                 ))),
             },
             language::ExpressionKind::Virtual(virtual_expression) => {
                 self.translate_virtual_place(virtual_expression)
             }
-            other => Err(minirust_error(format!(
+            other => Err(Rejection::unimplemented(format!(
                 "MiniRust runner expected a place expression, got `{other:?}`"
             ))),
         }
@@ -758,13 +764,13 @@ impl<'a> Translator<'a> {
             ..
         } = root_ty
         else {
-            return Err(minirust_error(format!(
+            return Err(Rejection::unimplemented(format!(
                 "MiniRust runner can only tuple-index tuple places, got `{root_ty:?}`"
             )));
         };
         let field = Int::from(tuple_indexing.index);
         if field >= sized_fields.len() || unsized_field.extract().is_some() {
-            return Err(minirust_error(format!(
+            return Err(Rejection::invalid(format!(
                 "tuple index `{}` is out of bounds",
                 tuple_indexing.index
             )));
@@ -783,13 +789,13 @@ impl<'a> Translator<'a> {
         expression: &language::Expression,
     ) -> Result<(mini::ValueExpr, mini::Type), Rejection> {
         match &expression.kind {
-            language::ExpressionKind::Grouped(_) => Err(minirust_error(
+            language::ExpressionKind::Grouped(_) => Err(Rejection::internal_error(
                 "MiniRust runner expects grouped expressions to be desugared",
             )),
             language::ExpressionKind::Path(path) => {
                 let name = Self::simple_path_name(path)?;
                 let language::Type::Ref(_, _, pointee_ty) = self.source_local_type(name)? else {
-                    return Err(minirust_error(format!(
+                    return Err(Rejection::unimplemented(format!(
                         "MiniRust runner can only dereference references, got `{name}`"
                     )));
                 };
@@ -804,14 +810,14 @@ impl<'a> Translator<'a> {
                 language::OperatorExpression::Borrow(borrow) => {
                     self.translate_borrow_with_pointee(borrow)
                 }
-                other => Err(minirust_error(format!(
+                other => Err(Rejection::unimplemented(format!(
                     "MiniRust runner expected a reference value, got `{other}`"
                 ))),
             },
             language::ExpressionKind::Virtual(virtual_expression) => {
                 self.translate_virtual_pointer_value(virtual_expression)
             }
-            other => Err(minirust_error(format!(
+            other => Err(Rejection::unimplemented(format!(
                 "MiniRust runner expected a reference value, got `{other:?}`"
             ))),
         }
@@ -819,11 +825,11 @@ impl<'a> Translator<'a> {
 
     fn expression_path(expression: &language::Expression) -> Result<&str, Rejection> {
         match &expression.kind {
-            language::ExpressionKind::Grouped(_) => Err(minirust_error(
+            language::ExpressionKind::Grouped(_) => Err(Rejection::internal_error(
                 "MiniRust runner expects grouped expressions to be desugared",
             )),
             language::ExpressionKind::Path(path) => Self::simple_path_name(path),
-            other => Err(minirust_error(format!(
+            other => Err(Rejection::unimplemented(format!(
                 "MiniRust runner expected a path expression, got `{other:?}`"
             ))),
         }
@@ -836,9 +842,9 @@ impl<'a> Translator<'a> {
     fn pattern_name(pattern: &language::Pattern) -> Result<&str, Rejection> {
         match pattern {
             language::Pattern::Identifier(name) => Ok(name),
-            language::Pattern::Wildcard => {
-                Err(minirust_error("MiniRust runner needs named `let` bindings"))
-            }
+            language::Pattern::Wildcard => Err(Rejection::unimplemented(
+                "MiniRust runner needs named `let` bindings",
+            )),
         }
     }
 
@@ -898,26 +904,26 @@ impl<'a> Translator<'a> {
         self.local_names
             .get(name)
             .copied()
-            .ok_or_else(|| minirust_error(format!("unknown local `{name}`")))
+            .ok_or_else(|| Rejection::unimplemented(format!("unknown local `{name}`")))
     }
 
     fn local_type(&self, local: mini::LocalName) -> Result<mini::Type, Rejection> {
         self.locals
             .get(local)
-            .ok_or_else(|| minirust_error(format!("unknown MiniRust local `{local:?}`")))
+            .ok_or_else(|| Rejection::internal_error(format!("unknown MiniRust local `{local:?}`")))
     }
 
     fn source_local_type(&self, name: &str) -> Result<&language::Type, Rejection> {
         self.source_local_types
             .get(name)
-            .ok_or_else(|| minirust_error(format!("unknown local `{name}`")))
+            .ok_or_else(|| Rejection::unimplemented(format!("unknown local `{name}`")))
     }
 
     fn function(&self, name: &str) -> Result<mini::FnName, Rejection> {
         self.function_names
             .get(name)
             .copied()
-            .ok_or_else(|| minirust_error(format!("unknown function `{name}`")))
+            .ok_or_else(|| Rejection::unimplemented(format!("unknown function `{name}`")))
     }
 }
 
@@ -934,7 +940,7 @@ fn collect_function_names(
             )
             .is_some()
         {
-            return Err(minirust_error(format!(
+            return Err(Rejection::invalid(format!(
                 "duplicate function `{}`",
                 function.name
             )));
@@ -956,7 +962,7 @@ fn translate_type(ty: &language::Type) -> Result<mini::Type, Rejection> {
         language::Type::Ref(_, mutability, inner) if matches!(**inner, language::Type::Str) => {
             match mutability {
                 language::Mutability::Immutable => Ok(mini::Type::Ptr(str_ref_ptr_type())),
-                language::Mutability::Mutable => Err(minirust_error(
+                language::Mutability::Mutable => Err(Rejection::unimplemented(
                     "MiniRust runner only supports shared `&str`",
                 )),
             }
@@ -965,10 +971,10 @@ fn translate_type(ty: &language::Type) -> Result<mini::Type, Rejection> {
             let pointee_ty = translate_type(inner)?;
             Ok(mini::Type::Ptr(ref_ptr_type(*mutability, pointee_ty)?))
         }
-        language::Type::Str => Err(minirust_error(
+        language::Type::Str => Err(Rejection::unimplemented(
             "MiniRust runner only supports `str` behind a reference",
         )),
-        language::Type::TraitSelf => Err(minirust_error(format!(
+        language::Type::TraitSelf => Err(Rejection::unimplemented(format!(
             "MiniRust runner does not yet support type `{ty}`"
         ))),
     }
@@ -986,10 +992,10 @@ fn tuple_type_from_fields(
         let offset_bytes = offset.bytes();
         let aligned_offset = (offset_bytes + align_bytes - 1) / align_bytes * align_bytes;
         offset = Size::from_bytes(aligned_offset)
-            .ok_or_else(|| minirust_error("tuple field offset overflowed"))?;
+            .ok_or_else(|| Rejection::unimplemented("tuple field offset overflowed"))?;
         sized_fields.push((offset, field_ty));
         offset = Size::from_bytes(aligned_offset + field_size.bytes())
-            .ok_or_else(|| minirust_error("tuple field end overflowed"))?;
+            .ok_or_else(|| Rejection::unimplemented("tuple field end overflowed"))?;
         if align_bytes > max_align.bytes() {
             max_align = field_align;
         }
@@ -998,7 +1004,7 @@ fn tuple_type_from_fields(
     let size_bytes = offset.bytes();
     let align_bytes = max_align.bytes();
     let end = Size::from_bytes((size_bytes + align_bytes - 1) / align_bytes * align_bytes)
-        .ok_or_else(|| minirust_error("tuple size overflowed"))?;
+        .ok_or_else(|| Rejection::unimplemented("tuple size overflowed"))?;
     Ok(mini::Type::Tuple {
         sized_fields: sized_fields.into_iter().collect(),
         sized_head_layout: memory::TupleHeadLayout {
@@ -1013,7 +1019,7 @@ fn tuple_type_from_fields(
 fn type_size_align(ty: &mini::Type) -> Result<(Size, Align), Rejection> {
     match ty.layout::<x86_64>() {
         memory::LayoutStrategy::Sized(size, align) => Ok((size, align)),
-        layout => Err(minirust_error(format!(
+        layout => Err(Rejection::unimplemented(format!(
             "MiniRust runner only supports sized tuple fields, got layout `{layout:?}`"
         ))),
     }
@@ -1042,7 +1048,7 @@ fn ref_ptr_type(
 fn sized_pointee_info(ty: mini::Type) -> Result<memory::PointeeInfo, Rejection> {
     let layout = ty.layout::<x86_64>();
     let memory::LayoutStrategy::Sized(..) = layout else {
-        return Err(minirust_error(format!(
+        return Err(Rejection::unimplemented(format!(
             "MiniRust runner only supports references to sized types, got `{ty:?}`"
         )));
     };
@@ -1090,12 +1096,4 @@ fn minirust_runtime_error(error: TerminationInfo) -> Rejection {
             Rejection::internal_error(message)
         }
     }
-}
-
-fn minirust_error(message: impl Into<String>) -> Rejection {
-    Rejection::unimplemented(message)
-}
-
-fn internal_error(message: impl Into<String>) -> Rejection {
-    Rejection::internal_error(message)
 }
