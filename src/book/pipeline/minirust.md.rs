@@ -15,7 +15,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::{CompilationError, language};
+use crate::{ProgramRejection, language};
 use minirust_rs::{
     lang as mini,
     libspecr::{
@@ -33,7 +33,7 @@ type MiniMemory = memory::BasicMemory<x86_64>;
 
 pub fn translate_to_minirust(
     program: &language::Program,
-) -> Result<mini::Program, CompilationError> {
+) -> Result<mini::Program, ProgramRejection> {
     let function_names = collect_function_names(program)?;
     let main_name = *function_names
         .get("main")
@@ -58,7 +58,7 @@ pub fn translate_to_minirust(
     })
 }
 
-pub fn run_in_minirust(program: &language::Program) -> Result<String, CompilationError> {
+pub fn run_in_minirust(program: &language::Program) -> Result<String, ProgramRejection> {
     let program = translate_to_minirust(program)?;
     let stdout = SharedOutput::default();
     let stderr = SharedOutput::default();
@@ -93,7 +93,7 @@ struct SharedOutput {
 }
 
 impl SharedOutput {
-    fn take_string(&self) -> Result<String, CompilationError> {
+    fn take_string(&self) -> Result<String, ProgramRejection> {
         String::from_utf8(self.bytes.borrow().clone())
             .map_err(|error| minirust_error(format!("MiniRust produced non-UTF-8 output: {error}")))
     }
@@ -161,7 +161,7 @@ impl<'a> Translator<'a> {
         &mut self,
         function: &language::Function,
         is_main: bool,
-    ) -> Result<mini::Function, CompilationError> {
+    ) -> Result<mini::Function, ProgramRejection> {
         if is_main && !function.parameters.is_empty() {
             return Err(minirust_error(
                 "MiniRust runner only supports `main` with no parameters",
@@ -202,7 +202,7 @@ impl<'a> Translator<'a> {
     fn translate_return_type(
         &self,
         return_type: Option<&language::Type>,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         match return_type {
             None => Ok(()),
             Some(language::Type::Tuple(types)) if types.is_empty() => Ok(()),
@@ -215,7 +215,7 @@ impl<'a> Translator<'a> {
     fn translate_parameters(
         &mut self,
         parameters: &[language::FunctionParam],
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         for parameter in parameters {
             self.translate_parameter(parameter)?;
         }
@@ -225,7 +225,7 @@ impl<'a> Translator<'a> {
     fn translate_parameter(
         &mut self,
         parameter: &language::FunctionParam,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         let language::FunctionParamKind::Regular {
             pattern: Some(pattern),
             ty: language::FunctionParamType::Type(ty),
@@ -251,7 +251,7 @@ impl<'a> Translator<'a> {
     fn translate_block(
         &mut self,
         block: &language::BlockExpression,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         for statement in &block.statements {
             self.translate_statement(statement)?;
         }
@@ -264,7 +264,7 @@ impl<'a> Translator<'a> {
     fn translate_statement(
         &mut self,
         statement: &language::Statement,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         match statement {
             language::Statement::Empty => Ok(()),
             language::Statement::Item(_) => Ok(()),
@@ -301,7 +301,7 @@ impl<'a> Translator<'a> {
     fn translate_expression_statement(
         &mut self,
         expression: &language::Expression,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         match &expression.kind {
             language::ExpressionKind::Grouped(_) => Err(minirust_error(
                 "MiniRust runner expects grouped expressions to be desugared",
@@ -337,7 +337,7 @@ impl<'a> Translator<'a> {
     fn translate_tail_expression(
         &mut self,
         expression: &language::Expression,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         match &expression.kind {
             language::ExpressionKind::Grouped(_) => Err(minirust_error(
                 "MiniRust runner expects grouped expressions to be desugared",
@@ -359,7 +359,7 @@ impl<'a> Translator<'a> {
     fn translate_if_statement(
         &mut self,
         if_expression: &language::IfExpression,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         let condition = self.translate_bool_value(&if_expression.condition)?;
         let then_block = self.fresh_block();
         let else_block = self.fresh_block();
@@ -391,7 +391,7 @@ impl<'a> Translator<'a> {
     fn translate_if_else_branch(
         &mut self,
         else_branch: Option<&language::Expression>,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         match else_branch {
             None => Err(minirust_error(
                 "MiniRust runner expects `if` expressions without `else` to be desugared",
@@ -403,7 +403,7 @@ impl<'a> Translator<'a> {
     fn translate_if_branch(
         &mut self,
         branch: &language::Expression,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         match &branch.kind {
             language::ExpressionKind::Block(block) if branch.attrs.is_empty() => {
                 self.translate_block(block)
@@ -417,7 +417,7 @@ impl<'a> Translator<'a> {
         }
     }
 
-    fn translate_let(&mut self, name: &str, ty: &language::Type) -> Result<(), CompilationError> {
+    fn translate_let(&mut self, name: &str, ty: &language::Type) -> Result<(), ProgramRejection> {
         if self.local_names.contains_key(name) {
             return Err(minirust_error(format!("duplicate local `{name}`")));
         }
@@ -436,7 +436,7 @@ impl<'a> Translator<'a> {
         &mut self,
         target: &language::Expression,
         value: &language::Expression,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         let (destination, destination_ty) = self.translate_place(target)?;
         self.translate_assignment_to_place(destination, destination_ty, value)
     }
@@ -446,7 +446,7 @@ impl<'a> Translator<'a> {
         destination: mini::PlaceExpr,
         destination_ty: mini::Type,
         value: &language::Expression,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         let source = self.translate_value_with_expected_type(value, destination_ty)?;
         self.current_statements.push(mini::Statement::Assign {
             destination,
@@ -458,7 +458,7 @@ impl<'a> Translator<'a> {
     fn translate_function_call(
         &mut self,
         call: &language::CallExpression,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         let name = Self::expression_path(&call.callee)?;
         if name != "print" {
             return self.translate_user_function_call(name, call);
@@ -485,7 +485,7 @@ impl<'a> Translator<'a> {
         &mut self,
         name: &str,
         call: &language::CallExpression,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         let callee = self.function(name)?;
         let arguments = call
             .args
@@ -514,7 +514,7 @@ impl<'a> Translator<'a> {
     fn translate_value(
         &mut self,
         expression: &language::Expression,
-    ) -> Result<mini::ValueExpr, CompilationError> {
+    ) -> Result<mini::ValueExpr, ProgramRejection> {
         self.translate_value_and_type(expression)
             .map(|(value, _ty)| value)
     }
@@ -523,7 +523,7 @@ impl<'a> Translator<'a> {
         &mut self,
         expression: &language::Expression,
         expected_ty: mini::Type,
-    ) -> Result<mini::ValueExpr, CompilationError> {
+    ) -> Result<mini::ValueExpr, ProgramRejection> {
         match &expression.kind {
             language::ExpressionKind::Tuple(elements) if !elements.is_empty() => {
                 let field_values = elements
@@ -542,7 +542,7 @@ impl<'a> Translator<'a> {
     fn translate_value_and_type(
         &mut self,
         expression: &language::Expression,
-    ) -> Result<(mini::ValueExpr, mini::Type), CompilationError> {
+    ) -> Result<(mini::ValueExpr, mini::Type), ProgramRejection> {
         match &expression.kind {
             language::ExpressionKind::Literal(language::LiteralExpression::Bool(value)) => Ok((
                 mini::ValueExpr::Constant(mini::Constant::Bool(*value), mini::Type::Bool),
@@ -640,7 +640,7 @@ impl<'a> Translator<'a> {
     fn translate_virtual_expression_statement(
         &mut self,
         virtual_expression: &language::VirtualExpression,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         self.translate_value(Self::virtual_expression_inner(virtual_expression))?;
         Ok(())
     }
@@ -648,21 +648,21 @@ impl<'a> Translator<'a> {
     fn translate_virtual_value_and_type(
         &mut self,
         virtual_expression: &language::VirtualExpression,
-    ) -> Result<(mini::ValueExpr, mini::Type), CompilationError> {
+    ) -> Result<(mini::ValueExpr, mini::Type), ProgramRejection> {
         self.translate_value_and_type(Self::virtual_expression_inner(virtual_expression))
     }
 
     fn translate_virtual_place(
         &mut self,
         virtual_expression: &language::VirtualExpression,
-    ) -> Result<(mini::PlaceExpr, mini::Type), CompilationError> {
+    ) -> Result<(mini::PlaceExpr, mini::Type), ProgramRejection> {
         self.translate_place(Self::virtual_expression_inner(virtual_expression))
     }
 
     fn translate_virtual_pointer_value(
         &mut self,
         virtual_expression: &language::VirtualExpression,
-    ) -> Result<(mini::ValueExpr, mini::Type), CompilationError> {
+    ) -> Result<(mini::ValueExpr, mini::Type), ProgramRejection> {
         self.translate_pointer_value(Self::virtual_expression_inner(virtual_expression))
     }
 
@@ -678,7 +678,7 @@ impl<'a> Translator<'a> {
     fn translate_bool_value(
         &mut self,
         expression: &language::Expression,
-    ) -> Result<mini::ValueExpr, CompilationError> {
+    ) -> Result<mini::ValueExpr, ProgramRejection> {
         let (value, ty) = self.translate_value_and_type(expression)?;
         if ty != mini::Type::Bool {
             return Err(minirust_error(format!(
@@ -691,7 +691,7 @@ impl<'a> Translator<'a> {
     fn translate_borrow_value_and_type(
         &mut self,
         borrow: &language::BorrowExpression,
-    ) -> Result<(mini::ValueExpr, mini::Type), CompilationError> {
+    ) -> Result<(mini::ValueExpr, mini::Type), ProgramRejection> {
         let (value, pointee_ty) = self.translate_borrow_with_pointee(borrow)?;
         Ok((
             value,
@@ -702,7 +702,7 @@ impl<'a> Translator<'a> {
     fn translate_borrow_with_pointee(
         &mut self,
         borrow: &language::BorrowExpression,
-    ) -> Result<(mini::ValueExpr, mini::Type), CompilationError> {
+    ) -> Result<(mini::ValueExpr, mini::Type), ProgramRejection> {
         let (target, target_ty) = self.translate_place(&borrow.expression)?;
         let ptr_ty = ref_ptr_type(borrow.mutability, target_ty)?;
         Ok((
@@ -717,7 +717,7 @@ impl<'a> Translator<'a> {
     fn translate_place(
         &mut self,
         expression: &language::Expression,
-    ) -> Result<(mini::PlaceExpr, mini::Type), CompilationError> {
+    ) -> Result<(mini::PlaceExpr, mini::Type), ProgramRejection> {
         match &expression.kind {
             language::ExpressionKind::Grouped(_) => Err(minirust_error(
                 "MiniRust runner expects grouped expressions to be desugared",
@@ -750,7 +750,7 @@ impl<'a> Translator<'a> {
     fn translate_dereference_place(
         &mut self,
         dereference: &language::DereferenceExpression,
-    ) -> Result<(mini::PlaceExpr, mini::Type), CompilationError> {
+    ) -> Result<(mini::PlaceExpr, mini::Type), ProgramRejection> {
         let (operand, pointee_ty) = self.translate_pointer_value(&dereference.expression)?;
         Ok((
             mini::PlaceExpr::Deref {
@@ -764,7 +764,7 @@ impl<'a> Translator<'a> {
     fn translate_tuple_indexing_place(
         &mut self,
         tuple_indexing: &language::TupleIndexingExpression,
-    ) -> Result<(mini::PlaceExpr, mini::Type), CompilationError> {
+    ) -> Result<(mini::PlaceExpr, mini::Type), ProgramRejection> {
         let (root, root_ty) = self.translate_place(&tuple_indexing.expression)?;
         let mini::Type::Tuple {
             sized_fields,
@@ -795,7 +795,7 @@ impl<'a> Translator<'a> {
     fn translate_pointer_value(
         &mut self,
         expression: &language::Expression,
-    ) -> Result<(mini::ValueExpr, mini::Type), CompilationError> {
+    ) -> Result<(mini::ValueExpr, mini::Type), ProgramRejection> {
         match &expression.kind {
             language::ExpressionKind::Grouped(_) => Err(minirust_error(
                 "MiniRust runner expects grouped expressions to be desugared",
@@ -831,7 +831,7 @@ impl<'a> Translator<'a> {
         }
     }
 
-    fn expression_path(expression: &language::Expression) -> Result<&str, CompilationError> {
+    fn expression_path(expression: &language::Expression) -> Result<&str, ProgramRejection> {
         match &expression.kind {
             language::ExpressionKind::Grouped(_) => Err(minirust_error(
                 "MiniRust runner expects grouped expressions to be desugared",
@@ -843,11 +843,11 @@ impl<'a> Translator<'a> {
         }
     }
 
-    fn simple_path_name(path: &language::PathExpression) -> Result<&str, CompilationError> {
+    fn simple_path_name(path: &language::PathExpression) -> Result<&str, ProgramRejection> {
         Ok(path)
     }
 
-    fn pattern_name(pattern: &language::Pattern) -> Result<&str, CompilationError> {
+    fn pattern_name(pattern: &language::Pattern) -> Result<&str, ProgramRejection> {
         match pattern {
             language::Pattern::Identifier(name) => Ok(name),
             language::Pattern::Wildcard => {
@@ -908,26 +908,26 @@ impl<'a> Translator<'a> {
         );
     }
 
-    fn local(&self, name: &str) -> Result<mini::LocalName, CompilationError> {
+    fn local(&self, name: &str) -> Result<mini::LocalName, ProgramRejection> {
         self.local_names
             .get(name)
             .copied()
             .ok_or_else(|| minirust_error(format!("unknown local `{name}`")))
     }
 
-    fn local_type(&self, local: mini::LocalName) -> Result<mini::Type, CompilationError> {
+    fn local_type(&self, local: mini::LocalName) -> Result<mini::Type, ProgramRejection> {
         self.locals
             .get(local)
             .ok_or_else(|| minirust_error(format!("unknown MiniRust local `{local:?}`")))
     }
 
-    fn source_local_type(&self, name: &str) -> Result<&language::Type, CompilationError> {
+    fn source_local_type(&self, name: &str) -> Result<&language::Type, ProgramRejection> {
         self.source_local_types
             .get(name)
             .ok_or_else(|| minirust_error(format!("unknown local `{name}`")))
     }
 
-    fn function(&self, name: &str) -> Result<mini::FnName, CompilationError> {
+    fn function(&self, name: &str) -> Result<mini::FnName, ProgramRejection> {
         self.function_names
             .get(name)
             .copied()
@@ -937,7 +937,7 @@ impl<'a> Translator<'a> {
 
 fn collect_function_names(
     program: &language::Program,
-) -> Result<BTreeMap<String, mini::FnName>, CompilationError> {
+) -> Result<BTreeMap<String, mini::FnName>, ProgramRejection> {
     let mut names = BTreeMap::new();
     for (index, item) in program.items.iter().enumerate() {
         let language::ItemKind::Function(function) = &item.kind;
@@ -957,7 +957,7 @@ fn collect_function_names(
     Ok(names)
 }
 
-fn translate_type(ty: &language::Type) -> Result<mini::Type, CompilationError> {
+fn translate_type(ty: &language::Type) -> Result<mini::Type, ProgramRejection> {
     match ty {
         language::Type::Tuple(types) => {
             let fields = types
@@ -990,7 +990,7 @@ fn translate_type(ty: &language::Type) -> Result<mini::Type, CompilationError> {
 
 fn tuple_type_from_fields(
     fields: impl IntoIterator<Item = mini::Type>,
-) -> Result<mini::Type, CompilationError> {
+) -> Result<mini::Type, ProgramRejection> {
     let mut offset = Size::ZERO;
     let mut max_align = Align::ONE;
     let mut sized_fields = Vec::new();
@@ -1024,7 +1024,7 @@ fn tuple_type_from_fields(
     })
 }
 
-fn type_size_align(ty: &mini::Type) -> Result<(Size, Align), CompilationError> {
+fn type_size_align(ty: &mini::Type) -> Result<(Size, Align), ProgramRejection> {
     match ty.layout::<x86_64>() {
         memory::LayoutStrategy::Sized(size, align) => Ok((size, align)),
         layout => Err(minirust_error(format!(
@@ -1046,14 +1046,14 @@ fn bool_as_switch_value(value: mini::ValueExpr) -> mini::ValueExpr {
 fn ref_ptr_type(
     mutability: language::Mutability,
     pointee_ty: mini::Type,
-) -> Result<memory::PtrType, CompilationError> {
+) -> Result<memory::PtrType, ProgramRejection> {
     Ok(memory::PtrType::Ref {
         mutbl: translate_mutability(mutability),
         pointee: sized_pointee_info(pointee_ty)?,
     })
 }
 
-fn sized_pointee_info(ty: mini::Type) -> Result<memory::PointeeInfo, CompilationError> {
+fn sized_pointee_info(ty: mini::Type) -> Result<memory::PointeeInfo, ProgramRejection> {
     let layout = ty.layout::<x86_64>();
     let memory::LayoutStrategy::Sized(..) = layout else {
         return Err(minirust_error(format!(
@@ -1091,14 +1091,14 @@ fn str_ref_ptr_type() -> memory::PtrType {
     }
 }
 
-fn minirust_runtime_error(error: TerminationInfo) -> CompilationError {
+fn minirust_runtime_error(error: TerminationInfo) -> ProgramRejection {
     minirust_error(format!("MiniRust execution failed: {error:?}"))
 }
 
-fn minirust_error(message: impl Into<String>) -> CompilationError {
-    CompilationError::MiniRust(message.into())
+fn minirust_error(message: impl Into<String>) -> ProgramRejection {
+    ProgramRejection::MiniRust(message.into())
 }
 
-fn internal_error(message: impl Into<String>) -> CompilationError {
-    CompilationError::Internal(message.into())
+fn internal_error(message: impl Into<String>) -> ProgramRejection {
+    ProgramRejection::Internal(message.into())
 }

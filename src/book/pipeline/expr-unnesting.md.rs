@@ -11,7 +11,7 @@
 //@ > The rest of this section is a work-in-progress experiment about making the book executable.
 use crate::desugarings::*; //#
 
-pub fn desugar_nested_exprs(program: &mut Program) -> Result<(), CompilationError> {
+pub fn desugar_nested_exprs(program: &mut Program) -> Result<(), ProgramRejection> {
     explicit_value_place::make_place_coercions_explicit(program)?;
     value_to_place::desugar_value_to_place(program)
 }

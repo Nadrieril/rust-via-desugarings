@@ -24,18 +24,18 @@ use crate::*;
 
 macro_rules! desugaring_error {
     ($msg:expr) => {{
-        return Err(crate::CompilationError::Desugaring($msg.to_string()));
+        return Err(crate::ProgramRejection::Desugaring($msg.to_string()));
     }};
 }
 
 #[allow(unused_macros)]
 macro_rules! not_yet_implemented {
     ($msg:expr) => {{
-        return Err(crate::CompilationError::Unimplemented($msg.to_string()));
+        return Err(crate::ProgramRejection::Unimplemented($msg.to_string()));
     }};
 }
 
-pub fn desugar(mut program: Program) -> Result<Program, CompilationError> {
+pub fn desugar(mut program: Program) -> Result<Program, ProgramRejection> {
     funsig::desugar_fun_sigs(&mut program)?;
     misc_expr_desugarings::misc_expr_desugarings(&mut program)?;
     expr_unnesting::desugar_nested_exprs(&mut program)?;

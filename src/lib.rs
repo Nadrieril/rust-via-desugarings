@@ -21,20 +21,20 @@ pub use desugarings::minirust::{run_in_minirust, translate_to_minirust};
 
 pub mod parser {
     use crate::{
-        CompilationError,
+        ProgramRejection,
         language::{Program, Token},
     };
     use logos::Logos;
 
     include!(concat!(env!("OUT_DIR"), "/parser.rs"));
 
-    impl From<ParseError> for CompilationError {
+    impl From<ParseError> for ProgramRejection {
         fn from(value: ParseError) -> Self {
-            CompilationError::Parse(format!("{value:?}"))
+            ProgramRejection::Parse(format!("{value:?}"))
         }
     }
 
-    pub fn parse_program(input: &str) -> Result<Program, CompilationError> {
+    pub fn parse_program(input: &str) -> Result<Program, ProgramRejection> {
         let mut lexer = Token::lexer(input);
         let mut context = ProgramContext::with_default_userdata();
         for token in lexer.by_ref() {
@@ -43,7 +43,7 @@ pub mod parser {
                 Err(()) => {
                     let offset = lexer.span().start;
                     let ch = lexer.slice().chars().next().unwrap_or('\0');
-                    return Err(CompilationError::Parse(format!(
+                    return Err(ProgramRejection::Parse(format!(
                         "unexpected character {ch:?} at byte {offset}"
                     )));
                 }
@@ -52,8 +52,8 @@ pub mod parser {
         let parses: Vec<_> = context.accept_all()?.collect();
         match parses.as_slice() {
             [(program, _data)] => Ok(program.clone()),
-            [] => Err(CompilationError::Parse("no valid parse".to_owned())),
-            parses => Err(CompilationError::Parse(format!(
+            [] => Err(ProgramRejection::Parse("no valid parse".to_owned())),
+            parses => Err(ProgramRejection::Parse(format!(
                 "ambiguous parse: found {} valid parses, such as:\nparse 1:\n{}\n\nparse 2:\n{}",
                 parses.len(),
                 parses[0].0,
@@ -64,7 +64,7 @@ pub mod parser {
 }
 
 #[derive(Debug)]
-pub enum CompilationError {
+pub enum ProgramRejection {
     /// Indicates that the program doesn't match the grammar used in the executable part of this
     /// book.
     ///
@@ -93,35 +93,35 @@ pub enum CompilationError {
     MiniRust(String),
 }
 
-impl std::error::Error for CompilationError {}
-impl std::fmt::Display for CompilationError {
+impl std::error::Error for ProgramRejection {}
+impl std::fmt::Display for ProgramRejection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CompilationError::Parse(msg)
-            | CompilationError::Desugaring(msg)
-            | CompilationError::Formality(msg)
-            | CompilationError::MiniRust(msg) => write!(f, "{msg}"),
-            CompilationError::Unimplemented(msg) => write!(f, "not yet implemented: {msg}"),
-            CompilationError::Internal(msg) => write!(f, "internal error: {msg}"),
+            ProgramRejection::Parse(msg)
+            | ProgramRejection::Desugaring(msg)
+            | ProgramRejection::Formality(msg)
+            | ProgramRejection::MiniRust(msg) => write!(f, "{msg}"),
+            ProgramRejection::Unimplemented(msg) => write!(f, "not yet implemented: {msg}"),
+            ProgramRejection::Internal(msg) => write!(f, "internal error: {msg}"),
         }
     }
 }
 
-pub fn parse_desugar_and_print_program(input: &str) -> Result<String, CompilationError> {
+pub fn parse_desugar_and_print_program(input: &str) -> Result<String, ProgramRejection> {
     let program = parser::parse_program(input)?;
     let program = desugar(program)?;
     Ok(print_program(&program))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn parse_desugar_and_run_program(input: &str) -> Result<String, CompilationError> {
+pub fn parse_desugar_and_run_program(input: &str) -> Result<String, ProgramRejection> {
     let program = parser::parse_program(input)?;
     let program = desugar(program)?;
     check_and_run(&program)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn check_and_run(program: &Program) -> Result<String, CompilationError> {
+pub fn check_and_run(program: &Program) -> Result<String, ProgramRejection> {
     check_with_formality(program)?;
     run_in_minirust(program)
 }
@@ -138,7 +138,7 @@ pub mod interactive_examples {
 
     pub struct InteractiveExample {
         pub id: &'static str,
-        pub step: fn(&mut Program) -> Result<(), CompilationError>,
+        pub step: fn(&mut Program) -> Result<(), ProgramRejection>,
     }
 
     inventory::collect!(InteractiveExample);
@@ -157,7 +157,7 @@ pub mod interactive_examples {
 
     fn interactive_example_by_id(
         example_id: &str,
-    ) -> Result<&'static InteractiveExample, CompilationError> {
+    ) -> Result<&'static InteractiveExample, ProgramRejection> {
         for example in inventory::iter::<InteractiveExample> {
             if example.id == example_id {
                 return Ok(example);
@@ -168,7 +168,7 @@ pub mod interactive_examples {
             .map(|example| example.id)
             .sorted()
             .format(", ");
-        Err(CompilationError::Internal(format!(
+        Err(ProgramRejection::Internal(format!(
             "unknown interactive example `{example_id}`; expected one of: {}",
             supported,
         )))
@@ -178,7 +178,7 @@ pub mod interactive_examples {
     fn parse_apply_interactive_example_and_print_program(
         example_id: &str,
         input: &str,
-    ) -> Result<String, CompilationError> {
+    ) -> Result<String, ProgramRejection> {
         let example = interactive_example_by_id(example_id)?;
         let mut program = parser::parse_program(input)?;
         (example.step)(&mut program)?;

@@ -109,7 +109,7 @@
 //@ > The rest of this section is a work-in-progress experiment about making the book executable.
 use crate::desugarings::*; //#
 
-pub fn desugar_value_to_place(program: &mut Program) -> Result<(), CompilationError> {
+pub fn desugar_value_to_place(program: &mut Program) -> Result<(), ProgramRejection> {
     program.visit_all_mut(|_block: &mut BlockExpression| {
         // TODO: look for all the `VirtualExpression::ValueToPlaceCoercion`
         Ok(())

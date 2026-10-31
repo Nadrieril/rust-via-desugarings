@@ -6,7 +6,7 @@
 //@ > The rest of this section is a work-in-progress experiment about making the book executable.
 use crate::desugarings::*; //#
 
-pub fn desugar_final(program: &mut Program) -> Result<(), CompilationError> {
+pub fn desugar_final(program: &mut Program) -> Result<(), ProgramRejection> {
     program.visit_all_mut_infallible(|block: &mut BlockExpression| {
         split_let_initializers(block);
     });

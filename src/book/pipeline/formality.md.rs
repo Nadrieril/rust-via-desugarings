@@ -11,7 +11,7 @@
 //@ sake of being able to run more examples.
 use std::sync::Arc;
 
-use crate::{CompilationError, language};
+use crate::{ProgramRejection, language};
 use formality_rust::{
     check,
     grammar::{
@@ -22,11 +22,11 @@ use formality_rust::{
     prove::prove::Safety,
 };
 
-pub fn translate_to_formality(program: &language::Program) -> Result<Crates, CompilationError> {
+pub fn translate_to_formality(program: &language::Program) -> Result<Crates, ProgramRejection> {
     FormalityTranslator.translate_program(program)
 }
 
-pub fn check_with_formality(program: &language::Program) -> Result<(), CompilationError> {
+pub fn check_with_formality(program: &language::Program) -> Result<(), ProgramRejection> {
     let crates = translate_to_formality(program)?;
     let _checked = check::check_all_crates(crates.clone())
         .into_singleton()
@@ -42,7 +42,7 @@ pub fn check_with_formality(program: &language::Program) -> Result<(), Compilati
 struct FormalityTranslator;
 
 impl FormalityTranslator {
-    fn translate_program(&self, program: &language::Program) -> Result<Crates, CompilationError> {
+    fn translate_program(&self, program: &language::Program) -> Result<Crates, ProgramRejection> {
         let items = program
             .items
             .iter()
@@ -62,7 +62,7 @@ impl FormalityTranslator {
     fn translate_function(
         &self,
         function: &language::Function,
-    ) -> Result<RustFn, CompilationError> {
+    ) -> Result<RustFn, ProgramRejection> {
         let input_args = function
             .parameters
             .iter()
@@ -92,7 +92,7 @@ impl FormalityTranslator {
 
     fn translate_parameter(
         parameter: &language::FunctionParam,
-    ) -> Result<InputArg, CompilationError> {
+    ) -> Result<InputArg, ProgramRejection> {
         let language::FunctionParamKind::Regular {
             pattern: Some(pattern),
             ty: language::FunctionParamType::Type(ty),
@@ -122,7 +122,7 @@ impl FunctionTranslator {
     fn translate_body(
         mut self,
         block: &language::BlockExpression,
-    ) -> Result<rust_expr::Block, CompilationError> {
+    ) -> Result<rust_expr::Block, ProgramRejection> {
         let block = self.translate_block(block)?;
         if self.lifetimes.is_empty() {
             Ok(block)
@@ -139,7 +139,7 @@ impl FunctionTranslator {
     fn translate_block(
         &mut self,
         block: &language::BlockExpression,
-    ) -> Result<rust_expr::Block, CompilationError> {
+    ) -> Result<rust_expr::Block, ProgramRejection> {
         let mut stmts = Vec::new();
         for statement in &block.statements {
             self.translate_statement(statement, &mut stmts)?;
@@ -154,7 +154,7 @@ impl FunctionTranslator {
         &mut self,
         statement: &language::Statement,
         stmts: &mut Vec<rust_expr::Stmt>,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         match statement {
             language::Statement::Empty | language::Statement::Item(_) => Ok(()),
             language::Statement::Let {
@@ -197,7 +197,7 @@ impl FunctionTranslator {
         &mut self,
         expression: &language::Expression,
         stmts: &mut Vec<rust_expr::Stmt>,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         if matches!(
             &expression.kind,
             language::ExpressionKind::Tuple(elements) if elements.is_empty()
@@ -235,7 +235,7 @@ impl FunctionTranslator {
         &mut self,
         if_expression: &language::IfExpression,
         stmts: &mut Vec<rust_expr::Stmt>,
-    ) -> Result<(), CompilationError> {
+    ) -> Result<(), ProgramRejection> {
         stmts.push(rust_expr::Stmt::If {
             condition: self.translate_expression(&if_expression.condition)?,
             then_block: self.translate_if_branch(&if_expression.then_branch)?,
@@ -247,7 +247,7 @@ impl FunctionTranslator {
     fn translate_if_else_branch(
         &mut self,
         else_branch: Option<&language::Expression>,
-    ) -> Result<rust_expr::Block, CompilationError> {
+    ) -> Result<rust_expr::Block, ProgramRejection> {
         match else_branch {
             None => Err(formality_error(
                 "formality translation expects `if` expressions without `else` to be desugared",
@@ -259,7 +259,7 @@ impl FunctionTranslator {
     fn translate_if_branch(
         &mut self,
         branch: &language::Expression,
-    ) -> Result<rust_expr::Block, CompilationError> {
+    ) -> Result<rust_expr::Block, ProgramRejection> {
         match &branch.kind {
             language::ExpressionKind::Block(block) if branch.attrs.is_empty() => {
                 self.translate_block(block)
@@ -278,7 +278,7 @@ impl FunctionTranslator {
     fn translate_expression(
         &mut self,
         expression: &language::Expression,
-    ) -> Result<rust_expr::Expr, CompilationError> {
+    ) -> Result<rust_expr::Expr, ProgramRejection> {
         match &expression.kind {
             language::ExpressionKind::Literal(language::LiteralExpression::Bool(true)) => {
                 Ok(rust_expr::Expr::True)
@@ -354,7 +354,7 @@ impl FunctionTranslator {
     fn translate_place(
         &mut self,
         expression: &language::Expression,
-    ) -> Result<rust_expr::PlaceExpr, CompilationError> {
+    ) -> Result<rust_expr::PlaceExpr, ProgramRejection> {
         match &expression.kind {
             language::ExpressionKind::Path(path) => Ok(Self::translate_simple_path(path)),
             language::ExpressionKind::TupleIndexing(tuple_indexing) => {
@@ -383,7 +383,7 @@ impl FunctionTranslator {
     fn translate_virtual_expression(
         &mut self,
         virtual_expression: &language::VirtualExpression,
-    ) -> Result<rust_expr::Expr, CompilationError> {
+    ) -> Result<rust_expr::Expr, ProgramRejection> {
         match virtual_expression {
             language::VirtualExpression::ValueToPlaceCoercion(expression)
             | language::VirtualExpression::PlaceToValueCoercion(expression) => {
@@ -395,7 +395,7 @@ impl FunctionTranslator {
     fn translate_virtual_place(
         &mut self,
         virtual_expression: &language::VirtualExpression,
-    ) -> Result<rust_expr::PlaceExpr, CompilationError> {
+    ) -> Result<rust_expr::PlaceExpr, ProgramRejection> {
         match virtual_expression {
             language::VirtualExpression::ValueToPlaceCoercion(expression)
             | language::VirtualExpression::PlaceToValueCoercion(expression) => {
@@ -407,7 +407,7 @@ impl FunctionTranslator {
     fn translate_dereference(
         &mut self,
         dereference: &language::DereferenceExpression,
-    ) -> Result<rust_expr::PlaceExpr, CompilationError> {
+    ) -> Result<rust_expr::PlaceExpr, ProgramRejection> {
         Ok(rust_expr::PlaceExpr::Deref {
             prefix: Arc::new(self.translate_place(&dereference.expression)?),
         })
@@ -416,7 +416,7 @@ impl FunctionTranslator {
     fn translate_tuple_indexing(
         &mut self,
         tuple_indexing: &language::TupleIndexingExpression,
-    ) -> Result<rust_expr::PlaceExpr, CompilationError> {
+    ) -> Result<rust_expr::PlaceExpr, ProgramRejection> {
         Ok(rust_expr::PlaceExpr::Field {
             prefix: Arc::new(self.translate_place(&tuple_indexing.expression)?),
             field_name: FieldName::Index(tuple_indexing.index),
@@ -427,7 +427,7 @@ impl FunctionTranslator {
         rust_expr::PlaceExpr::Var(ValueId::new(path))
     }
 
-    fn translate_type(&mut self, ty: &language::Type) -> Result<Ty, CompilationError> {
+    fn translate_type(&mut self, ty: &language::Type) -> Result<Ty, ProgramRejection> {
         match ty {
             language::Type::Tuple(types) => {
                 let parameters = types
@@ -463,7 +463,7 @@ impl FunctionTranslator {
     }
 }
 
-fn translate_type(ty: &language::Type) -> Result<Ty, CompilationError> {
+fn translate_type(ty: &language::Type) -> Result<Ty, ProgramRejection> {
     match ty {
         language::Type::Tuple(types) => {
             let parameters = types
@@ -503,7 +503,7 @@ fn translate_item_safety(safety: Option<&language::ItemSafety>) -> Safety {
     }
 }
 
-fn expression_path(expression: &language::Expression) -> Result<&str, CompilationError> {
+fn expression_path(expression: &language::Expression) -> Result<&str, ProgramRejection> {
     match &expression.kind {
         language::ExpressionKind::Path(path) => Ok(path),
         language::ExpressionKind::Grouped(_) => Err(formality_error(
@@ -515,7 +515,7 @@ fn expression_path(expression: &language::Expression) -> Result<&str, Compilatio
     }
 }
 
-fn pattern_name(pattern: &language::Pattern) -> Result<&str, CompilationError> {
+fn pattern_name(pattern: &language::Pattern) -> Result<&str, ProgramRejection> {
     match pattern {
         language::Pattern::Identifier(name) => Ok(name),
         language::Pattern::Wildcard => Err(formality_error(
@@ -524,6 +524,6 @@ fn pattern_name(pattern: &language::Pattern) -> Result<&str, CompilationError> {
     }
 }
 
-fn formality_error(message: impl Into<String>) -> CompilationError {
-    CompilationError::Formality(message.into())
+fn formality_error(message: impl Into<String>) -> ProgramRejection {
+    ProgramRejection::Formality(message.into())
 }
