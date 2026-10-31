@@ -21,7 +21,7 @@ pub use desugarings::minirust::{run_in_minirust, translate_to_minirust};
 
 pub mod parser {
     use crate::{
-        Rejection, RejectionKind,
+        Rejection,
         language::{Program, Token},
     };
     use logos::Logos;
@@ -30,12 +30,8 @@ pub mod parser {
 
     impl From<ParseError> for Rejection {
         fn from(value: ParseError) -> Self {
-            parse_error(format!("{value:?}"))
+            Rejection::unclassified(format!("{value:?}"))
         }
-    }
-
-    fn parse_error(message: impl Into<String>) -> Rejection {
-        Rejection::new(RejectionKind::Unclassified, message)
     }
 
     pub fn parse_program(input: &str) -> Result<Program, Rejection> {
@@ -47,7 +43,7 @@ pub mod parser {
                 Err(()) => {
                     let offset = lexer.span().start;
                     let ch = lexer.slice().chars().next().unwrap_or('\0');
-                    return Err(parse_error(format!(
+                    return Err(Rejection::unclassified(format!(
                         "unexpected character {ch:?} at byte {offset}"
                     )));
                 }
@@ -56,8 +52,8 @@ pub mod parser {
         let parses: Vec<_> = context.accept_all()?.collect();
         match parses.as_slice() {
             [(program, _data)] => Ok(program.clone()),
-            [] => Err(parse_error("no valid parse".to_owned())),
-            parses => Err(parse_error(format!(
+            [] => Err(Rejection::unclassified("no valid parse".to_owned())),
+            parses => Err(Rejection::unclassified(format!(
                 "ambiguous parse: found {} valid parses, such as:\nparse 1:\n{}\n\nparse 2:\n{}",
                 parses.len(),
                 parses[0].0,
@@ -117,6 +113,32 @@ impl Rejection {
             kind,
             message: message.into(),
         }
+    }
+
+    /// Says that the program isn't valid Rust.
+    pub fn invalid(message: impl Into<String>) -> Self {
+        Self::new(RejectionKind::Invalid, message)
+    }
+
+    /// Says that the program uses something which isn't yet modelled.
+    pub fn unimplemented(message: impl Into<String>) -> Self {
+        Self::new(RejectionKind::Unimplemented, message)
+    }
+
+    /// Says that there's a mistake in the executable implementation of this book.
+    pub fn internal_error(message: impl Into<String>) -> Self {
+        Self::new(RejectionKind::InternalError, message)
+    }
+
+    /// Says that the program is valid Rust, but failed at runtime.
+    pub fn runtime_error(message: impl Into<String>) -> Self {
+        Self::new(RejectionKind::RuntimeError, message)
+    }
+
+    /// Says that the program was rejected, without saying whether it isn't valid Rust or uses
+    /// something which isn't yet modelled.
+    pub fn unclassified(message: impl Into<String>) -> Self {
+        Self::new(RejectionKind::Unclassified, message)
     }
 
     pub fn at(self, stage: Stage) -> ProgramRejection {

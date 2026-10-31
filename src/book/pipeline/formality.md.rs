@@ -11,7 +11,7 @@
 //@ sake of being able to run more examples.
 use std::sync::Arc;
 
-use crate::{Rejection, RejectionKind, language};
+use crate::{Rejection, language};
 use formality_rust::{
     check,
     grammar::{
@@ -30,13 +30,10 @@ pub fn check_with_formality(crates: Crates) -> Result<(), Rejection> {
     let _checked = check::check_all_crates(crates)
         .into_singleton()
         .map_err(|error| {
-            Rejection::new(
-                RejectionKind::Invalid,
-                format!(
-                    "a-mir-formality borrow check failed: {}",
-                    error.format_leaves()
-                ),
-            )
+            Rejection::invalid(format!(
+                "a-mir-formality borrow check failed: {}",
+                error.format_leaves()
+            ))
         })?;
     Ok(())
 }
@@ -522,5 +519,5 @@ fn pattern_name(pattern: &language::Pattern) -> Result<&str, Rejection> {
 }
 
 fn formality_error(message: impl Into<String>) -> Rejection {
-    Rejection::new(RejectionKind::Unimplemented, message)
+    Rejection::unimplemented(message)
 }

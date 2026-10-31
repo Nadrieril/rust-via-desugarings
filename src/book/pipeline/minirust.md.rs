@@ -15,7 +15,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::{Rejection, RejectionKind, language};
+use crate::{Rejection, language};
 use minirust_rs::{
     lang as mini,
     libspecr::{
@@ -1077,16 +1077,13 @@ fn str_ref_ptr_type() -> memory::PtrType {
 }
 
 fn minirust_runtime_error(error: TerminationInfo) -> Rejection {
-    Rejection::new(
-        RejectionKind::RuntimeError,
-        format!("MiniRust execution failed: {error:?}"),
-    )
+    Rejection::runtime_error(format!("MiniRust execution failed: {error:?}"))
 }
 
 fn minirust_error(message: impl Into<String>) -> Rejection {
-    Rejection::new(RejectionKind::Unimplemented, message)
+    Rejection::unimplemented(message)
 }
 
 fn internal_error(message: impl Into<String>) -> Rejection {
-    Rejection::new(RejectionKind::InternalError, message)
+    Rejection::internal_error(message)
 }

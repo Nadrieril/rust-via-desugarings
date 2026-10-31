@@ -25,10 +25,7 @@ use crate::*;
 /// Returns a rejection saying that the program isn't valid Rust.
 macro_rules! invalid_program {
     ($msg:expr) => {{
-        return Err(crate::Rejection::new(
-            crate::RejectionKind::Invalid,
-            $msg.to_string(),
-        ));
+        return Err(crate::Rejection::invalid($msg.to_string()));
     }};
 }
 
@@ -36,10 +33,7 @@ macro_rules! invalid_program {
 #[allow(unused_macros)]
 macro_rules! not_yet_implemented {
     ($msg:expr) => {{
-        return Err(crate::Rejection::new(
-            crate::RejectionKind::Unimplemented,
-            $msg.to_string(),
-        ));
+        return Err(crate::Rejection::unimplemented($msg.to_string()));
     }};
 }
 
