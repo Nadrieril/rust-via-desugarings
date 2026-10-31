@@ -77,7 +77,7 @@ pub fn run_in_minirust(program: mini::Program) -> Result<String, Rejection> {
 
     let stderr = stderr.take_string()?;
     if !stderr.is_empty() {
-        return Err(minirust_error(format!(
+        return Err(Rejection::runtime_error(format!(
             "MiniRust wrote to stderr: {stderr}"
         )));
     }
@@ -91,8 +91,9 @@ struct SharedOutput {
 
 impl SharedOutput {
     fn take_string(&self) -> Result<String, Rejection> {
-        String::from_utf8(self.bytes.borrow().clone())
-            .map_err(|error| minirust_error(format!("MiniRust produced non-UTF-8 output: {error}")))
+        String::from_utf8(self.bytes.borrow().clone()).map_err(|error| {
+            Rejection::internal_error(format!("MiniRust produced non-UTF-8 output: {error}"))
+        })
     }
 }
 
@@ -1077,7 +1078,18 @@ fn str_ref_ptr_type() -> memory::PtrType {
 }
 
 fn minirust_runtime_error(error: TerminationInfo) -> Rejection {
-    Rejection::runtime_error(format!("MiniRust execution failed: {error:?}"))
+    let message = format!("MiniRust execution failed: {error:?}");
+    match error {
+        TerminationInfo::Ub(_)
+        | TerminationInfo::Abort
+        | TerminationInfo::Deadlock
+        | TerminationInfo::MemoryLeak => Rejection::runtime_error(message),
+        // An ill-formed MiniRust program means the translation is wrong.
+        // MachineStop isn't an error, so the caller shouldn't pass it here.
+        TerminationInfo::IllFormed(_) | TerminationInfo::MachineStop => {
+            Rejection::internal_error(message)
+        }
+    }
 }
 
 fn minirust_error(message: impl Into<String>) -> Rejection {
