@@ -60,11 +60,11 @@ fn run_case(input_path: &Path) -> Result<(), Failed> {
     let stdout_path = input_path.with_extension("out");
     let stderr_path = input_path.with_extension("stderr");
 
-    let result = rust_via_desugarings::parser::parse_program(&input);
+    let result = rust_via_desugarings::parse(&input);
     if let Ok(program) = &result {
         // Roundtrip the printer.
         let roundtrip = rust_via_desugarings::print_program(program);
-        let reparsed = rust_via_desugarings::parser::parse_program(&roundtrip)
+        let reparsed = rust_via_desugarings::parse(&roundtrip)
             .map_err(|error| format!("failed to re-parse printed source:\n{error}"))?;
         if &reparsed != program {
             Err(format!(
@@ -73,7 +73,7 @@ fn run_case(input_path: &Path) -> Result<(), Failed> {
         }
     }
 
-    let result = result.and_then(rust_via_desugarings::desugar);
+    let result = result.and_then(rust_via_desugarings::desugar_program);
 
     let _ = fs::remove_file(&desugared_path);
     let _ = fs::remove_file(&stdout_path);
