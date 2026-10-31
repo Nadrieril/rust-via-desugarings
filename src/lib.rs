@@ -122,8 +122,8 @@ pub fn parse_desugar_and_run_program(input: &str) -> Result<String, ProgramRejec
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn check_and_run(program: &Program) -> Result<String, ProgramRejection> {
-    check_with_formality(program)?;
-    run_in_minirust(program)
+    check_with_formality(translate_to_formality(program)?)?;
+    run_in_minirust(translate_to_minirust(program)?)
 }
 
 pub mod interactive_examples {

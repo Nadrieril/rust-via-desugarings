@@ -58,8 +58,7 @@ pub fn translate_to_minirust(
     })
 }
 
-pub fn run_in_minirust(program: &language::Program) -> Result<String, ProgramRejection> {
-    let program = translate_to_minirust(program)?;
+pub fn run_in_minirust(program: mini::Program) -> Result<String, ProgramRejection> {
     let stdout = SharedOutput::default();
     let stderr = SharedOutput::default();
     let mut machine = mini::Machine::<MiniMemory>::new(

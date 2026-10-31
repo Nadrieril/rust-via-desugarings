@@ -26,9 +26,8 @@ pub fn translate_to_formality(program: &language::Program) -> Result<Crates, Pro
     FormalityTranslator.translate_program(program)
 }
 
-pub fn check_with_formality(program: &language::Program) -> Result<(), ProgramRejection> {
-    let crates = translate_to_formality(program)?;
-    let _checked = check::check_all_crates(crates.clone())
+pub fn check_with_formality(crates: Crates) -> Result<(), ProgramRejection> {
+    let _checked = check::check_all_crates(crates)
         .into_singleton()
         .map_err(|error| {
             formality_error(format!(
