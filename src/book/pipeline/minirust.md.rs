@@ -232,7 +232,10 @@ impl<'a> Translator<'a> {
         };
         let name = Self::pattern_name(pattern)?;
         if self.local_names.contains_key(name) {
-            return Err(Rejection::invalid(format!("duplicate parameter `{name}`")));
+            // Name resolution rejects functions with repeated parameter names.
+            return Err(Rejection::internal_error(format!(
+                "duplicate parameter `{name}`"
+            )));
         }
         let local = mini::LocalName(Name::from_internal(self.next_local));
         self.next_local += 1;
@@ -955,7 +958,8 @@ fn collect_function_names(
             )
             .is_some()
         {
-            return Err(Rejection::invalid(format!(
+            // Name resolution rejects duplicate crate-level declarations.
+            return Err(Rejection::internal_error(format!(
                 "duplicate function `{}`",
                 function.name
             )));
