@@ -1,4 +1,4 @@
 fn main() -> () {
-    foo();
-    fn foo() -> () {}
+    main__foo();
+    fn main__foo() -> () {}
 }

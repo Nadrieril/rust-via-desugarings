@@ -1,5 +1,5 @@
 fn foo() -> () {
-    fn main() -> () {
+    fn foo__main() -> () {
         crate::print(true);
     }
 }

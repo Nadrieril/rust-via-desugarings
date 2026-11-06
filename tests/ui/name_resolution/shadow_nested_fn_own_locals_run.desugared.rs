@@ -1,15 +1,15 @@
 fn main() -> () {
     let x: bool;
     x = true;
-    fn f1() -> () {
+    fn main__f1() -> () {
         let x: bool;
         x = false;
         crate::print(place_to_value!(x));
     }
-    fn f2(x: bool) -> () {
+    fn main__f2(x: bool) -> () {
         crate::print(place_to_value!(x));
     }
-    f1();
-    f2(false);
+    main__f1();
+    main__f2(false);
     crate::print(place_to_value!(x));
 }

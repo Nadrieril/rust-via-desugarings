@@ -1,11 +1,11 @@
 fn f1() -> () {}
 fn main() -> () {
-    fn f2() -> () {
+    fn main__f2() -> () {
         crate::f1();
     }
-    fn f3() -> () {}
-    fn f4() -> () {
-        f3();
+    fn main__f3() -> () {}
+    fn main__f4() -> () {
+        main__f3();
     }
     let f1: bool;
     f1 = false;

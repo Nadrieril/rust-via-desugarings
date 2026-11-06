@@ -41,6 +41,7 @@ pub fn desugar(mut program: Program) -> Result<Program, Rejection> {
     name_resolution::checks_that_resolution_depends_on(&program)?;
     name_resolution::checks_that_depend_on_resolution(&program)?;
     name_resolution::path_expression_normalisation(&mut program)?;
+    name_resolution::nested_function_renaming(&mut program)?;
     funsig::desugar_fun_sigs(&mut program)?;
     misc_expr_desugarings::misc_expr_desugarings(&mut program)?;
     expr_unnesting::desugar_nested_exprs(&mut program)?;

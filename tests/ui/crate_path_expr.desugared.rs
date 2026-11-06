@@ -9,7 +9,7 @@ fn main() -> () {
     y = (place_to_value!(crate::foo), {
         place_to_value!(crate::foo)
     });
-    fn bar() -> () {
+    fn main__bar() -> () {
         crate::foo();
     }
 }

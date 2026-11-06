@@ -5,7 +5,7 @@ fn main() -> () {
         f1 = false;
         crate::print(place_to_value!(f1));
     } else {}
-    fn f2() -> () {
+    fn main__f2() -> () {
         crate::f1();
     }
 }

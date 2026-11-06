@@ -147,6 +147,7 @@ impl VisitAst for Resolver {
     //@   those locals.
     fn visit_function(&mut self, function: &Function) -> ControlFlow<Infallible> {
         let function_id = self.declared_function_id(function);
+        self.bookkeeping.record_declaration(function_id);
         let mut frame = Frame::new();
         for name in parameter_names(function) {
             let local = Entity::Local {
@@ -335,13 +336,71 @@ pub fn path_expression_normalisation(program: &mut Program) -> Result<(), Reject
     Ok(())
 }
 
+//@ ## Nested function renaming
+//@
+//@ Each nested function is renamed to a fresh name, used nowhere else in the program (its
+//@ "unambiguous name").
+//@
+//@ Path expressions that resolve to those functions are rewritten to use the unambiguous name
+//@ (these are necessarily single-segment path expressions).
+pub fn nested_function_renaming(program: &mut Program) -> Result<(), Rejection> {
+    let (resolutions, bookkeeping) = run_resolver(program);
+    let unambiguous_names = choose_unambiguous_names(program, &bookkeeping);
+
+    //@ > The rewriting passes below use the information the resolver recorded for the unmodified
+    //@ > program. Neither pass adds, removes, or reorders path expressions or function
+    //@ > declarations, so the `PathExpressionId`s and `DeclarationId`s still identify the same
+    //@ > nodes.
+
+    for_each_path_expression_mut(program, |path_expression, path_expression_id| {
+        if let Some(Entity::Function(function)) = resolutions.resolves_to(path_expression_id)
+            && !bookkeeping.is_crate_level(function)
+        {
+            *path_expression = PathExpression::SingleSegment(unambiguous_names[&function].clone());
+        }
+    });
+
+    for_each_declaration_mut(program, |function, declaration_id| {
+        let function_id = bookkeeping.function_declared_by(declaration_id);
+        function.name = unambiguous_names[&function_id].clone();
+    });
+    Ok(())
+}
+
+//@ > The unambiguous names have the form `<outer>__<inner>`, with a further underscore and numeric
+//@ > suffix added if necessary to make an otherwise-unused name.
+//@ > `<inner>` is the function's original name.
+//@ > `<outer>` is the name of the function directly containing it if that is a crate-level
+//@ > function, or that function's unambiguous name if it is a nested function.
+fn choose_unambiguous_names(
+    program: &Program,
+    bookkeeping: &AstBookkeeping,
+) -> BTreeMap<FunctionId, Identifier> {
+    let mut used_names = UsedNames::for_program(program);
+    let mut unambiguous_names = BTreeMap::new();
+    for function in bookkeeping.functions_outer_first() {
+        let name = bookkeeping.name(function);
+        let unambiguous_name = match bookkeeping.function_directly_containing(function) {
+            Some(outer) => {
+                let outer_name = &unambiguous_names[&outer];
+                used_names.fresh_name(&format!("{outer_name}__{name}"))
+            }
+            // Crate-level functions keep their existing names.
+            None => name.clone(),
+        };
+        unambiguous_names.insert(function, unambiguous_name);
+    }
+    unambiguous_names
+}
+
 //@ ## Examples
 
-//@ > The interactive example below runs the checks and the desugaring.
+//@ > The interactive example below runs the checks and the desugarings.
 fn check_and_desugar_names(program: &mut Program) -> Result<(), Rejection> {
     checks_that_resolution_depends_on(program)?;
     checks_that_depend_on_resolution(program)?;
     path_expression_normalisation(program)?;
+    nested_function_renaming(program)?;
     Ok(())
 }
 
@@ -370,8 +429,12 @@ interactive_example! {
 
 //@ ## After these steps
 //@ - Every path expression resolves.
-//@ - No two crate-level items have the same name.
+//@ - No two items in the program have the same name.
+//@ - Every nested item has a name that is not used for any local.
 //@ - Every path expression resolving to a crate-level item is crate-relative.
+//@ - Every single-segment path expression contains either
+//@   - the name of a local introduced in the same function; or
+//@   - the unambiguous name of a nested function.
 //@ - No path expression in a nested function resolves to a local of an enclosing function.
 //@
 //@ ## Discussion
@@ -383,13 +446,84 @@ interactive_example! {
 //@ in nested functions can resolve to locals from an enclosing function (although programs in which
 //@ this happens are rejected). It follows that items in function bodies can't be freely re-ordered
 //@ with statements.
+//@
+//@ Justification that renaming a nested function preserves the program's meaning:
+//@ - The rewritten path expressions still resolve to the same function because:
+//@   - the block frame that had an entry for the old name now has an entry for the new one
+//@   - no higher-priority frame has an entry for the new name, because the new name is fresh.
+//@ - No other path expression's resolution changes because:
+//@   - path expressions using the old name: removing an entry that wasn't the one found can't
+//@     change which one is found
+//@   - path expressions using the new name: there are none because the new name is fresh.
+//@
+
+//@ ## Choosing fresh names
+//@
+//@ > The code in this section tracks which identifiers are in use, and supplies the fresh names
+//@ > used by [Nested function renaming](#nested-function-renaming).
+
+/// Identifiers that are in use, so that fresh names can be chosen to avoid them.
+#[derive(Default)]
+struct UsedNames {
+    names: BTreeSet<Identifier>,
+}
+
+impl UsedNames {
+    /// Returns a UsedNames populated with the identifiers used in the program.
+    ///
+    /// It treats identifiers that appear in expressions as in use, not just identifiers that
+    /// appear as the names of entities.
+    fn for_program(program: &Program) -> Self {
+        let mut used_names = UsedNames::default();
+        // We pretend there is always a crate-level function named `print` (see
+        // `crate_level_names`).
+        used_names.mark_used("print".into());
+        program.visit_all_infallible(|function: &Function| {
+            used_names.mark_used(function.name.clone());
+        });
+        program.visit_all_infallible(|path_expression: &PathExpression| match path_expression {
+            PathExpression::SingleSegment(identifier) => {
+                used_names.mark_used(identifier.clone());
+            }
+            PathExpression::CrateRelative(segments) => {
+                for segment in segments {
+                    used_names.mark_used(segment.clone());
+                }
+            }
+        });
+        program.visit_all_infallible(|pattern: &Pattern| {
+            for name in bound_names(pattern) {
+                used_names.mark_used(name);
+            }
+        });
+        used_names
+    }
+
+    /// Records an identifier as being in use.
+    fn mark_used(&mut self, name: Identifier) {
+        self.names.insert(name);
+    }
+
+    /// Returns a previously-unused identifier.
+    ///
+    /// If `base` isn't in use, returns it unchanged. Otherwise adds a numeric suffix.
+    ///
+    /// Records the returned identifier as being in use.
+    fn fresh_name(&mut self, base: &Identifier) -> Identifier {
+        std::iter::once(base.to_owned())
+            .chain((0..).map(|n| format!("{base}_{n}")))
+            .find(|candidate| self.names.insert(candidate.clone()))
+            .expect("fresh_name should not run out of numbers")
+    }
+}
 
 //@ ## Supporting code
 //@
 //@ > The code in this section supports the `Resolver`.
 //@ >
-//@ > The `AstBookkeeping` and `PathExpressionId` provide a way to identify a particular path
-//@ > expression, and a way to ask which function a node is in.
+//@ > The `AstBookkeeping`, `PathExpressionId` and `DeclarationId` provide a way to identify a
+//@ > particular path expression or function declaration, and a way to ask which function a node is
+//@ > in.
 
 impl Visitor for Resolver {
     type Break = Infallible;
@@ -450,7 +584,11 @@ impl Resolver {
 #[derive(Default)]
 struct AstBookkeeping {
     /// Information about each of the program's functions, indexed by `FunctionId`.
+    ///
+    /// Each function comes after the function(s) it is nested inside.
     functions: Vec<FunctionPlacement>,
+    /// The program's functions, indexed by `DeclarationId`.
+    declarations: Vec<FunctionId>,
     /// The innermost function containing each path expression, indexed by `PathExpressionId`.
     innermost_functions_containing_path_expressions: Vec<FunctionId>,
 }
@@ -480,9 +618,19 @@ impl AstBookkeeping {
         self.function_directly_containing(function).is_none()
     }
 
+    /// Returns every function, with each one after the function(s) it is nested inside.
+    fn functions_outer_first(&self) -> impl Iterator<Item = FunctionId> {
+        (0..self.functions.len()).map(FunctionId)
+    }
+
     /// Returns the innermost function that contains the specified path expression.
     fn innermost_function_containing(&self, path_expression_id: PathExpressionId) -> FunctionId {
         self.innermost_functions_containing_path_expressions[path_expression_id.0]
+    }
+
+    /// Returns the function that has the specified declaration id.
+    fn function_declared_by(&self, declaration: DeclarationId) -> FunctionId {
+        self.declarations[declaration.0]
     }
 
     /// Adds a function to the bookkeeping, returning the `FunctionId` to use to refer to it.
@@ -498,6 +646,11 @@ impl AstBookkeeping {
         FunctionId(self.functions.len() - 1)
     }
 
+    /// Records the function declared by the next function declaration in pre-order.
+    fn record_declaration(&mut self, function: FunctionId) {
+        self.declarations.push(function);
+    }
+
     /// Records the innermost function that contains the next path expression in pre-order.
     fn record_path_expression(&mut self, function: FunctionId) {
         self.innermost_functions_containing_path_expressions
@@ -507,10 +660,15 @@ impl AstBookkeeping {
 
 /// Identifies a path expression, by its position in a pre-order walk of the program.
 ///
-/// The `Resolver` visits path expressions in the same order as `visit_all`. The `PathExpressionId`s
-/// given out by the functions below match that order.
+/// The `Resolver` visits path expressions and function declarations in the same order as
+/// `visit_all`. The `PathExpressionId`s and `DeclarationId`s given out by the functions below match
+/// that order.
 #[derive(Clone, Copy)]
 struct PathExpressionId(usize);
+
+/// Identifies a function declaration, by its position in a pre-order walk of the program.
+#[derive(Clone, Copy)]
+struct DeclarationId(usize);
 
 /// Calls `f` for each path expression in the program, also passing its `PathExpressionId`.
 fn for_each_path_expression<E>(
@@ -535,6 +693,21 @@ fn for_each_path_expression_mut(
     let mut next = 0;
     program.visit_all_mut_infallible(|path_expression: &mut PathExpression| {
         f(path_expression, PathExpressionId(next));
+        next += 1;
+    });
+}
+
+/// Calls `f` for each function declaration in the program, also passing its `DeclarationId`. `f`
+/// can modify the declaration.
+///
+/// `f` must not add, remove, or reorder function declarations.
+fn for_each_declaration_mut(
+    program: &mut Program,
+    mut f: impl FnMut(&mut Function, DeclarationId),
+) {
+    let mut next = 0;
+    program.visit_all_mut_infallible(|declaration: &mut Function| {
+        f(declaration, DeclarationId(next));
         next += 1;
     });
 }

@@ -1,7 +1,7 @@
 fn foo() -> () {}
 fn main() -> () {
-    fn foo() -> () {}
-    fn bar() -> () {
+    fn main__foo() -> () {}
+    fn main__bar() -> () {
         crate::foo();
     }
     crate::foo();
