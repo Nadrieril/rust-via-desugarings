@@ -4,7 +4,7 @@
 //@
 use crate::desugarings::*;
 
-pub fn desugar_fun_sigs(program: &mut Program) -> Result<(), CompilationError> {
+pub fn desugar_fun_sigs(program: &mut Program) -> Result<(), Rejection> {
     program.visit_all_mut(|f: &mut Function| {
         implicit_return(f);
         shorthand_self(f);
@@ -22,10 +22,10 @@ fn implicit_return(f: &mut Function) {
 }
 
 //@ A `self` parameter is only allowed as the first function argument [ref:items.fn.syntax].
-fn self_first(f: &Function) -> Result<(), CompilationError> {
+fn self_first(f: &Function) -> Result<(), Rejection> {
     for p in f.parameters.iter().skip(1) {
         if !matches!(p.kind, FunctionParamKind::Regular { .. }) {
-            desugaring_error!("A `self` parameter is only allowed as the first function argument")
+            invalid_program!("A `self` parameter is only allowed as the first function argument")
         }
     }
     Ok(())

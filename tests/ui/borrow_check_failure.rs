@@ -1,5 +1,5 @@
-//@ known-failure
 //@ run
+//@ expect-rejection: Invalid @ FormalityCheck
 fn main() {
     let x: bool = false;
     let r: &bool = &x;

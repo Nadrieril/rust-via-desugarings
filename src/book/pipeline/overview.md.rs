@@ -22,13 +22,22 @@
 use crate::language::*;
 use crate::*;
 
-macro_rules! desugaring_error {
+/// Returns a rejection saying that the program isn't valid Rust.
+macro_rules! invalid_program {
     ($msg:expr) => {{
-        return Err(crate::CompilationError::Desugaring($msg.to_string()));
+        return Err(crate::Rejection::invalid($msg.to_string()));
     }};
 }
 
-pub fn desugar(mut program: Program) -> Result<Program, CompilationError> {
+/// Returns a rejection saying that the program uses something which isn't yet modelled.
+#[allow(unused_macros)]
+macro_rules! not_yet_implemented {
+    ($msg:expr) => {{
+        return Err(crate::Rejection::unimplemented($msg.to_string()));
+    }};
+}
+
+pub fn desugar(mut program: Program) -> Result<Program, Rejection> {
     funsig::desugar_fun_sigs(&mut program)?;
     misc_expr_desugarings::misc_expr_desugarings(&mut program)?;
     expr_unnesting::desugar_nested_exprs(&mut program)?;

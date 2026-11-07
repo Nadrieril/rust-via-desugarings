@@ -21,20 +21,20 @@ pub use desugarings::minirust::{run_in_minirust, translate_to_minirust};
 
 pub mod parser {
     use crate::{
-        CompilationError,
+        Rejection,
         language::{Program, Token},
     };
     use logos::Logos;
 
     include!(concat!(env!("OUT_DIR"), "/parser.rs"));
 
-    impl From<ParseError> for CompilationError {
+    impl From<ParseError> for Rejection {
         fn from(value: ParseError) -> Self {
-            CompilationError::Parse(format!("{value:?}"))
+            Rejection::unclassified(format!("{value:?}"))
         }
     }
 
-    pub fn parse_program(input: &str) -> Result<Program, CompilationError> {
+    pub fn parse_program(input: &str) -> Result<Program, Rejection> {
         let mut lexer = Token::lexer(input);
         let mut context = ProgramContext::with_default_userdata();
         for token in lexer.by_ref() {
@@ -43,7 +43,7 @@ pub mod parser {
                 Err(()) => {
                     let offset = lexer.span().start;
                     let ch = lexer.slice().chars().next().unwrap_or('\0');
-                    return Err(CompilationError::Parse(format!(
+                    return Err(Rejection::unclassified(format!(
                         "unexpected character {ch:?} at byte {offset}"
                     )));
                 }
@@ -52,8 +52,8 @@ pub mod parser {
         let parses: Vec<_> = context.accept_all()?.collect();
         match parses.as_slice() {
             [(program, _data)] => Ok(program.clone()),
-            [] => Err(CompilationError::Parse("no valid parse".to_owned())),
-            parses => Err(CompilationError::Parse(format!(
+            [] => Err(Rejection::unclassified("no valid parse".to_owned())),
+            parses => Err(Rejection::unclassified(format!(
                 "ambiguous parse: found {} valid parses, such as:\nparse 1:\n{}\n\nparse 2:\n{}",
                 parses.len(),
                 parses[0].0,
@@ -63,45 +63,153 @@ pub mod parser {
     }
 }
 
-#[derive(Debug)]
-pub enum CompilationError {
-    Parse(String),
-    Desugaring(String),
-    Formality(String),
-    Internal(String),
-    MiniRust(String),
+/// Why a program was rejected.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RejectionKind {
+    /// The program isn't valid Rust.
+    Invalid,
+    /// The program uses a part of the language which isn't yet handled properly by the executable
+    /// part of this book.
+    Unimplemented,
+    /// There's a mistake in the executable implementation of this book.
+    InternalError,
+    /// The program is valid Rust, but failed at runtime (for example, it has undefined behaviour).
+    RuntimeError,
+    /// The stage which rejected the program can't tell whether the program isn't valid Rust or
+    /// uses a part of the language which isn't yet modelled.
+    Unclassified,
 }
 
-impl std::error::Error for CompilationError {}
-impl std::fmt::Display for CompilationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CompilationError::Parse(msg)
-            | CompilationError::Desugaring(msg)
-            | CompilationError::Formality(msg)
-            | CompilationError::MiniRust(msg) => write!(f, "{msg}"),
-            CompilationError::Internal(msg) => write!(f, "internal error: {msg}"),
+/// The stage of the pipeline which rejected a program.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Stage {
+    /// Parsing using the grammar used in the executable part of this book.
+    Parse,
+    /// The desugaring steps.
+    Desugaring,
+    /// Translating the desugared program into a-mir-formality's language.
+    FormalityTranslation,
+    /// a-mir-formality's checks (such as borrow-checking).
+    FormalityCheck,
+    /// Translating the desugared program into MiniRust.
+    MiniRustTranslation,
+    /// Running the program in MiniRust.
+    MiniRustExecution,
+}
+
+/// A rejection reported from within a single stage of the pipeline.
+///
+/// The code driving the pipeline turns this into a [`ProgramRejection`] by recording which stage it
+/// came from.
+#[derive(Debug)]
+pub struct Rejection {
+    pub kind: RejectionKind,
+    pub message: String,
+}
+
+impl Rejection {
+    pub fn new(kind: RejectionKind, message: impl Into<String>) -> Self {
+        Self {
+            kind,
+            message: message.into(),
+        }
+    }
+
+    /// Says that the program isn't valid Rust.
+    pub fn invalid(message: impl Into<String>) -> Self {
+        Self::new(RejectionKind::Invalid, message)
+    }
+
+    /// Says that the program uses something which isn't yet modelled.
+    pub fn unimplemented(message: impl Into<String>) -> Self {
+        Self::new(RejectionKind::Unimplemented, message)
+    }
+
+    /// Says that there's a mistake in the executable implementation of this book.
+    pub fn internal_error(message: impl Into<String>) -> Self {
+        Self::new(RejectionKind::InternalError, message)
+    }
+
+    /// Says that the program is valid Rust, but failed at runtime.
+    pub fn runtime_error(message: impl Into<String>) -> Self {
+        Self::new(RejectionKind::RuntimeError, message)
+    }
+
+    /// Says that the program was rejected, without saying whether it isn't valid Rust or uses
+    /// something which isn't yet modelled.
+    pub fn unclassified(message: impl Into<String>) -> Self {
+        Self::new(RejectionKind::Unclassified, message)
+    }
+
+    pub fn at(self, stage: Stage) -> ProgramRejection {
+        ProgramRejection {
+            stage,
+            kind: self.kind,
+            message: self.message,
         }
     }
 }
 
-pub fn parse_desugar_and_print_program(input: &str) -> Result<String, CompilationError> {
-    let program = parser::parse_program(input)?;
-    let program = desugar(program)?;
+/// Records that a program was rejected: which stage rejected it, and why.
+#[derive(Debug)]
+pub struct ProgramRejection {
+    pub stage: Stage,
+    pub kind: RejectionKind,
+    pub message: String,
+}
+
+impl std::error::Error for ProgramRejection {}
+impl std::fmt::Display for ProgramRejection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let msg = &self.message;
+        match self.kind {
+            RejectionKind::Invalid | RejectionKind::RuntimeError | RejectionKind::Unclassified => {
+                write!(f, "{msg}")
+            }
+            RejectionKind::Unimplemented => write!(f, "not yet implemented: {msg}"),
+            RejectionKind::InternalError => write!(f, "internal error: {msg}"),
+        }
+    }
+}
+
+trait AtStage<T> {
+    fn at_stage(self, stage: Stage) -> Result<T, ProgramRejection>;
+}
+
+impl<T> AtStage<T> for Result<T, Rejection> {
+    fn at_stage(self, stage: Stage) -> Result<T, ProgramRejection> {
+        self.map_err(|rejection| rejection.at(stage))
+    }
+}
+
+/// Parses a program.
+pub fn parse(input: &str) -> Result<Program, ProgramRejection> {
+    parser::parse_program(input).at_stage(Stage::Parse)
+}
+
+/// Applies all the desugaring steps to a program.
+pub fn desugar_program(program: Program) -> Result<Program, ProgramRejection> {
+    desugar(program).at_stage(Stage::Desugaring)
+}
+
+pub fn parse_desugar_and_print_program(input: &str) -> Result<String, ProgramRejection> {
+    let program = desugar_program(parse(input)?)?;
     Ok(print_program(&program))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn parse_desugar_and_run_program(input: &str) -> Result<String, CompilationError> {
-    let program = parser::parse_program(input)?;
-    let program = desugar(program)?;
+pub fn parse_desugar_and_run_program(input: &str) -> Result<String, ProgramRejection> {
+    let program = desugar_program(parse(input)?)?;
     check_and_run(&program)
 }
 
+/// Checks a desugared program using a-mir-formality, then runs it using MiniRust.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn check_and_run(program: &Program) -> Result<String, CompilationError> {
-    check_with_formality(program)?;
-    run_in_minirust(program)
+pub fn check_and_run(program: &Program) -> Result<String, ProgramRejection> {
+    let crates = translate_to_formality(program).at_stage(Stage::FormalityTranslation)?;
+    check_with_formality(crates).at_stage(Stage::FormalityCheck)?;
+    let program = translate_to_minirust(program).at_stage(Stage::MiniRustTranslation)?;
+    run_in_minirust(program).at_stage(Stage::MiniRustExecution)
 }
 
 pub mod interactive_examples {
@@ -116,7 +224,7 @@ pub mod interactive_examples {
 
     pub struct InteractiveExample {
         pub id: &'static str,
-        pub step: fn(&mut Program) -> Result<(), CompilationError>,
+        pub step: fn(&mut Program) -> Result<(), Rejection>,
     }
 
     inventory::collect!(InteractiveExample);
@@ -133,9 +241,7 @@ pub mod interactive_examples {
         };
     }
 
-    fn interactive_example_by_id(
-        example_id: &str,
-    ) -> Result<&'static InteractiveExample, CompilationError> {
+    fn interactive_example_by_id(example_id: &str) -> Result<&'static InteractiveExample, String> {
         for example in inventory::iter::<InteractiveExample> {
             if example.id == example_id {
                 return Ok(example);
@@ -146,20 +252,22 @@ pub mod interactive_examples {
             .map(|example| example.id)
             .sorted()
             .format(", ");
-        Err(CompilationError::Internal(format!(
-            "unknown interactive example `{example_id}`; expected one of: {}",
+        Err(format!(
+            "internal error: unknown interactive example `{example_id}`; expected one of: {}",
             supported,
-        )))
+        ))
     }
 
     #[allow(unused)] // Used in wasm
     fn parse_apply_interactive_example_and_print_program(
         example_id: &str,
         input: &str,
-    ) -> Result<String, CompilationError> {
+    ) -> Result<String, String> {
         let example = interactive_example_by_id(example_id)?;
-        let mut program = parser::parse_program(input)?;
-        (example.step)(&mut program)?;
+        let mut program = parse(input).map_err(|rejection| rejection.to_string())?;
+        (example.step)(&mut program)
+            .at_stage(Stage::Desugaring)
+            .map_err(|rejection| rejection.to_string())?;
         Ok(print_program(&program))
     }
 
@@ -183,6 +291,6 @@ pub mod interactive_examples {
     ) -> Result<String, wasm_bindgen::JsValue> {
         ensure_wasm_ctors();
         parse_apply_interactive_example_and_print_program(example_id, input)
-            .map_err(|error| wasm_bindgen::JsValue::from_str(&error.to_string()))
+            .map_err(|error| wasm_bindgen::JsValue::from_str(&error))
     }
 }

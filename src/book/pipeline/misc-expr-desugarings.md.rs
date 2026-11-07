@@ -6,7 +6,7 @@
 //@
 use crate::desugarings::*;
 
-pub fn misc_expr_desugarings(program: &mut Program) -> Result<(), CompilationError> {
+pub fn misc_expr_desugarings(program: &mut Program) -> Result<(), Rejection> {
     program.visit_all_mut(|expression: &mut Expression| {
         flatten_grouped_expression(expression);
         add_missing_else_branch(expression);
