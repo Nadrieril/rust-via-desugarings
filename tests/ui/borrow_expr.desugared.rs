@@ -1,4 +1,4 @@
-fn f() -> () {
+fn f(foo: bool) -> () {
     &foo;
     &mut foo;
     &value_to_place!(&foo);

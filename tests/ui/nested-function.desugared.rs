@@ -1,3 +1,2 @@
-fn foo() -> () {
-    fn bar() -> () {}
-}
+fn foo() -> () {}
+fn foo__bar() -> () {}
